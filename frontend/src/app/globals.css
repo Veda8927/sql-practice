@@ -1,0 +1,84 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Restrained palette: one accent (blue), neutral grays.
+ * Status is hinted (small dot) not shouted (colored panels).
+ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 13% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 13% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 13% 15%;
+    --primary: 211 100% 50%;       /* one Mac-blue, used sparingly */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 13% 25%;
+    --muted: 220 14% 97%;
+    --muted-foreground: 220 8% 46%;
+    --accent: 220 14% 95%;
+    --accent-foreground: 222 13% 25%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 211 100% 50%;
+    --radius: 0.625rem;
+
+    --panel: 220 14% 98%;
+    --panel-border: 220 13% 91%;
+  }
+
+  .dark {
+    --background: 222 14% 8%;
+    --foreground: 220 14% 92%;
+    --card: 222 13% 11%;
+    --card-foreground: 220 14% 92%;
+    --popover: 222 13% 11%;
+    --popover-foreground: 220 14% 92%;
+    --primary: 211 100% 60%;
+    --primary-foreground: 222 14% 8%;
+    --secondary: 222 13% 15%;
+    --secondary-foreground: 220 14% 85%;
+    --muted: 222 13% 13%;
+    --muted-foreground: 220 9% 56%;
+    --accent: 222 13% 15%;
+    --accent-foreground: 220 14% 85%;
+    --destructive: 0 72% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 13% 17%;
+    --input: 222 13% 17%;
+    --ring: 211 100% 60%;
+
+    --panel: 222 14% 10%;
+    --panel-border: 222 13% 17%;
+  }
+
+  html { color-scheme: light dark; }
+  html.dark { color-scheme: dark; }
+  html, body, #__next { height: 100%; }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv02", "cv03", "cv11", "ss01";
+    letter-spacing: -0.011em;
+  }
+
+  * { @apply border-border; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
