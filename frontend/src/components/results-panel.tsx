@@ -2,10 +2,16 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Loader2, X } from "lucide-react";
+import { Activity, Check, Download, Loader2, X } from "lucide-react";
 
 import { DataTable } from "@/components/data-table";
-import type { ExplainResponse, GradeResult, TableResult } from "@/lib/types";
+import type {
+  ErrorHelpResponse,
+  ExplainResponse,
+  GradeResult,
+  PerformanceResponse,
+  TableResult,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -14,8 +20,35 @@ type Props = {
   explanation: ExplainResponse | null;
   explainLoading: boolean;
   onExplain: () => void;
+  errorHelp: ErrorHelpResponse | null;
+  errorHelpLoading: boolean;
+  onErrorHelp: () => void;
+  performance: PerformanceResponse | null;
+  performanceLoading: boolean;
+  onPerformance: () => void;
+  onApplySql: (sql: string) => void;
   lastRunMs: number | null;
 };
+
+function csvEscape(value: unknown) {
+  if (value === null || value === undefined) return "";
+  const text = String(value);
+  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+function downloadCsv(table: TableResult, name: string) {
+  const csv = [
+    table.columns.map(csvEscape).join(","),
+    ...table.rows.map((row) => row.map(csvEscape).join(",")),
+  ].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 function StatusDot({
   status,
@@ -58,6 +91,13 @@ export function ResultsPanel({
   explanation,
   explainLoading,
   onExplain,
+  errorHelp,
+  errorHelpLoading,
+  onErrorHelp,
+  performance,
+  performanceLoading,
+  onPerformance,
+  onApplySql,
   lastRunMs,
 }: Props) {
   const status = result?.status ?? "idle";
@@ -80,6 +120,8 @@ export function ResultsPanel({
 
   const yoursTable = result?.user_output;
   const expectedTable = result?.expected_output ?? expectedPreview;
+  const activeTable = view === "yours" ? yoursTable : expectedTable;
+  const dbTime = result?.execution_time_ms ?? null;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -88,10 +130,20 @@ export function ResultsPanel({
           <StatusDot status={status} hasPreviewOnly={!hasYours && hasExpected} />
           {lastRunMs !== null && (
             <span className="font-mono text-[10.5px] text-muted-foreground tabular-nums">
-              {lastRunMs} ms
+              {dbTime !== null ? `${dbTime} ms db` : `${lastRunMs} ms`}
             </span>
           )}
-          {showHint && (
+          {status === "error" && !errorHelp && (
+            <button
+              type="button"
+              onClick={onErrorHelp}
+              disabled={errorHelpLoading}
+              className="text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline disabled:opacity-50"
+            >
+              {errorHelpLoading ? "Translating…" : "What does this mean?"}
+            </button>
+          )}
+          {showHint && status !== "error" && (
             <button
               type="button"
               onClick={onExplain}
@@ -109,35 +161,75 @@ export function ResultsPanel({
             </button>
           )}
         </div>
-        {showCompareToggle && (
-          <div className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-muted/40 p-0.5">
+        <div className="flex shrink-0 items-center gap-2">
+          {activeTable && (
             <button
-              onClick={() => setView("yours")}
-              className={cn(
-                "rounded-full px-3 py-0.5 text-xs font-medium transition-colors",
-                view === "yours"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
+              type="button"
+              onClick={() => downloadCsv(activeTable, `${view}-result.csv`)}
+              className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              Yours
+              <Download className="h-3 w-3" />
+              CSV
             </button>
+          )}
+          {yoursTable && (
             <button
-              onClick={() => setView("expected")}
-              className={cn(
-                "rounded-full px-3 py-0.5 text-xs font-medium transition-colors",
-                view === "expected"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
+              type="button"
+              onClick={onPerformance}
+              disabled={performanceLoading}
+              className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
             >
-              Expected
+              {performanceLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Activity className="h-3 w-3" />
+              )}
+              Speed
             </button>
-          </div>
-        )}
+          )}
+          {showCompareToggle && (
+            <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-0.5">
+              <button
+                onClick={() => setView("yours")}
+                className={cn(
+                  "rounded-full px-3 py-0.5 text-xs font-medium transition-colors",
+                  view === "yours"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Yours
+              </button>
+              <button
+                onClick={() => setView("expected")}
+                className={cn(
+                  "rounded-full px-3 py-0.5 text-xs font-medium transition-colors",
+                  view === "expected"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Expected
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto px-4 py-4 sm:px-6">
+        {errorHelp && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm leading-relaxed text-foreground"
+          >
+            <div>{errorHelp.explanation}</div>
+            <div className="mt-1 text-muted-foreground">
+              {errorHelp.next_step}
+            </div>
+          </motion.div>
+        )}
+
         {explanation && (
           <motion.div
             initial={{ opacity: 0, y: 4 }}
@@ -163,6 +255,61 @@ export function ResultsPanel({
           </motion.div>
         )}
 
+        {performance && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-3 rounded-lg border border-border bg-muted/25 p-3 text-sm leading-relaxed text-foreground"
+          >
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="font-medium">Performance</span>
+              {performance.user_time_ms !== null && (
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  yours {performance.user_time_ms} ms
+                </span>
+              )}
+              {performance.reference_time_ms !== null && (
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  reference {performance.reference_time_ms} ms
+                </span>
+              )}
+            </div>
+            <p>{performance.summary}</p>
+            {performance.suggestions.length > 0 && (
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                {performance.suggestions.map((s, i) => (
+                  <li key={i}>{s}</li>
+                ))}
+              </ul>
+            )}
+            {performance.optimized_sql && (
+              <div className="mt-3">
+                <div className="mb-1 text-xs font-medium text-muted-foreground">
+                  Cleaner query
+                </div>
+                <pre className="max-h-56 overflow-auto rounded-md border border-border bg-background p-3 font-mono text-xs">
+                  {performance.optimized_sql}
+                </pre>
+                <button
+                  type="button"
+                  onClick={() => onApplySql(performance.optimized_sql ?? "")}
+                  className="mt-2 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                >
+                  Put this in the editor
+                </button>
+              </div>
+            )}
+            <details className="mt-3">
+              <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                Raw EXPLAIN plan
+              </summary>
+              <pre className="mt-2 max-h-72 overflow-auto rounded-md border border-border bg-background p-3 font-mono text-[11px]">
+                {JSON.stringify(performance.raw_plan, null, 2)}
+              </pre>
+            </details>
+          </motion.div>
+        )}
+
         <AnimatePresence mode="wait">
           <motion.div
             key={view}
@@ -173,9 +320,14 @@ export function ResultsPanel({
           >
             {view === "yours" &&
               (status === "error" ? (
-                <pre className="overflow-auto whitespace-pre-wrap rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 font-mono text-xs text-amber-700 dark:text-amber-400">
-                  {result?.error_message}
-                </pre>
+                <div>
+                  <div className="mb-1 text-xs font-medium text-muted-foreground">
+                    Raw Postgres error
+                  </div>
+                  <pre className="overflow-auto whitespace-pre-wrap rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 font-mono text-xs text-amber-700 dark:text-amber-400">
+                    {result?.error_message}
+                  </pre>
+                </div>
               ) : yoursTable ? (
                 <DataTable
                   columns={yoursTable.columns}

@@ -13,23 +13,34 @@ type Streak = {
   correct: number;
   attempts: number;
   best: number;
+  correctDurationMs: number;
+  correctTimed: number;
 };
 
 const KEY = "sql-practice:streak:v1";
+const EMPTY: Streak = {
+  correct: 0,
+  attempts: 0,
+  best: 0,
+  correctDurationMs: 0,
+  correctTimed: 0,
+};
 
 function load(): Streak {
-  if (typeof window === "undefined") return { correct: 0, attempts: 0, best: 0 };
+  if (typeof window === "undefined") return EMPTY;
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return { correct: 0, attempts: 0, best: 0 };
+    if (!raw) return EMPTY;
     const parsed = JSON.parse(raw);
     return {
       correct: Number(parsed.correct) || 0,
       attempts: Number(parsed.attempts) || 0,
       best: Number(parsed.best) || 0,
+      correctDurationMs: Number(parsed.correctDurationMs) || 0,
+      correctTimed: Number(parsed.correctTimed) || 0,
     };
   } catch {
-    return { correct: 0, attempts: 0, best: 0 };
+    return EMPTY;
   }
 }
 
@@ -42,10 +53,13 @@ function save(s: Streak) {
  * Imperative-style streak store via a custom event. Anywhere can dispatch
  * `streak:record` with { correct: boolean } and the badge updates.
  */
-export function recordStreak(correct: boolean) {
+export function recordStreak(
+  correct: boolean,
+  meta?: { durationMs?: number; difficulty?: string },
+) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
-    new CustomEvent("streak:record", { detail: { correct } }),
+    new CustomEvent("streak:record", { detail: { correct, ...meta } }),
   );
 }
 
@@ -55,22 +69,30 @@ export function resetStreak() {
 }
 
 export function StreakBadge() {
-  const [s, setS] = React.useState<Streak>({
-    correct: 0,
-    attempts: 0,
-    best: 0,
-  });
+  const [s, setS] = React.useState<Streak>(EMPTY);
   const [pulse, setPulse] = React.useState(false);
 
   React.useEffect(() => {
     setS(load());
     const onRecord = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { correct: boolean };
+      const detail = (e as CustomEvent).detail as {
+        correct: boolean;
+        durationMs?: number;
+      };
       setS((prev) => {
         const correct = prev.correct + (detail.correct ? 1 : 0);
         const attempts = prev.attempts + 1;
         const best = Math.max(prev.best, correct);
-        const next = { correct, attempts, best };
+        const hasDuration =
+          detail.correct && typeof detail.durationMs === "number";
+        const next = {
+          correct,
+          attempts,
+          best,
+          correctDurationMs:
+            prev.correctDurationMs + (hasDuration ? detail.durationMs ?? 0 : 0),
+          correctTimed: prev.correctTimed + (hasDuration ? 1 : 0),
+        };
         save(next);
         if (detail.correct) {
           setPulse(true);
@@ -80,7 +102,7 @@ export function StreakBadge() {
       });
     };
     const onReset = () => {
-      const next = { correct: 0, attempts: 0, best: 0 };
+      const next = EMPTY;
       save(next);
       setS(next);
     };
@@ -95,6 +117,12 @@ export function StreakBadge() {
   if (s.attempts === 0) return null;
 
   const pct = Math.round((s.correct / s.attempts) * 100);
+  const avgMs =
+    s.correctTimed > 0 ? Math.round(s.correctDurationMs / s.correctTimed) : null;
+  const avgText =
+    avgMs === null
+      ? ""
+      : ` · avg ${Math.floor(avgMs / 60000)}m ${Math.round((avgMs % 60000) / 1000)}s`;
 
   return (
     <Tooltip>
@@ -119,6 +147,7 @@ export function StreakBadge() {
       </TooltipTrigger>
       <TooltipContent>
         {s.correct} correct of {s.attempts} ({pct}%) · best run: {s.best}
+        {avgText}
       </TooltipContent>
     </Tooltip>
   );

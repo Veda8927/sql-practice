@@ -79,6 +79,38 @@ Rules for the hint (strict):
 - Keep it short. 1-3 sentences max."""
 
 
+ERROR_HELP_SYSTEM_PROMPT = """You translate PostgreSQL errors for a SQL learner.
+
+Return ONLY JSON:
+{
+  "explanation": "1-2 short plain-English sentences explaining the raw error.",
+  "next_step": "one concrete next step using the provided schema"
+}
+
+Rules:
+- Keep the raw Postgres error out of your answer; the UI already shows it.
+- Mention nearby valid table or column names when helpful.
+- Do not reveal the full reference SQL."""
+
+
+PERFORMANCE_SYSTEM_PROMPT = """You are a PostgreSQL performance coach for a SQL learner.
+
+You will receive the question, schema, the learner SQL, the reference SQL, and EXPLAIN ANALYZE JSON for the learner query. You may also receive timing for the reference query.
+
+Return ONLY JSON:
+{
+  "summary": "1-2 short sentences explaining whether the query shape is efficient.",
+  "suggestions": ["2-4 concrete optimization lessons, beginner friendly"],
+  "optimized_sql": "a cleaner or faster PostgreSQL query, or null if their query is already fine"
+}
+
+Rules:
+- Keep it practical: avoid vague advice like 'add indexes' unless the plan clearly points to it.
+- Prefer query-shape improvements: filter earlier, aggregate after joins when useful, avoid unnecessary subqueries, select only needed columns.
+- If the reference SQL is a better teaching answer, you may use it as optimized_sql.
+- Do not shame the learner. Explain why the faster shape helps."""
+
+
 EXPLAIN_SOLUTION_SYSTEM_PROMPT = """You explain a SQL solution to a beginner — assume they know what a spreadsheet is but have NEVER written SQL before. Think 5th grade reading level.
 
 You receive: the question, the reference SQL that solves it, and the table schema.
@@ -239,6 +271,76 @@ async def give_hint(
     data = json.loads(raw)
     if "hint" not in data:
         data["hint"] = ""
+    return data
+
+
+async def explain_sql_error(
+    question: str,
+    user_sql: str,
+    error_message: str,
+    schema_info: dict[str, Any],
+) -> dict[str, Any]:
+    client = _get_client()
+    payload = {
+        "question": question,
+        "user_sql": user_sql,
+        "error_message": error_message,
+        "schema": schema_info,
+    }
+    completion = await client.chat.completions.create(
+        model=settings.openai_model,
+        messages=[
+            {"role": "system", "content": ERROR_HELP_SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(payload, default=str)},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.2,
+    )
+    raw = completion.choices[0].message.content or "{}"
+    data = json.loads(raw)
+    if "explanation" not in data:
+        data["explanation"] = "Postgres could not run that SQL."
+    if "next_step" not in data:
+        data["next_step"] = "Check the table and column names in the schema."
+    return data
+
+
+async def review_performance(
+    question: str,
+    user_sql: str,
+    reference_sql: str,
+    schema_info: dict[str, Any],
+    user_plan: Any,
+    user_time_ms: float | None,
+    reference_time_ms: float | None,
+) -> dict[str, Any]:
+    client = _get_client()
+    payload = {
+        "question": question,
+        "user_sql": user_sql,
+        "reference_sql": reference_sql,
+        "schema": schema_info,
+        "user_plan": user_plan,
+        "user_time_ms": user_time_ms,
+        "reference_time_ms": reference_time_ms,
+    }
+    completion = await client.chat.completions.create(
+        model=settings.openai_model,
+        messages=[
+            {"role": "system", "content": PERFORMANCE_SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(payload, default=str)},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.2,
+    )
+    raw = completion.choices[0].message.content or "{}"
+    data = json.loads(raw)
+    if "summary" not in data:
+        data["summary"] = "I could not generate a performance summary."
+    if "suggestions" not in data or not isinstance(data["suggestions"], list):
+        data["suggestions"] = []
+    if "optimized_sql" not in data:
+        data["optimized_sql"] = None
     return data
 
 

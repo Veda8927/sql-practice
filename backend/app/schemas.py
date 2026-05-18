@@ -39,12 +39,42 @@ class TableResult(BaseModel):
     rows: list[list[Any]]
 
 
+class QuestionSchemaTable(BaseModel):
+    name: str
+    columns: list[str]
+
+
+class QuestionSchemaJoin(BaseModel):
+    from_table: str
+    from_column: str
+    to_table: str
+    to_column: str
+
+
+class QuestionSchemaContext(BaseModel):
+    tables: list[QuestionSchemaTable]
+    joins: list[QuestionSchemaJoin]
+
+
 class QuestionResponse(BaseModel):
+    id: str
     question: str
     ordered_results: bool
     concepts: list[str]
     difficulty: Literal["easy", "medium", "hard"]
     expected_output: TableResult | None = None
+    schema_context: QuestionSchemaContext | None = None
+
+
+class QuestionHistoryItem(BaseModel):
+    id: str
+    question: str
+    concepts: list[str]
+    difficulty: Literal["easy", "medium", "hard"]
+
+
+class SelectQuestionRequest(BaseModel):
+    question_id: str
 
 
 class SubmitRequest(BaseModel):
@@ -56,6 +86,8 @@ class GradeResult(BaseModel):
     user_output: TableResult | None = None
     expected_output: TableResult | None = None
     error_message: str | None = None
+    execution_time_ms: float | None = None
+    reference_time_ms: float | None = None
 
 
 class ExplainRequest(BaseModel):
@@ -92,3 +124,21 @@ class HintRequest(BaseModel):
 
 class HintResponse(BaseModel):
     hint: str
+
+
+class ErrorHelpResponse(BaseModel):
+    explanation: str
+    next_step: str
+
+
+class PerformanceRequest(BaseModel):
+    sql: str
+
+
+class PerformanceResponse(BaseModel):
+    user_time_ms: float | None = None
+    reference_time_ms: float | None = None
+    raw_plan: Any
+    summary: str
+    suggestions: list[str]
+    optimized_sql: str | None = None

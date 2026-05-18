@@ -1,9 +1,12 @@
 import type {
   ExplainResponse,
+  ErrorHelpResponse,
   GiveUpResponse,
   GradeResult,
   HintResponse,
+  PerformanceResponse,
   Question,
+  QuestionHistoryItem,
   SchemaInfo,
 } from "./types";
 
@@ -46,6 +49,13 @@ export const api = {
         difficulty: opts?.difficulty ?? null,
       }),
     }),
+  questionHistory: () =>
+    request<QuestionHistoryItem[]>("/api/question_history"),
+  selectQuestion: (questionId: string) =>
+    request<Question>("/api/select_question", {
+      method: "POST",
+      body: JSON.stringify({ question_id: questionId }),
+    }),
   submit: (sql: string) =>
     request<GradeResult>("/api/submit", {
       method: "POST",
@@ -65,5 +75,15 @@ export const api = {
     request<HintResponse>("/api/hint", {
       method: "POST",
       body: JSON.stringify({ sql: sql ?? null }),
+    }),
+  errorHelp: () =>
+    request<ErrorHelpResponse>("/api/error_help", {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+  performance: (sql: string) =>
+    request<PerformanceResponse>("/api/performance", {
+      method: "POST",
+      body: JSON.stringify({ sql }),
     }),
 };

@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 from datetime import date, datetime, time
 from decimal import Decimal
+from time import perf_counter
 from typing import Any
 
 from sqlalchemy import text
@@ -28,9 +29,11 @@ async def grade(user_sql: str, reference_sql: str, ordered: bool) -> GradeResult
 
             # Execute user SQL
             try:
+                user_started = perf_counter()
                 user_result = await conn.execute(text(user_sql))
                 user_columns = list(user_result.keys())
                 user_rows = [tuple(r) for r in user_result.fetchall()]
+                user_time_ms = round((perf_counter() - user_started) * 1000, 2)
             except Exception as e:
                 return GradeResult(
                     status="error",
@@ -39,9 +42,11 @@ async def grade(user_sql: str, reference_sql: str, ordered: bool) -> GradeResult
 
             # Execute reference SQL
             try:
+                ref_started = perf_counter()
                 ref_result = await conn.execute(text(reference_sql))
                 ref_columns = list(ref_result.keys())
                 ref_rows = [tuple(r) for r in ref_result.fetchall()]
+                ref_time_ms = round((perf_counter() - ref_started) * 1000, 2)
             except Exception as e:
                 # This is a problem with the generated question, not the user.
                 return GradeResult(
@@ -66,6 +71,8 @@ async def grade(user_sql: str, reference_sql: str, ordered: bool) -> GradeResult
         status=status,
         user_output=user_output,
         expected_output=expected_output,
+        execution_time_ms=user_time_ms,
+        reference_time_ms=ref_time_ms,
     )
 
 

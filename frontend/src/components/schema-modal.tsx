@@ -9,6 +9,7 @@ import {
   KeyRound,
   Link2,
   Network,
+  Search,
   Table as TableIcon,
   X,
 } from "lucide-react";
@@ -156,9 +157,24 @@ function TableCard({ table }: { table: TableInfo }) {
 
 export function SchemaModal({ open, schema, onClose }: Props) {
   const [mode, setMode] = React.useState<ViewMode>("diagram");
+  const [search, setSearch] = React.useState("");
+  const filteredSchema = React.useMemo(() => {
+    if (!schema || !search.trim()) return schema;
+    const q = search.trim().toLowerCase();
+    return {
+      ...schema,
+      tables: schema.tables.filter(
+        (table) =>
+          table.name.toLowerCase().includes(q) ||
+          table.columns.some((column) =>
+            column.name.toLowerCase().includes(q),
+          ),
+      ),
+    };
+  }, [schema, search]);
   const joins = React.useMemo(
-    () => (schema ? buildJoins(schema.tables) : []),
-    [schema],
+    () => (filteredSchema ? buildJoins(filteredSchema.tables) : []),
+    [filteredSchema],
   );
 
   React.useEffect(() => {
@@ -202,6 +218,15 @@ export function SchemaModal({ open, schema, onClose }: Props) {
               </div>
 
               <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search schema"
+                    className="h-8 w-32 rounded-full border border-border bg-muted/30 pl-8 pr-3 text-xs outline-none transition-colors focus:border-primary sm:w-44"
+                  />
+                </div>
                 <div className="flex items-center gap-0.5 rounded-full border border-border bg-muted/40 p-0.5">
                   <button
                     type="button"
@@ -250,13 +275,13 @@ export function SchemaModal({ open, schema, onClose }: Props) {
               </div>
             </header>
 
-            {!schema ? (
+            {!filteredSchema ? (
               <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
                 Loading…
               </div>
             ) : mode === "diagram" ? (
               <div className="min-h-0 flex-1 overflow-hidden bg-muted/20">
-                <ERDView schema={schema} />
+                <ERDView schema={filteredSchema} />
               </div>
             ) : (
               <div className="min-h-0 flex-1 overflow-auto p-6">
@@ -306,10 +331,10 @@ export function SchemaModal({ open, schema, onClose }: Props) {
                     className={cn(
                       "grid gap-4",
                       "grid-cols-1",
-                      schema.tables.length > 1 && "lg:grid-cols-2",
+                      filteredSchema.tables.length > 1 && "lg:grid-cols-2",
                     )}
                   >
-                    {schema.tables.map((t) => (
+                    {filteredSchema.tables.map((t) => (
                       <TableCard key={t.name} table={t} />
                     ))}
                   </div>

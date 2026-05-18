@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  History,
   HelpCircle,
   Keyboard,
   Loader2,
@@ -10,6 +11,7 @@ import {
   RotateCcw,
   Sun,
   Table2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
@@ -41,9 +43,12 @@ import { api } from "@/lib/api";
 import { collectSchemaIdentifiers } from "@/lib/sql-lint";
 import type {
   ExplainResponse,
+  ErrorHelpResponse,
   GiveUpResponse,
   GradeResult,
+  PerformanceResponse,
   Question,
+  QuestionHistoryItem,
   SchemaInfo,
 } from "@/lib/types";
 
@@ -60,6 +65,56 @@ function useSplitDirection(): "horizontal" | "vertical" {
 }
 
 const SPLIT_LAYOUT_STORAGE_KEY = "sql-practice:split-layouts";
+const DRAFT_PREFIX = "sql-practice:draft:";
+const TOUR_STEPS = [
+  {
+    target: "question",
+    title: "Start with the question",
+    body: "Read the prompt, then use Concept and Difficulty when you want focused practice.",
+  },
+  {
+    target: "schema",
+    title: "Open the schema only when needed",
+    body: "The Schema button shows the full table map, relationships, samples, and search.",
+  },
+  {
+    target: "history",
+    title: "Return to recent questions",
+    body: "History keeps the last 10 questions in this session and restores your saved draft for each one.",
+  },
+  {
+    target: "editor",
+    title: "Write and run SQL here",
+    body: "Your draft saves automatically per question. Use Run or Cmd/Ctrl+Enter when you are ready.",
+  },
+  {
+    target: "results",
+    title: "Learn from the result panel",
+    body: "Compare expected output, download CSVs, translate Postgres errors, and review query speed with EXPLAIN.",
+  },
+] as const;
+
+type TourTarget = (typeof TOUR_STEPS)[number]["target"];
+
+function draftKey(questionId: string) {
+  return `${DRAFT_PREFIX}${questionId}`;
+}
+
+function loadDraft(questionId: string) {
+  try {
+    return window.localStorage.getItem(draftKey(questionId));
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(questionId: string, value: string) {
+  try {
+    window.localStorage.setItem(draftKey(questionId), value);
+  } catch {
+    // Draft save is best effort.
+  }
+}
 
 function ThemeToggleInline() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -74,7 +129,7 @@ function ThemeToggleInline() {
           size="icon"
           onClick={() => setTheme(isDark ? "light" : "dark")}
           aria-label="Toggle theme"
-          className="rounded-full"
+          className="rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
@@ -127,6 +182,11 @@ export default function Page() {
     queryFn: api.getSchema,
   });
 
+  const historyQuery = useQuery<QuestionHistoryItem[]>({
+    queryKey: ["question-history"],
+    queryFn: api.questionHistory,
+  });
+
   const schemaIdentifiers = React.useMemo(
     () => collectSchemaIdentifiers(schemaQuery.data?.tables ?? []),
     [schemaQuery.data],
@@ -139,22 +199,53 @@ export default function Page() {
     React.useState<ExplainResponse | null>(null);
   const [solution, setSolution] = React.useState<GiveUpResponse | null>(null);
   const [schemaOpen, setSchemaOpen] = React.useState(false);
+  const [historyOpen, setHistoryOpen] = React.useState(false);
+  const [tourOpen, setTourOpen] = React.useState(false);
+  const [tourStep, setTourStep] = React.useState(0);
   const [hint, setHint] = React.useState<string | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const [lastRunMs, setLastRunMs] = React.useState<number | null>(null);
+  const [errorHelp, setErrorHelp] = React.useState<ErrorHelpResponse | null>(
+    null,
+  );
+  const [performanceReview, setPerformanceReview] =
+    React.useState<PerformanceResponse | null>(null);
+  const [difficultySuggestion, setDifficultySuggestion] = React.useState<
+    "any" | "easy" | "medium" | "hard" | null
+  >(null);
   const runStartRef = React.useRef<number | null>(null);
+  const questionStartRef = React.useRef<number | null>(null);
+  const easyCorrectRunRef = React.useRef(0);
+
+  const activateQuestion = React.useCallback((q: Question) => {
+    setQuestion(q);
+    setSql(loadDraft(q.id) ?? PLACEHOLDER);
+    setResult(null);
+    setExplanation(null);
+    setSolution(null);
+    setHint(null);
+    setLastRunMs(null);
+    setErrorHelp(null);
+    setPerformanceReview(null);
+    questionStartRef.current = performance.now();
+  }, []);
 
   const newQuestionMutation = useMutation({
     mutationFn: (opts: { concept?: string; difficulty?: string } | undefined) =>
       api.newQuestion(opts),
     onSuccess: (q) => {
-      setQuestion(q);
-      setSql(PLACEHOLDER);
-      setResult(null);
-      setExplanation(null);
-      setSolution(null);
-      setHint(null);
-      setLastRunMs(null);
+      activateQuestion(q);
+      queryClient.invalidateQueries({ queryKey: ["question-history"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const selectQuestionMutation = useMutation({
+    mutationFn: (id: string) => api.selectQuestion(id),
+    onSuccess: (q) => {
+      activateQuestion(q);
+      setHistoryOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["question-history"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -170,6 +261,9 @@ export default function Page() {
       setSolution(null);
       setHint(null);
       setLastRunMs(null);
+      setErrorHelp(null);
+      setPerformanceReview(null);
+      queryClient.invalidateQueries({ queryKey: ["question-history"] });
       resetStreak();
       toast.success(
         `New scenario: ${schema.scenario_label} · seed ${schema.seed}`,
@@ -191,10 +285,29 @@ export default function Page() {
       setLastRunMs(ms);
       setResult(r);
       setExplanation(null);
+      setErrorHelp(null);
+      setPerformanceReview(null);
       // Record streak for any executed query (correct vs. not). Errors don't
       // count as attempts so users aren't punished for syntax.
       if (r.status === "correct" || r.status === "wrong") {
-        recordStreak(r.status === "correct");
+        const durationMs =
+          questionStartRef.current !== null
+            ? Math.round(performance.now() - questionStartRef.current)
+            : undefined;
+        recordStreak(r.status === "correct", {
+          durationMs,
+          difficulty: question?.difficulty,
+        });
+        if (r.status === "correct" && question?.difficulty === "easy") {
+          easyCorrectRunRef.current += 1;
+          if (easyCorrectRunRef.current >= 3) {
+            setDifficultySuggestion("medium");
+            toast.success("You are cruising on Easy. Try Medium next.");
+            easyCorrectRunRef.current = 0;
+          }
+        } else if (r.status === "wrong") {
+          easyCorrectRunRef.current = 0;
+        }
       }
       if (r.status === "correct") toast.success("Correct");
     },
@@ -218,6 +331,53 @@ export default function Page() {
     onSuccess: (r) => setHint(r.hint),
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const errorHelpMutation = useMutation({
+    mutationFn: () => api.errorHelp(),
+    onSuccess: (r) => setErrorHelp(r),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const performanceMutation = useMutation({
+    mutationFn: () => api.performance(sql),
+    onSuccess: (r) => setPerformanceReview(r),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  React.useEffect(() => {
+    if (!question) return;
+    if (sql === PLACEHOLDER) return;
+    saveDraft(question.id, sql);
+  }, [question, sql]);
+
+  React.useEffect(() => {
+    try {
+      if (!window.localStorage.getItem("sql-practice:tour-seen")) {
+        setTourOpen(true);
+      }
+    } catch {
+      // Ignore storage failures.
+    }
+  }, []);
+
+  const closeTour = React.useCallback(() => {
+    setTourOpen(false);
+    setTourStep(0);
+    try {
+      window.localStorage.setItem("sql-practice:tour-seen", "1");
+    } catch {
+      // Ignore storage failures.
+    }
+  }, []);
+
+  const activeTour = tourOpen ? TOUR_STEPS[tourStep] : null;
+  const tourClass = React.useCallback(
+    (target: TourTarget) =>
+      activeTour?.target === target
+        ? "relative z-[70] ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg"
+        : "",
+    [activeTour],
+  );
 
   const onRun = React.useCallback(() => {
     if (!question) {
@@ -299,14 +459,14 @@ export default function Page() {
           </h1>
           <StreakBadge />
         </div>
-        <div className="flex items-center gap-0.5 sm:gap-1">
+        <div className="flex items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSchemaOpen(true)}
-                className="h-8 gap-1.5 rounded-full px-2 text-xs sm:px-3"
+                className={`h-8 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:px-3 ${tourClass("schema")}`}
               >
                 <Table2 className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Schema</span>
@@ -319,9 +479,23 @@ export default function Page() {
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={() => setHistoryOpen(true)}
+                className={`h-8 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:px-3 ${tourClass("history")}`}
+              >
+                <History className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">History</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Revisit recent questions and drafts</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={onGiveUp}
                 disabled={!question || giveUpMutation.isPending}
-                className="h-8 gap-1.5 rounded-full px-2 text-xs sm:px-3"
+                className="h-8 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:px-3"
               >
                 {giveUpMutation.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -342,7 +516,7 @@ export default function Page() {
                 size="icon"
                 onClick={onReset}
                 disabled={resetDataMutation.isPending}
-                className="rounded-full"
+                className="rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
                 aria-label="Regenerate data"
               >
                 {resetDataMutation.isPending ? (
@@ -363,7 +537,7 @@ export default function Page() {
                 size="icon"
                 onClick={() => setShortcutsOpen(true)}
                 aria-label="Keyboard shortcuts"
-                className="rounded-full"
+                className="rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <Keyboard className="h-4 w-4" />
               </Button>
@@ -378,7 +552,7 @@ export default function Page() {
 
       {/* Main column */}
       <main className="flex flex-1 flex-col overflow-hidden">
-        <section className="shrink-0">
+        <section className={`shrink-0 ${tourClass("question")}`}>
           <QuestionBar
             question={question}
             loading={newQuestionMutation.isPending}
@@ -387,6 +561,7 @@ export default function Page() {
             hint={hint}
             hintLoading={hintMutation.isPending}
             onDismissHint={() => setHint(null)}
+            difficultySuggestion={difficultySuggestion}
           />
         </section>
 
@@ -403,7 +578,7 @@ export default function Page() {
               id="editor"
               defaultSize="50%"
               minSize="20%"
-              className="min-h-0 min-w-0"
+              className={`min-h-0 min-w-0 ${tourClass("editor")}`}
             >
               <SqlEditor
                 value={sql}
@@ -433,7 +608,7 @@ export default function Page() {
               id="results"
               defaultSize="50%"
               minSize="20%"
-              className="min-h-0 min-w-0"
+              className={`min-h-0 min-w-0 ${tourClass("results")}`}
             >
               <ResultsPanel
                 result={result}
@@ -441,6 +616,13 @@ export default function Page() {
                 explanation={explanation}
                 explainLoading={explainMutation.isPending}
                 onExplain={() => explainMutation.mutate()}
+                errorHelp={errorHelp}
+                errorHelpLoading={errorHelpMutation.isPending}
+                onErrorHelp={() => errorHelpMutation.mutate()}
+                performance={performanceReview}
+                performanceLoading={performanceMutation.isPending}
+                onPerformance={() => performanceMutation.mutate()}
+                onApplySql={setSql}
                 lastRunMs={lastRunMs}
               />
             </Panel>
@@ -453,6 +635,71 @@ export default function Page() {
         schema={schemaQuery.data}
         onClose={() => setSchemaOpen(false)}
       />
+
+      {historyOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-foreground/20 backdrop-blur-sm">
+          <button
+            type="button"
+            aria-label="Close history"
+            className="absolute inset-0 cursor-default"
+            onClick={() => setHistoryOpen(false)}
+          />
+          <aside className="relative flex h-full w-[min(420px,92vw)] flex-col border-l border-border bg-background shadow-2xl">
+            <header className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div>
+                <h2 className="text-sm font-semibold">Question history</h2>
+                <p className="text-xs text-muted-foreground">
+                  Last 10 questions in this session
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setHistoryOpen(false)}
+                className="rounded-full"
+                aria-label="Close history"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </header>
+            <div className="min-h-0 flex-1 overflow-auto p-3">
+              {historyQuery.data?.length ? (
+                <div className="space-y-2">
+                  {historyQuery.data.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => selectQuestionMutation.mutate(item.id)}
+                      className="block w-full rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-muted/40"
+                    >
+                      <div className="text-sm leading-snug text-foreground">
+                        {item.question}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
+                          {item.difficulty}
+                        </span>
+                        {item.concepts.slice(0, 3).map((concept) => (
+                          <span
+                            key={concept}
+                            className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] text-muted-foreground"
+                          >
+                            {concept.replaceAll("_", " ")}
+                          </span>
+                        ))}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-sm text-muted-foreground">
+                  No questions yet.
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+      )}
 
       <AnswerSheet
         solution={solution}
@@ -467,6 +714,67 @@ export default function Page() {
         open={shortcutsOpen}
         onClose={() => setShortcutsOpen(false)}
       />
+
+      {tourOpen && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-background/70" />
+          <div className="fixed inset-x-4 bottom-4 z-[80] mx-auto w-[calc(100vw-2rem)] max-w-md rounded-xl border border-border bg-background p-4 shadow-2xl sm:bottom-6 sm:right-6 sm:left-auto sm:mx-0">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Step {tourStep + 1} of {TOUR_STEPS.length}
+              </div>
+              <button
+                type="button"
+                onClick={closeTour}
+                className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                Skip
+              </button>
+            </div>
+            <h2 className="text-base font-semibold">{activeTour?.title}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              {activeTour?.body}
+            </p>
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => setTourStep((step) => Math.max(0, step - 1))}
+                disabled={tourStep === 0}
+                className="rounded-full"
+              >
+                Back
+              </Button>
+              <div className="flex items-center gap-1">
+                {TOUR_STEPS.map((step, index) => (
+                  <button
+                    key={step.target}
+                    type="button"
+                    aria-label={`Go to tour step ${index + 1}`}
+                    onClick={() => setTourStep(index)}
+                    className={`h-1.5 rounded-full transition-all ${
+                      index === tourStep
+                        ? "w-6 bg-primary"
+                        : "w-1.5 bg-muted-foreground/35"
+                    }`}
+                  />
+                ))}
+              </div>
+              <Button
+                onClick={() => {
+                  if (tourStep === TOUR_STEPS.length - 1) {
+                    closeTour();
+                  } else {
+                    setTourStep((step) => step + 1);
+                  }
+                }}
+                className="rounded-full"
+              >
+                {tourStep === TOUR_STEPS.length - 1 ? "Finish" : "Next"}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
