@@ -12,6 +12,7 @@ import { useTheme } from "next-themes";
 import { format as formatSql } from "sql-formatter";
 
 import { Button } from "@/components/ui/button";
+import { EditorOutline } from "@/components/editor-outline";
 import {
   Tooltip,
   TooltipContent,
@@ -34,6 +35,7 @@ type Props = {
   onRun: () => void;
   running: boolean;
   schemaIdentifiers: Set<string>;
+  expectedTables?: string[];
 };
 
 export const PLACEHOLDER = "-- write your SQL here\n";
@@ -46,6 +48,7 @@ export function SqlEditor({
   onRun,
   running,
   schemaIdentifiers,
+  expectedTables,
 }: Props) {
   const editorRef = React.useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
   const monacoRef = React.useRef<typeof import("monaco-editor") | null>(null);
@@ -191,8 +194,9 @@ export function SqlEditor({
   }, [isPlaceholder]);
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden">
-      <Editor
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      <div className="relative min-h-0 flex-1">
+        <Editor
         height="100%"
         defaultLanguage="sql"
         language="sql"
@@ -255,6 +259,12 @@ export function SqlEditor({
           </TooltipContent>
         </Tooltip>
       </div>
+      </div>
+      <EditorOutline
+        sql={value}
+        schemaIdentifiers={schemaIdentifiers}
+        expectedTables={expectedTables}
+      />
     </div>
   );
 }

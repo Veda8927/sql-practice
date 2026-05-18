@@ -586,6 +586,9 @@ export default function Page() {
                 onRun={onRun}
                 running={submitMutation.isPending}
                 schemaIdentifiers={schemaIdentifiers}
+                expectedTables={question?.schema_context?.tables.map(
+                  (t) => t.name,
+                )}
               />
             </Panel>
             <PanelResizeHandle
@@ -624,6 +627,7 @@ export default function Page() {
                 onPerformance={() => performanceMutation.mutate()}
                 onApplySql={setSql}
                 lastRunMs={lastRunMs}
+                orderedResults={question?.ordered_results ?? false}
               />
             </Panel>
           </PanelGroup>
