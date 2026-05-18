@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, Check, Download, Loader2, X } from "lucide-react";
+import { Activity, Check, Loader2, X } from "lucide-react";
 
 import { DataTable } from "@/components/data-table";
 import { InsightsCard } from "@/components/insights-card";
@@ -32,26 +32,6 @@ type Props = {
   lastRunMs: number | null;
   orderedResults: boolean;
 };
-
-function csvEscape(value: unknown) {
-  if (value === null || value === undefined) return "";
-  const text = String(value);
-  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-}
-
-function downloadCsv(table: TableResult, name: string) {
-  const csv = [
-    table.columns.map(csvEscape).join(","),
-    ...table.rows.map((row) => row.map(csvEscape).join(",")),
-  ].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  link.click();
-  URL.revokeObjectURL(url);
-}
 
 function StatusDot({
   status,
@@ -124,7 +104,6 @@ export function ResultsPanel({
 
   const yoursTable = result?.user_output;
   const expectedTable = result?.expected_output ?? expectedPreview;
-  const activeTable = view === "yours" ? yoursTable : expectedTable;
 
   // Compute Tier-2 smart-diff insights only when there's something to diff:
   // both sides exist, and the grade actually came back as wrong.
@@ -174,16 +153,6 @@ export function ResultsPanel({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {activeTable && (
-            <button
-              type="button"
-              onClick={() => downloadCsv(activeTable, `${view}-result.csv`)}
-              className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <Download className="h-3 w-3" />
-              CSV
-            </button>
-          )}
           {yoursTable && (
             <button
               type="button"
@@ -233,12 +202,33 @@ export function ResultsPanel({
           <motion.div
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm leading-relaxed text-foreground"
+            className="mb-3 overflow-hidden rounded-lg border border-amber-500/30 bg-amber-500/5 text-sm leading-relaxed text-foreground"
           >
-            <div>{errorHelp.explanation}</div>
-            <div className="mt-1 text-muted-foreground">
-              {errorHelp.next_step}
+            <div className="p-3">
+              <div>{errorHelp.explanation}</div>
+              <div className="mt-1 text-muted-foreground">
+                {errorHelp.next_step}
+              </div>
             </div>
+            {errorHelp.suggested_sql && (
+              <div className="border-t border-amber-500/20 bg-background/60 px-3 py-2.5">
+                <div className="mb-1.5 flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Suggested fix
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onApplySql(errorHelp.suggested_sql ?? "")}
+                    className="inline-flex h-7 items-center rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                  >
+                    Apply
+                  </button>
+                </div>
+                <pre className="max-h-40 overflow-auto rounded-md border border-border bg-background px-2.5 py-2 font-mono text-[11.5px] leading-relaxed text-foreground">
+                  {errorHelp.suggested_sql}
+                </pre>
+              </div>
+            )}
           </motion.div>
         )}
 

@@ -20,7 +20,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Question } from "@/lib/types";
+import type { HintResponse, Question } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type DifficultyChoice = "any" | "easy" | "medium" | "hard";
@@ -68,9 +68,10 @@ type Props = {
   onNewQuestion: (opts: { concept?: string; difficulty?: string }) => void;
   loading: boolean;
   onHint: () => void;
-  hint: string | null;
+  hint: HintResponse | null;
   hintLoading: boolean;
   onDismissHint: () => void;
+  onApplyHintSql: (sql: string) => void;
   difficultySuggestion?: DifficultyChoice | null;
 };
 
@@ -372,10 +373,13 @@ function SchemaContext({ question }: { question: Question }) {
 function HintCallout({
   hint,
   onDismiss,
+  onApply,
 }: {
-  hint: string;
+  hint: HintResponse;
   onDismiss: () => void;
+  onApply: (sql: string) => void;
 }) {
+  const suggestion = hint.suggested_sql;
   return (
     <motion.div
       initial={{ opacity: 0, y: -4, height: 0 }}
@@ -404,8 +408,27 @@ function HintCallout({
           </button>
         </div>
         <p className="px-3 py-2.5 text-sm leading-relaxed text-foreground">
-          {hint}
+          {hint.hint}
         </p>
+        {suggestion && (
+          <div className="border-t border-border bg-muted/30 px-3 py-2.5">
+            <div className="mb-1.5 flex items-center justify-between gap-3">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Suggested fix
+              </span>
+              <Button
+                size="sm"
+                onClick={() => onApply(suggestion)}
+                className="h-7 rounded-full px-3 text-xs"
+              >
+                Apply
+              </Button>
+            </div>
+            <pre className="max-h-40 overflow-auto rounded-md border border-border bg-background px-2.5 py-2 font-mono text-[11.5px] leading-relaxed text-foreground">
+              {suggestion}
+            </pre>
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -419,6 +442,7 @@ export function QuestionBar({
   hint,
   hintLoading,
   onDismissHint,
+  onApplyHintSql,
   difficultySuggestion,
 }: Props) {
   const [difficulty, setDifficulty] = React.useState<DifficultyChoice>("any");
@@ -533,7 +557,13 @@ export function QuestionBar({
       </div>
 
       <AnimatePresence>
-        {hint && <HintCallout hint={hint} onDismiss={onDismissHint} />}
+        {hint && (
+          <HintCallout
+            hint={hint}
+            onDismiss={onDismissHint}
+            onApply={onApplyHintSql}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

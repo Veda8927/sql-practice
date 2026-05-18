@@ -46,6 +46,7 @@ import type {
   ErrorHelpResponse,
   GiveUpResponse,
   GradeResult,
+  HintResponse,
   PerformanceResponse,
   Question,
   QuestionHistoryItem,
@@ -202,7 +203,7 @@ export default function Page() {
   const [historyOpen, setHistoryOpen] = React.useState(false);
   const [tourOpen, setTourOpen] = React.useState(false);
   const [tourStep, setTourStep] = React.useState(0);
-  const [hint, setHint] = React.useState<string | null>(null);
+  const [hint, setHint] = React.useState<HintResponse | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const [lastRunMs, setLastRunMs] = React.useState<number | null>(null);
   const [errorHelp, setErrorHelp] = React.useState<ErrorHelpResponse | null>(
@@ -227,6 +228,11 @@ export default function Page() {
     setLastRunMs(null);
     setErrorHelp(null);
     setPerformanceReview(null);
+    // Sync the difficulty pill to whatever the LLM actually returned.
+    // "Any" was a request; once a question lands, the pill should match reality.
+    if (q.difficulty === "easy" || q.difficulty === "medium" || q.difficulty === "hard") {
+      setDifficultySuggestion(q.difficulty);
+    }
     questionStartRef.current = performance.now();
   }, []);
 
@@ -328,7 +334,7 @@ export default function Page() {
 
   const hintMutation = useMutation({
     mutationFn: () => api.hint(sql === PLACEHOLDER ? undefined : sql),
-    onSuccess: (r) => setHint(r.hint),
+    onSuccess: (r) => setHint(r),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -561,6 +567,10 @@ export default function Page() {
             hint={hint}
             hintLoading={hintMutation.isPending}
             onDismissHint={() => setHint(null)}
+            onApplyHintSql={(suggested) => {
+              setSql(suggested);
+              setHint(null);
+            }}
             difficultySuggestion={difficultySuggestion}
           />
         </section>
