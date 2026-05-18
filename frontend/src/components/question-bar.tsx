@@ -2,9 +2,14 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Lightbulb, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { Question } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +20,10 @@ type Props = {
   question: Question | null;
   onNewQuestion: (opts: { concept?: string; difficulty?: string }) => void;
   loading: boolean;
+  onHint: () => void;
+  hint: string | null;
+  hintLoading: boolean;
+  onDismissHint: () => void;
 };
 
 function ThinkingDots() {
@@ -56,7 +65,15 @@ function WordReveal({ text }: { text: string }) {
   );
 }
 
-export function QuestionBar({ question, onNewQuestion, loading }: Props) {
+export function QuestionBar({
+  question,
+  onNewQuestion,
+  loading,
+  onHint,
+  hint,
+  hintLoading,
+  onDismissHint,
+}: Props) {
   const [difficulty, setDifficulty] = React.useState<DifficultyChoice>("any");
 
   return (
@@ -116,7 +133,30 @@ export function QuestionBar({ question, onNewQuestion, loading }: Props) {
           ))}
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+          {question && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={onHint}
+                  disabled={hintLoading || !question}
+                  className="shrink-0 rounded-full text-xs"
+                >
+                  {hintLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Lightbulb className="h-3.5 w-3.5" />
+                  )}
+                  Hint
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Nudge in the right direction — no answer reveal
+              </TooltipContent>
+            </Tooltip>
+          )}
           <Button
             size="sm"
             onClick={() =>
@@ -132,10 +172,37 @@ export function QuestionBar({ question, onNewQuestion, loading }: Props) {
             ) : (
               <ArrowRight className="h-3.5 w-3.5" />
             )}
-            New question
+            {question ? "Next question" : "Start"}
           </Button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {hint && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -4, height: 0 }}
+            transition={{ duration: 0.18 }}
+            className="mt-4 overflow-hidden"
+          >
+            <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+              <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+              <p className="flex-1 text-sm leading-relaxed text-foreground">
+                {hint}
+              </p>
+              <button
+                type="button"
+                onClick={onDismissHint}
+                aria-label="Dismiss hint"
+                className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+              >
+                ×
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

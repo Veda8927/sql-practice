@@ -12,7 +12,21 @@ import { useTheme } from "next-themes";
 import { format as formatSql } from "sql-formatter";
 
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { lintSql, type LintIssue } from "@/lib/sql-lint";
+
+// Wrap bare YYYY-MM-DD literals in single quotes so the formatter doesn't
+// mangle them into arithmetic (2024 - 01 - 01).
+function preFixDates(sql: string): string {
+  return sql.replace(
+    /(?<!['"0-9])(\d{4})-(\d{2})-(\d{2})(?!['"0-9])/g,
+    "'$1-$2-$3'",
+  );
+}
 
 type Props = {
   value: string;
@@ -75,13 +89,14 @@ export function SqlEditor({
     if (!editor) return;
     const current = editor.getValue();
     try {
-      const formatted = formatSql(current, {
+      const pre = preFixDates(current);
+      const formatted = formatSql(pre, {
         language: "postgresql",
         keywordCase: "upper",
         tabWidth: 2,
         linesBetweenQueries: 1,
+        expressionWidth: 120,
       });
-      // Replace whole content but preserve cursor at end of formatted text.
       const fullRange = editor.getModel()?.getFullModelRange();
       if (!fullRange) return;
       editor.executeEdits("format-sql", [
@@ -89,8 +104,7 @@ export function SqlEditor({
       ]);
       editor.pushUndoStop();
     } catch {
-      // sql-formatter throws on unparseable input — silently ignore so the
-      // user can still type freely.
+      // sql-formatter throws on unparseable input — silently ignore.
     }
   }, []);
 
@@ -105,6 +119,11 @@ export function SqlEditor({
     );
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF,
+      () => handleFormat(),
+    );
+    // ⌘S / Ctrl+S — intercept the browser save and format instead.
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
       () => handleFormat(),
     );
 
@@ -198,32 +217,43 @@ export function SqlEditor({
         }}
       />
       <div className="pointer-events-none absolute bottom-4 right-4 flex items-center gap-2">
-        <span className="rounded-md bg-background/70 px-2 py-0.5 text-[10px] text-muted-foreground backdrop-blur">
-          ⌘↵
-        </span>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="pointer-events-auto h-8 rounded-full text-xs"
-          onClick={handleFormat}
-          title="Format (⌘⇧F)"
-        >
-          <Wand2 className="h-3.5 w-3.5" />
-          Format
-        </Button>
-        <Button
-          size="sm"
-          className="pointer-events-auto h-8 rounded-full"
-          onClick={onRun}
-          disabled={running}
-        >
-          {running ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Play className="h-3.5 w-3.5" />
-          )}
-          Run
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="pointer-events-auto h-8 rounded-full text-xs"
+              onClick={handleFormat}
+            >
+              <Wand2 className="h-3.5 w-3.5" />
+              Format
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            Format SQL — <kbd className="font-mono">⌘S</kbd> or{" "}
+            <kbd className="font-mono">⌘⇧F</kbd>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              className="pointer-events-auto h-8 rounded-full"
+              onClick={onRun}
+              disabled={running}
+            >
+              {running ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+              Run
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            Run query — <kbd className="font-mono">⌘↵</kbd>
+          </TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import type {
   ExplainResponse,
   GiveUpResponse,
   GradeResult,
+  HintResponse,
   Question,
   SchemaInfo,
 } from "./types";
@@ -59,5 +60,10 @@ export const api = {
     request<GiveUpResponse>("/api/give_up", {
       method: "POST",
       body: JSON.stringify({}),
+    }),
+  hint: (sql?: string) =>
+    request<HintResponse>("/api/hint", {
+      method: "POST",
+      body: JSON.stringify({ sql: sql ?? null }),
     }),
 };

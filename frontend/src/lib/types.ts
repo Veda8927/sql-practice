@@ -64,3 +64,7 @@ export type GiveUpResponse = {
   steps: SolutionStep[];
   final_thought: string;
 };
+
+export type HintResponse = {
+  hint: string;
+};

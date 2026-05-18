@@ -14,6 +14,7 @@ type Props = {
   explanation: ExplainResponse | null;
   explainLoading: boolean;
   onExplain: () => void;
+  lastRunMs: number | null;
 };
 
 function StatusDot({
@@ -57,6 +58,7 @@ export function ResultsPanel({
   explanation,
   explainLoading,
   onExplain,
+  lastRunMs,
 }: Props) {
   const status = result?.status ?? "idle";
   const hasYours = result && status !== "error";
@@ -84,6 +86,11 @@ export function ResultsPanel({
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <StatusDot status={status} hasPreviewOnly={!hasYours && hasExpected} />
+          {lastRunMs !== null && (
+            <span className="font-mono text-[10.5px] text-muted-foreground tabular-nums">
+              {lastRunMs} ms
+            </span>
+          )}
           {showHint && (
             <button
               type="button"
@@ -106,9 +113,8 @@ export function ResultsPanel({
           <div className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-muted/40 p-0.5">
             <button
               onClick={() => setView("yours")}
-              disabled={!hasYours}
               className={cn(
-                "rounded-full px-3 py-0.5 text-xs font-medium transition-colors disabled:opacity-40",
+                "rounded-full px-3 py-0.5 text-xs font-medium transition-colors",
                 view === "yours"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
@@ -157,46 +163,42 @@ export function ResultsPanel({
           </motion.div>
         )}
 
-        {status === "error" && (
-          <pre className="overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-muted/30 p-4 font-mono text-xs text-foreground">
-            {result?.error_message}
-          </pre>
-        )}
-
-        {status !== "error" && (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={view}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              {view === "yours" &&
-                (yoursTable ? (
-                  <DataTable
-                    columns={yoursTable.columns}
-                    rows={yoursTable.rows}
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center py-12 text-sm text-muted-foreground">
-                    Run your query to see your result.
-                  </div>
-                ))}
-              {view === "expected" &&
-                (expectedTable ? (
-                  <DataTable
-                    columns={expectedTable.columns}
-                    rows={expectedTable.rows}
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center py-12 text-sm text-muted-foreground">
-                    The expected output will appear once a question is loaded.
-                  </div>
-                ))}
-            </motion.div>
-          </AnimatePresence>
-        )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={view}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            {view === "yours" &&
+              (status === "error" ? (
+                <pre className="overflow-auto whitespace-pre-wrap rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 font-mono text-xs text-amber-700 dark:text-amber-400">
+                  {result?.error_message}
+                </pre>
+              ) : yoursTable ? (
+                <DataTable
+                  columns={yoursTable.columns}
+                  rows={yoursTable.rows}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center py-12 text-sm text-muted-foreground">
+                  Run your query to see your result.
+                </div>
+              ))}
+            {view === "expected" &&
+              (expectedTable ? (
+                <DataTable
+                  columns={expectedTable.columns}
+                  rows={expectedTable.rows}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center py-12 text-sm text-muted-foreground">
+                  The expected output will appear once a question is loaded.
+                </div>
+              ))}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
