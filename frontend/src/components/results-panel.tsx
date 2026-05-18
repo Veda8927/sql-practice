@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Activity, Check, Download, Loader2, X } from "lucide-react";
 
 import { DataTable } from "@/components/data-table";
+import { InsightsCard } from "@/components/insights-card";
+import { computeInsights } from "@/lib/insights";
 import type {
   ErrorHelpResponse,
   ExplainResponse,
@@ -28,6 +30,7 @@ type Props = {
   onPerformance: () => void;
   onApplySql: (sql: string) => void;
   lastRunMs: number | null;
+  orderedResults: boolean;
 };
 
 function csvEscape(value: unknown) {
@@ -99,6 +102,7 @@ export function ResultsPanel({
   onPerformance,
   onApplySql,
   lastRunMs,
+  orderedResults,
 }: Props) {
   const status = result?.status ?? "idle";
   const hasYours = result && status !== "error";
@@ -121,6 +125,14 @@ export function ResultsPanel({
   const yoursTable = result?.user_output;
   const expectedTable = result?.expected_output ?? expectedPreview;
   const activeTable = view === "yours" ? yoursTable : expectedTable;
+
+  // Compute Tier-2 smart-diff insights only when there's something to diff:
+  // both sides exist, and the grade actually came back as wrong.
+  const insights = React.useMemo(() => {
+    if (status !== "wrong") return [];
+    if (!yoursTable || !result?.expected_output) return [];
+    return computeInsights(yoursTable, result.expected_output, orderedResults);
+  }, [status, yoursTable, result, orderedResults]);
   const dbTime = result?.execution_time_ms ?? null;
 
   return (
@@ -329,10 +341,13 @@ export function ResultsPanel({
                   </pre>
                 </div>
               ) : yoursTable ? (
-                <DataTable
-                  columns={yoursTable.columns}
-                  rows={yoursTable.rows}
-                />
+                <>
+                  <InsightsCard insights={insights} />
+                  <DataTable
+                    columns={yoursTable.columns}
+                    rows={yoursTable.rows}
+                  />
+                </>
               ) : (
                 <div className="flex h-full items-center justify-center py-12 text-sm text-muted-foreground">
                   Run your query to see your result.
