@@ -95,11 +95,13 @@ export type GiveUpResponse = {
 
 export type HintResponse = {
   hint: string;
+  suggested_sql: string | null;
 };
 
 export type ErrorHelpResponse = {
   explanation: string;
   next_step: string;
+  suggested_sql: string | null;
 };
 
 export type PerformanceResponse = {

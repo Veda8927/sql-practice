@@ -78,17 +78,27 @@ You will receive: the question, the table schema, the reference SQL, and optiona
 
 Return ONLY JSON:
 {
-  "hint": "1-3 short sentences. Plain English."
+  "hint": "1-3 short sentences. Plain English.",
+  "suggested_sql": null | "the learner's SQL with a SMALL targeted fix applied"
 }
 
-Rules for the hint (strict):
+Rules for the HINT (strict):
 - Mention WHICH tables to use.
 - Mention WHICH SQL concepts apply (JOIN, GROUP BY, COUNT, etc.). Briefly explain any term the first time you use it.
 - Mention WHICH columns to filter or group on, BUT never write more than one or two-word fragments of SQL.
 - DO NOT write the full SQL or anything close to it. No full SELECT/FROM/WHERE clauses.
 - DO NOT just restate the question.
 - If the learner's current code is provided, gently point out a missing piece (e.g. "you have the SELECT but still need a WHERE clause that..."). Do not solve it for them.
-- Keep it short. 1-3 sentences max."""
+- Keep it short. 1-3 sentences max.
+
+Rules for SUGGESTED_SQL (very strict — default to null):
+- Provide a corrected version of the learner's SQL ONLY when ALL of the following are true:
+  1. The learner has already written most of the SQL — they're not blank or only have a comment.
+  2. The fix is SMALL and TARGETED (a few characters or a single token), not a structural rewrite.
+  3. The fix is mechanical / technical, NOT strategic. Good: quoting a bare string ('Sweden' instead of Sweden), fixing a typo (slect → SELECT), adding a missing comma, fixing an unbalanced paren, correcting a column-name typo to one that exists in the schema. Bad: adding a missing JOIN, adding a missing GROUP BY, changing the aggregation function, adding a HAVING clause — these would give the answer away.
+  4. After applying the fix the SQL should be valid Postgres and closer to the reference logic, but it does NOT have to be the full correct answer.
+- If the learner's SQL is empty, vague, or has multiple structural problems, return null.
+- The suggested_sql, when provided, must be the FULL corrected SQL (not a diff or fragment), preserving the learner's original variable names, aliases, formatting, and comments wherever possible — change only what needs to change."""
 
 
 ERROR_HELP_SYSTEM_PROMPT = """You translate PostgreSQL errors for a SQL learner.
@@ -96,13 +106,24 @@ ERROR_HELP_SYSTEM_PROMPT = """You translate PostgreSQL errors for a SQL learner.
 Return ONLY JSON:
 {
   "explanation": "1-2 short plain-English sentences explaining the raw error.",
-  "next_step": "one concrete next step using the provided schema"
+  "next_step": "one concrete next step using the provided schema",
+  "suggested_sql": null | "the learner's SQL with the small fix that resolves this error"
 }
 
 Rules:
 - Keep the raw Postgres error out of your answer; the UI already shows it.
 - Mention nearby valid table or column names when helpful.
-- Do not reveal the full reference SQL."""
+- Do not reveal the full reference SQL.
+
+Rules for SUGGESTED_SQL (strict — default to null):
+- Provide a corrected SQL ONLY when the fix is small and targeted, e.g.:
+  · Quoting a bare string literal that was parsed as a column name
+  · Fixing a misspelled column name to one that exists in the schema
+  · Replacing an unknown table name with a real one when the intent is clear
+  · Adding a missing closing paren or comma
+  · Fixing an obvious typo of a SQL keyword
+- DO NOT provide a corrected SQL if the fix requires structural changes (adding a JOIN, a GROUP BY, an aggregation, changing semantics).
+- When provided, suggested_sql must be the FULL corrected SQL, preserving everything else the learner wrote (formatting, aliases, comments)."""
 
 
 PERFORMANCE_SYSTEM_PROMPT = """You are a PostgreSQL performance coach for a SQL learner.
@@ -285,6 +306,11 @@ async def give_hint(
     data = json.loads(raw)
     if "hint" not in data:
         data["hint"] = ""
+    raw_suggestion = data.get("suggested_sql")
+    if isinstance(raw_suggestion, str) and raw_suggestion.strip():
+        data["suggested_sql"] = raw_suggestion
+    else:
+        data["suggested_sql"] = None
     return data
 
 
@@ -316,6 +342,11 @@ async def explain_sql_error(
         data["explanation"] = "Postgres could not run that SQL."
     if "next_step" not in data:
         data["next_step"] = "Check the table and column names in the schema."
+    raw_suggestion = data.get("suggested_sql")
+    if isinstance(raw_suggestion, str) and raw_suggestion.strip():
+        data["suggested_sql"] = raw_suggestion
+    else:
+        data["suggested_sql"] = None
     return data
 
 

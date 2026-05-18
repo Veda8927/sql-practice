@@ -339,6 +339,7 @@ async def error_help() -> ErrorHelpResponse:
     return ErrorHelpResponse(
         explanation=data["explanation"],
         next_step=data["next_step"],
+        suggested_sql=data.get("suggested_sql"),
     )
 
 
@@ -397,7 +398,10 @@ async def hint(req: HintRequest) -> HintResponse:
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
 
-    return HintResponse(hint=data["hint"])
+    return HintResponse(
+        hint=data["hint"],
+        suggested_sql=data.get("suggested_sql"),
+    )
 
 
 @app.post("/api/give_up", response_model=GiveUpResponse)

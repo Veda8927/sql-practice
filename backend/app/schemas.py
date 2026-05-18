@@ -124,11 +124,13 @@ class HintRequest(BaseModel):
 
 class HintResponse(BaseModel):
     hint: str
+    suggested_sql: str | None = None
 
 
 class ErrorHelpResponse(BaseModel):
     explanation: str
     next_step: str
+    suggested_sql: str | None = None
 
 
 class PerformanceRequest(BaseModel):
