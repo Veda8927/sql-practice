@@ -70,7 +70,7 @@ function useSplitDirection(): "horizontal" | "vertical" {
 }
 
 const SPLIT_LAYOUT_STORAGE_KEY = "sql-practice:split-layouts";
-const VSPLIT_LAYOUT_STORAGE_KEY = "sql-practice:vsplit-layout";
+const VSPLIT_LAYOUT_STORAGE_KEY = "sql-practice:vsplit-layout:v2";
 const DRAFT_PREFIX = "sql-practice:draft:";
 const TOUR_STEPS = [
   {
@@ -639,11 +639,17 @@ export default function Page() {
         >
           <Panel
             id="question"
-            defaultSize="30%"
+            defaultSize="50%"
             minSize="12%"
             className={`min-h-0 ${tourClass("question")}`}
           >
+            {/*
+              Pattern for "center if it fits, scroll if it doesn't":
+              outer scroller + inner min-h-full flex centerer.
+            */}
             <div className="h-full overflow-auto">
+              <div className="flex min-h-full items-center justify-center">
+                <div className="w-full">
           <QuestionBar
             question={question}
             loading={newQuestionMutation.isPending}
@@ -658,6 +664,8 @@ export default function Page() {
             }}
             difficultySuggestion={difficultySuggestion}
           />
+                </div>
+              </div>
             </div>
           </Panel>
           <PanelResizeHandle
@@ -665,7 +673,7 @@ export default function Page() {
           >
             <div className="absolute inset-x-0 -top-1.5 h-3" aria-hidden />
           </PanelResizeHandle>
-          <Panel id="working" defaultSize="70%" minSize="30%" className="min-h-0">
+          <Panel id="working" defaultSize="50%" minSize="30%" className="min-h-0">
           <PanelGroup
             key={`${splitDirection}:${splitLayouts[splitDirection] ? "saved" : "default"}`}
             id={`sql-practice-split-${splitDirection}`}
