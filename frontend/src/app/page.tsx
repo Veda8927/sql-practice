@@ -3,11 +3,13 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  BookOpen,
   History,
   HelpCircle,
   Keyboard,
   Loader2,
   Moon,
+  PlayCircle,
   RotateCcw,
   Sun,
   Table2,
@@ -34,6 +36,7 @@ import { SqlEditor, PLACEHOLDER } from "@/components/sql-editor";
 import { ResultsPanel } from "@/components/results-panel";
 import { AnswerSheet } from "@/components/answer-sheet";
 import { ShortcutsModal } from "@/components/shortcuts-modal";
+import { SyllabusView } from "@/components/syllabus-view";
 import {
   StreakBadge,
   recordStreak,
@@ -41,6 +44,7 @@ import {
 } from "@/components/streak-badge";
 import { api } from "@/lib/api";
 import { collectSchemaIdentifiers } from "@/lib/sql-lint";
+import { cn } from "@/lib/utils";
 import type {
   ExplainResponse,
   ErrorHelpResponse,
@@ -204,6 +208,7 @@ export default function Page() {
   const [tourOpen, setTourOpen] = React.useState(false);
   const [tourStep, setTourStep] = React.useState(0);
   const [hint, setHint] = React.useState<HintResponse | null>(null);
+  const [mode, setMode] = React.useState<"practice" | "learn">("practice");
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const [lastRunMs, setLastRunMs] = React.useState<number | null>(null);
   const [errorHelp, setErrorHelp] = React.useState<ErrorHelpResponse | null>(
@@ -463,7 +468,35 @@ export default function Page() {
           <h1 className="truncate text-[13px] font-semibold tracking-tight">
             SQL Practice
           </h1>
-          <StreakBadge />
+          <div className="flex items-center gap-0.5 rounded-full border border-border bg-muted/40 p-0.5">
+            <button
+              type="button"
+              onClick={() => setMode("learn")}
+              className={cn(
+                "flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
+                mode === "learn"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              Learn
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("practice")}
+              className={cn(
+                "flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
+                mode === "practice"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <PlayCircle className="h-3.5 w-3.5" />
+              Practice
+            </button>
+          </div>
+          {mode === "practice" && <StreakBadge />}
         </div>
         <div className="flex items-center gap-1">
           <Tooltip>
@@ -558,6 +591,15 @@ export default function Page() {
 
       {/* Main column */}
       <main className="flex flex-1 flex-col overflow-hidden">
+        {mode === "learn" ? (
+          <SyllabusView
+            onPracticeConcept={(concept) => {
+              setMode("practice");
+              newQuestionMutation.mutate({ concept });
+            }}
+          />
+        ) : (
+          <>
         <section className={`shrink-0 ${tourClass("question")}`}>
           <QuestionBar
             question={question}
@@ -642,6 +684,8 @@ export default function Page() {
             </Panel>
           </PanelGroup>
         </section>
+          </>
+        )}
       </main>
 
       <SchemaModal
