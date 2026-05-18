@@ -60,6 +60,25 @@ Return JSON with two fields:
 - explanation: 3-5 sentences in plain English. First, describe what their query actually does. Then explain why it produces the wrong result. End with ONE concrete hint toward the fix. Do NOT reveal the full reference SQL. Use simple language. No filler."""
 
 
+HINT_SYSTEM_PROMPT = """You are a SQL tutor. The learner has a question they are about to answer, and they want a HINT to point them in the right direction. They have NOT yet attempted the query (or have only partial code).
+
+You will receive: the question, the table schema, the reference SQL, and optionally the learner's current code.
+
+Return ONLY JSON:
+{
+  "hint": "1-3 short sentences. Plain English."
+}
+
+Rules for the hint (strict):
+- Mention WHICH tables to use.
+- Mention WHICH SQL concepts apply (JOIN, GROUP BY, COUNT, etc.). Briefly explain any term the first time you use it.
+- Mention WHICH columns to filter or group on, BUT never write more than one or two-word fragments of SQL.
+- DO NOT write the full SQL or anything close to it. No full SELECT/FROM/WHERE clauses.
+- DO NOT just restate the question.
+- If the learner's current code is provided, gently point out a missing piece (e.g. "you have the SELECT but still need a WHERE clause that..."). Do not solve it for them.
+- Keep it short. 1-3 sentences max."""
+
+
 EXPLAIN_SOLUTION_SYSTEM_PROMPT = """You explain a SQL solution to a beginner — assume they know what a spreadsheet is but have NEVER written SQL before. Think 5th grade reading level.
 
 You receive: the question, the reference SQL that solves it, and the table schema.
@@ -191,6 +210,35 @@ async def explain_mistake(
         data["typo_corrections"] = []
     if "explanation" not in data:
         data["explanation"] = "I couldn't generate an explanation. Please try again."
+    return data
+
+
+async def give_hint(
+    question: str,
+    reference_sql: str,
+    schema_info: dict[str, Any],
+    user_sql: str | None = None,
+) -> dict[str, Any]:
+    client = _get_client()
+    payload = {
+        "question": question,
+        "reference_sql": reference_sql,
+        "schema": schema_info,
+        "user_sql_so_far": user_sql,
+    }
+    completion = await client.chat.completions.create(
+        model=settings.openai_model,
+        messages=[
+            {"role": "system", "content": HINT_SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(payload, default=str)},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.4,
+    )
+    raw = completion.choices[0].message.content or "{}"
+    data = json.loads(raw)
+    if "hint" not in data:
+        data["hint"] = ""
     return data
 
 

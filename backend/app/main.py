@@ -16,6 +16,8 @@ from .schemas import (
     ExplainResponse,
     GiveUpResponse,
     GradeResult,
+    HintRequest,
+    HintResponse,
     NewQuestionRequest,
     QuestionResponse,
     ResetDataRequest,
@@ -167,6 +169,26 @@ async def explain(req: ExplainRequest) -> ExplainResponse:
         explanation=data["explanation"],
         typo_corrections=[TypoCorrection(**t) for t in data["typo_corrections"]],
     )
+
+
+@app.post("/api/hint", response_model=HintResponse)
+async def hint(req: HintRequest) -> HintResponse:
+    q = session_state.current_question
+    if q is None:
+        raise HTTPException(status_code=400, detail="No active question.")
+
+    schema = await data_gen.get_schema_info()
+    try:
+        data = await llm.give_hint(
+            question=q.question,
+            reference_sql=q.reference_sql,
+            schema_info=schema,
+            user_sql=req.sql,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+
+    return HintResponse(hint=data["hint"])
 
 
 @app.post("/api/give_up", response_model=GiveUpResponse)

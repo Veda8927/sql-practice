@@ -84,3 +84,11 @@ class GiveUpResponse(BaseModel):
     summary: str
     steps: list[SolutionStep]
     final_thought: str
+
+
+class HintRequest(BaseModel):
+    sql: str | None = None
+
+
+class HintResponse(BaseModel):
+    hint: str
