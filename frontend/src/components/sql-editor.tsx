@@ -38,7 +38,7 @@ type Props = {
   expectedTables?: string[];
 };
 
-export const PLACEHOLDER = "-- write your SQL here\n";
+export const PLACEHOLDER = "";
 
 const MARKER_OWNER = "sql-practice-lint";
 
@@ -195,70 +195,78 @@ export function SqlEditor({
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
+      {/* Top nav of the editor — label on the left, actions on the right */}
+      <div className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-muted/30 px-3">
+        <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          SQL editor
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 rounded-md text-xs"
+                onClick={handleFormat}
+              >
+                <Wand2 className="h-3.5 w-3.5" />
+                Format
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Format SQL — <kbd className="font-mono">⌘S</kbd> or{" "}
+              <kbd className="font-mono">⌘⇧F</kbd>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                className="h-7 rounded-md"
+                onClick={onRun}
+                disabled={running}
+              >
+                {running ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Play className="h-3.5 w-3.5" />
+                )}
+                Run
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Run query — <kbd className="font-mono">⌘↵</kbd>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+
       <div className="relative min-h-0 flex-1">
         <Editor
-        height="100%"
-        defaultLanguage="sql"
-        language="sql"
-        theme={monacoTheme}
-        value={value}
-        onChange={(v) => onChange(v ?? "")}
-        onMount={handleMount}
-        options={{
-          fontSize: 14,
-          fontFamily:
-            "'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
-          minimap: { enabled: false },
-          scrollBeyondLastLine: false,
-          wordWrap: "on",
-          automaticLayout: true,
-          tabSize: 2,
-          renderWhitespace: "selection",
-          lineNumbersMinChars: 3,
-          padding: { top: 12, bottom: 12 },
-          lightbulb: { enabled: true } as never,
-          quickSuggestions: true,
-        }}
-      />
-      <div className="pointer-events-none absolute bottom-4 right-4 flex items-center gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="pointer-events-auto h-8 rounded-full text-xs"
-              onClick={handleFormat}
-            >
-              <Wand2 className="h-3.5 w-3.5" />
-              Format
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            Format SQL — <kbd className="font-mono">⌘S</kbd> or{" "}
-            <kbd className="font-mono">⌘⇧F</kbd>
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="sm"
-              className="pointer-events-auto h-8 rounded-full"
-              onClick={onRun}
-              disabled={running}
-            >
-              {running ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Play className="h-3.5 w-3.5" />
-              )}
-              Run
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            Run query — <kbd className="font-mono">⌘↵</kbd>
-          </TooltipContent>
-        </Tooltip>
-      </div>
+          height="100%"
+          defaultLanguage="sql"
+          language="sql"
+          theme={monacoTheme}
+          value={value}
+          onChange={(v) => onChange(v ?? "")}
+          onMount={handleMount}
+          options={{
+            fontSize: 14,
+            fontFamily:
+              "'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            wordWrap: "on",
+            automaticLayout: true,
+            tabSize: 2,
+            renderWhitespace: "selection",
+            lineNumbersMinChars: 3,
+            padding: { top: 12, bottom: 12 },
+            lightbulb: { enabled: true } as never,
+            quickSuggestions: true,
+          }}
+        />
       </div>
       <EditorOutline
         sql={value}
