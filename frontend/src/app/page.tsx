@@ -466,7 +466,7 @@ export default function Page() {
       <header className="flex h-12 shrink-0 items-center justify-between gap-2 px-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <h1 className="truncate text-[13px] font-semibold tracking-tight">
-            SQL Practice
+            SQL
           </h1>
           <div className="flex items-center gap-0.5 rounded-full border border-border bg-muted/40 p-0.5">
             <button

@@ -4,7 +4,6 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import {
   BookOpen,
-  Check,
   ChevronDown,
   ChevronRight,
   Sparkles,
@@ -14,23 +13,6 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SYLLABUS, type Module, type Topic } from "@/lib/syllabus";
 import { cn } from "@/lib/utils";
-
-const PROGRESS_KEY = "sql-practice:syllabus-progress:v1";
-
-function loadProgress(): Record<string, true> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(PROGRESS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveProgress(p: Record<string, true>) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(PROGRESS_KEY, JSON.stringify(p));
-}
 
 type Props = {
   onPracticeConcept: (concept: string) => void;
@@ -43,25 +25,9 @@ export function SyllabusView({ onPracticeConcept }: Props) {
   const [openModules, setOpenModules] = React.useState<Record<string, boolean>>(
     () => ({ [SYLLABUS[0]?.id ?? ""]: true }),
   );
-  const [progress, setProgress] = React.useState<Record<string, true>>({});
-
-  React.useEffect(() => {
-    setProgress(loadProgress());
-  }, []);
 
   const toggleModule = (id: string) =>
     setOpenModules((p) => ({ ...p, [id]: !p[id] }));
-
-  const markRead = React.useCallback(
-    (topicId: string) => {
-      setProgress((p) => {
-        const next = { ...p, [topicId]: true as const };
-        saveProgress(next);
-        return next;
-      });
-    },
-    [],
-  );
 
   const activeTopic: { module: Module; topic: Topic } | null = React.useMemo(() => {
     for (const m of SYLLABUS) {
@@ -71,36 +37,20 @@ export function SyllabusView({ onPracticeConcept }: Props) {
     return null;
   }, [activeTopicId]);
 
-  // Auto-mark a topic as read when the user lingers on it for >2s.
-  React.useEffect(() => {
-    if (!activeTopicId) return;
-    const t = window.setTimeout(() => markRead(activeTopicId), 2000);
-    return () => window.clearTimeout(t);
-  }, [activeTopicId, markRead]);
-
-  const totalTopics = SYLLABUS.reduce((acc, m) => acc + m.topics.length, 0);
-  const readCount = Object.keys(progress).length;
-
   return (
     <div className="flex h-full min-h-0 overflow-hidden">
       {/* Sidebar */}
       <aside className="hidden w-[320px] shrink-0 border-r border-border bg-muted/20 md:block">
         <ScrollArea className="h-full">
           <div className="px-5 py-5">
-            <div className="mb-1 flex items-center gap-2">
+            <div className="mb-4 flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-muted-foreground" />
               <h2 className="text-sm font-semibold text-foreground">Roadmap</h2>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {readCount} of {totalTopics} topics visited
-            </p>
 
-            <div className="mt-5 space-y-1">
+            <div className="space-y-1">
               {SYLLABUS.map((module, i) => {
                 const isOpen = !!openModules[module.id];
-                const moduleRead = module.topics.filter(
-                  (t) => progress[t.id],
-                ).length;
                 return (
                   <div key={module.id}>
                     <button
@@ -119,15 +69,11 @@ export function SyllabusView({ onPracticeConcept }: Props) {
                       <span className="flex-1 truncate text-[13px] font-medium text-foreground">
                         {module.title}
                       </span>
-                      <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground">
-                        {moduleRead}/{module.topics.length}
-                      </span>
                     </button>
                     {isOpen && (
                       <ul className="mb-2 ml-7 space-y-0.5 border-l border-border pl-2">
                         {module.topics.map((topic) => {
                           const isActive = topic.id === activeTopicId;
-                          const isRead = !!progress[topic.id];
                           return (
                             <li key={topic.id}>
                               <button
@@ -140,20 +86,6 @@ export function SyllabusView({ onPracticeConcept }: Props) {
                                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                                 )}
                               >
-                                <span
-                                  className={cn(
-                                    "flex h-3 w-3 shrink-0 items-center justify-center",
-                                    isRead
-                                      ? "text-emerald-600 dark:text-emerald-400"
-                                      : "text-muted-foreground/40",
-                                  )}
-                                >
-                                  {isRead ? (
-                                    <Check className="h-3 w-3" />
-                                  ) : (
-                                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                                  )}
-                                </span>
                                 <span className="truncate">{topic.title}</span>
                               </button>
                             </li>

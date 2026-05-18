@@ -126,6 +126,34 @@ export const SYLLABUS: Module[] = [
         ],
         examples: [],
       },
+      {
+        id: "execution-order",
+        title: "How a query actually runs",
+        blurb: "The order Postgres processes clauses isn't the order you write them.",
+        body: [
+          "You write SELECT first, but Postgres runs FROM/JOIN first (build the working rowset), then WHERE (filter rows), then GROUP BY, then HAVING, then SELECT (project columns + compute aliases), then ORDER BY, then LIMIT.",
+          "This is why you can't use a SELECT alias in WHERE — WHERE runs first, the alias doesn't exist yet. But you CAN use it in ORDER BY, which runs last.",
+        ],
+        examples: [
+          {
+            code: "-- fails: alias used in WHERE before it's computed\nSELECT total_amount * 0.1 AS tax FROM orders WHERE tax > 5;\n\n-- works: ORDER BY runs after SELECT\nSELECT total_amount * 0.1 AS tax FROM orders ORDER BY tax DESC;",
+          },
+        ],
+      },
+      {
+        id: "comments-and-quoting",
+        title: "Comments and identifier quoting",
+        blurb: "Two kinds of comments. Two kinds of quotes. Don't mix them.",
+        body: [
+          "Single-line comments start with `--`. Block comments wrap in `/* ... */`. Use them generously.",
+          "Single quotes are for string VALUES (`'Sweden'`). Double quotes are for IDENTIFIERS that need case preservation or contain spaces (`\"User Name\"`). Putting double quotes around a string value is a common bug.",
+        ],
+        examples: [
+          {
+            code: "-- single-line comment\n/* block comment */\nSELECT \"customerId\" AS id, 'hello' AS greeting\nFROM \"My Table\";",
+          },
+        ],
+      },
     ],
   },
 
@@ -235,6 +263,63 @@ export const SYLLABUS: Module[] = [
         ],
         practiceConcept: "null_handling",
       },
+      {
+        id: "comparison-boolean",
+        title: "Comparison and boolean operators",
+        blurb: "The vocabulary inside WHERE.",
+        body: [
+          "Comparison: `=`, `<>` (or `!=`), `<`, `<=`, `>`, `>=`. Boolean: `AND`, `OR`, `NOT`. Precedence runs NOT > AND > OR — when in doubt, parenthesize.",
+          "Use `IS DISTINCT FROM` / `IS NOT DISTINCT FROM` if you want NULL-safe equality (treats NULL = NULL as true, unlike plain `=`).",
+        ],
+        examples: [
+          {
+            code: "SELECT *\nFROM orders\nWHERE (status = 'completed' OR status = 'shipped')\n  AND total_amount > 100\n  AND order_date IS NOT NULL;",
+          },
+        ],
+      },
+      {
+        id: "like-ilike",
+        title: "LIKE and ILIKE patterns",
+        blurb: "Wildcard pattern matching, case-sensitive (LIKE) or not (ILIKE).",
+        body: [
+          "`%` matches any number of characters, `_` matches exactly one. ILIKE is the case-insensitive version. For real regex use `~` (or `~*` for case-insensitive).",
+          "`ESCAPE` lets you escape literal `%` or `_` — handy when you actually want to match those characters.",
+        ],
+        examples: [
+          {
+            code: "-- emails on gmail\nSELECT email FROM customers WHERE email ILIKE '%@gmail.com';\n-- names starting with 'A' followed by exactly two more characters\nSELECT name FROM customers WHERE name LIKE 'A__';",
+          },
+        ],
+        practiceConcept: "string_functions",
+      },
+      {
+        id: "in-between",
+        title: "IN, NOT IN, BETWEEN",
+        blurb: "Cleaner alternatives to long OR chains.",
+        body: [
+          "`x IN (a, b, c)` is shorthand for `x = a OR x = b OR x = c`. `BETWEEN a AND b` is `x >= a AND x <= b` (inclusive on both ends).",
+          "Careful with `NOT IN` and NULLs — if the list contains a NULL, `NOT IN` returns NULL (not TRUE) for every row, so you get an empty result. Use `NOT EXISTS` or filter NULLs out first.",
+        ],
+        examples: [
+          {
+            code: "SELECT * FROM customers WHERE country IN ('Canada', 'Mexico', 'Brazil');\nSELECT * FROM orders WHERE order_date BETWEEN '2024-01-01' AND '2024-12-31';",
+          },
+        ],
+      },
+      {
+        id: "calculated-columns",
+        title: "Calculated columns and expressions",
+        blurb: "SELECT can produce columns that don't exist in the table.",
+        body: [
+          "Anywhere you'd put a column, you can put an expression: arithmetic, function calls, CASE, concatenation. Give it a name with AS.",
+          "This is how you compute totals, format strings, bucket values, or compare two columns inline — without touching the underlying table.",
+        ],
+        examples: [
+          {
+            code: "SELECT order_id,\n       quantity * unit_price AS line_total,\n       UPPER(product_name) AS product\nFROM order_items;",
+          },
+        ],
+      },
     ],
   },
 
@@ -304,6 +389,50 @@ export const SYLLABUS: Module[] = [
         examples: [
           {
             code: "-- safe sum that returns 0 instead of NULL\nSELECT COALESCE(SUM(total_amount), 0)\nFROM orders\nWHERE status = 'completed';",
+          },
+        ],
+      },
+      {
+        id: "string-array-agg",
+        title: "STRING_AGG and ARRAY_AGG",
+        blurb: "Aggregate many rows into one delimited string or one array.",
+        body: [
+          "STRING_AGG(col, ', ') collects values into a comma-separated string. ARRAY_AGG(col) collects them into a Postgres array. Both respect GROUP BY and accept ORDER BY inside the call to control the order of items.",
+          "Great for 'show me the list of X per Y' queries — items per order, tags per article, members per team.",
+        ],
+        examples: [
+          {
+            code: "SELECT o.id, STRING_AGG(oi.product_name, ', ' ORDER BY oi.product_name) AS products\nFROM orders o\nJOIN order_items oi ON oi.order_id = o.id\nGROUP BY o.id;",
+          },
+        ],
+        practiceConcept: "aggregations",
+      },
+      {
+        id: "filter-clause",
+        title: "FILTER — conditional aggregates",
+        blurb: "Aggregate only the rows that match a per-aggregate condition.",
+        body: [
+          "`AGG(col) FILTER (WHERE condition)` includes only rows that pass the condition. Cleaner and faster than `SUM(CASE WHEN condition THEN col END)` for the same effect.",
+          "Use it to compute multiple aggregates side-by-side with different filters — perfect for pivot-style result tables.",
+        ],
+        examples: [
+          {
+            code: "SELECT customer_id,\n       COUNT(*) FILTER (WHERE status = 'completed') AS completed,\n       COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled,\n       SUM(total_amount) FILTER (WHERE status = 'completed') AS revenue\nFROM orders\nGROUP BY customer_id;",
+          },
+        ],
+        practiceConcept: "aggregations",
+      },
+      {
+        id: "grouping-sets",
+        title: "ROLLUP, CUBE, GROUPING SETS",
+        blurb: "Multiple group levels in one query.",
+        body: [
+          "ROLLUP adds subtotal rows up a hierarchy. CUBE adds subtotals for every combination of group columns. GROUPING SETS lets you specify exact group combinations.",
+          "Useful for report-style queries that need totals at multiple levels in one pass — e.g., per category, per region, and grand total.",
+        ],
+        examples: [
+          {
+            code: "-- per (country, year), per country, and grand total in one query\nSELECT country, EXTRACT(YEAR FROM signup_date) AS year, COUNT(*) AS n\nFROM customers\nGROUP BY ROLLUP (country, year);",
           },
         ],
       },
@@ -422,6 +551,49 @@ export const SYLLABUS: Module[] = [
           },
         ],
       },
+      {
+        id: "using-clause",
+        title: "USING — a shorter ON",
+        blurb: "When both tables have the same column name, USING is tidier.",
+        body: [
+          "`JOIN orders USING (customer_id)` is shorthand for `JOIN orders ON c.customer_id = o.customer_id`. The joined column shows up only once in the result instead of twice.",
+          "Only works when the join column has the same name on both sides. Avoid NATURAL JOIN (joins on every same-named column automatically) — it's a footgun when schemas change.",
+        ],
+        examples: [
+          {
+            code: "SELECT name, order_date\nFROM customers c\nJOIN orders USING (customer_id);  -- only valid if both have customer_id",
+          },
+        ],
+      },
+      {
+        id: "anti-joins",
+        title: "Anti-joins — finding what's missing",
+        blurb: "Rows on one side that have no match on the other.",
+        body: [
+          "The classic anti-join: LEFT JOIN B, then `WHERE B.id IS NULL`. Returns rows in A with no match in B. Use it to find customers who never ordered, products never sold, etc.",
+          "NOT EXISTS is often clearer and handles NULLs more sensibly than NOT IN. Pick whichever reads best.",
+        ],
+        examples: [
+          {
+            code: "-- customers who never placed an order\nSELECT c.name\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nWHERE o.id IS NULL;\n\n-- same thing with NOT EXISTS\nSELECT c.name\nFROM customers c\nWHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id);",
+          },
+        ],
+        practiceConcept: "left_joins",
+      },
+      {
+        id: "lateral-joins",
+        title: "LATERAL — joins that see each row",
+        blurb: "A subquery on the right side that can reference the row on the left.",
+        body: [
+          "LATERAL lets a JOIN's right-side subquery use columns from the left side. Without LATERAL the subquery is evaluated once; with LATERAL it runs per left row.",
+          "The killer use case: top-N per group. For each customer, give me their 3 most recent orders — cleanly expressible with a LATERAL subquery + LIMIT.",
+        ],
+        examples: [
+          {
+            code: "-- each customer's 3 most recent orders\nSELECT c.name, o.order_date, o.total_amount\nFROM customers c\nJOIN LATERAL (\n  SELECT order_date, total_amount\n  FROM orders\n  WHERE customer_id = c.id\n  ORDER BY order_date DESC\n  LIMIT 3\n) o ON true;",
+          },
+        ],
+      },
     ],
   },
 
@@ -488,6 +660,36 @@ export const SYLLABUS: Module[] = [
         ],
         practiceConcept: "subqueries",
       },
+      {
+        id: "subquery-in-from",
+        title: "Subqueries in FROM (derived tables)",
+        blurb: "Treat a subquery as a temporary table.",
+        body: [
+          "A subquery in FROM produces a virtual table the outer query joins or filters. Useful for pre-aggregating before joining, or building a multi-step transformation.",
+          "Often clearer as a CTE (next module) — but FROM-subqueries are still idiomatic for one-shot intermediate results.",
+        ],
+        examples: [
+          {
+            code: "-- avg order total per country\nSELECT t.country, AVG(t.order_total) AS avg_order\nFROM (\n  SELECT c.country, o.total_amount AS order_total\n  FROM customers c JOIN orders o ON o.customer_id = c.id\n) t\nGROUP BY t.country;",
+          },
+        ],
+        practiceConcept: "subqueries",
+      },
+      {
+        id: "any-all",
+        title: "ANY and ALL operators",
+        blurb: "Compare a value to every row in a subquery.",
+        body: [
+          "`x > ANY (subquery)` is true if x exceeds at least one value the subquery returns. `x > ALL (subquery)` is true only if x exceeds every value.",
+          "Often replaceable with MIN / MAX subqueries: `x > ALL (SELECT v FROM t)` is the same as `x > (SELECT MAX(v) FROM t)`.",
+        ],
+        examples: [
+          {
+            code: "-- customers older than every Canadian customer\nSELECT name, age FROM customers\nWHERE age > ALL (\n  SELECT age FROM customers WHERE country = 'Canada' AND age IS NOT NULL\n);",
+          },
+        ],
+        practiceConcept: "subqueries",
+      },
     ],
   },
 
@@ -539,6 +741,16 @@ export const SYLLABUS: Module[] = [
           },
         ],
         practiceConcept: "cte",
+      },
+      {
+        id: "cte-vs-subquery",
+        title: "CTE vs subquery: when to choose which",
+        blurb: "CTEs name things; subqueries inline them.",
+        body: [
+          "Use a CTE when: the same subquery is referenced more than once, the logic deserves a name, or you're building a multi-step pipeline. Use a regular subquery when the logic is small and only used once.",
+          "Postgres treats CTEs as 'optimization fences' less aggressively than it used to (since v12 they're inlinable). Don't worry about CTE performance until you've measured.",
+        ],
+        examples: [],
       },
     ],
   },
@@ -606,6 +818,50 @@ export const SYLLABUS: Module[] = [
         examples: [
           {
             code: "-- cumulative revenue by day\nSELECT order_date, total_amount,\n       SUM(total_amount) OVER (ORDER BY order_date) AS running_total\nFROM orders\nORDER BY order_date;",
+          },
+        ],
+        practiceConcept: "window_functions",
+      },
+      {
+        id: "window-frames",
+        title: "Window frames (ROWS / RANGE BETWEEN)",
+        blurb: "Control which rows the window actually covers.",
+        body: [
+          "By default, `SUM(x) OVER (ORDER BY d)` covers all rows from the start of the partition to the current row. You can override with a frame: `ROWS BETWEEN 2 PRECEDING AND CURRENT ROW` looks at the current row and the two before it.",
+          "Frames unlock moving averages, sliding sums, and time-window aggregates.",
+        ],
+        examples: [
+          {
+            code: "-- 7-day moving average of daily revenue\nSELECT order_date,\n       AVG(total_amount) OVER (\n         ORDER BY order_date\n         ROWS BETWEEN 6 PRECEDING AND CURRENT ROW\n       ) AS avg_7d\nFROM orders;",
+          },
+        ],
+        practiceConcept: "window_functions",
+      },
+      {
+        id: "first-last-value",
+        title: "FIRST_VALUE, LAST_VALUE, NTH_VALUE",
+        blurb: "Grab a specific row's value from within a window.",
+        body: [
+          "FIRST_VALUE picks the first row in the window, LAST_VALUE the last, NTH_VALUE the Nth. They need ORDER BY in the OVER to know what 'first' means.",
+          "Watch out: LAST_VALUE's default frame ends at the current row, so it often returns the current value, not the actual last. Fix with `ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING`.",
+        ],
+        examples: [
+          {
+            code: "-- each order, plus this customer's first-ever order date\nSELECT o.id, o.customer_id, o.order_date,\n       FIRST_VALUE(order_date) OVER (\n         PARTITION BY customer_id ORDER BY order_date\n       ) AS first_order\nFROM orders o;",
+          },
+        ],
+        practiceConcept: "window_functions",
+      },
+      {
+        id: "ntile",
+        title: "NTILE — bucketing rows into N groups",
+        blurb: "Slice your data into equal-sized buckets.",
+        body: [
+          "NTILE(n) splits the ordered partition into n buckets and labels each row with its bucket number (1..n). Great for percentile / quartile / decile analysis.",
+        ],
+        examples: [
+          {
+            code: "-- tag each customer with their revenue quartile\nSELECT customer_id, total,\n       NTILE(4) OVER (ORDER BY total DESC) AS quartile\nFROM (SELECT customer_id, SUM(total_amount) AS total FROM orders GROUP BY 1) t;",
           },
         ],
         practiceConcept: "window_functions",
@@ -691,6 +947,51 @@ export const SYLLABUS: Module[] = [
             code: "-- safe integer division: integer / integer drops decimals\nSELECT SUM(quantity)::numeric / COUNT(*)::numeric AS avg_per_order\nFROM order_items;",
           },
         ],
+      },
+      {
+        id: "regex",
+        title: "Regular expressions",
+        blurb: "When LIKE isn't enough.",
+        body: [
+          "Postgres has full regex support via `~` (matches), `~*` (case-insensitive match), `!~` (doesn't match). Functions: `regexp_replace`, `regexp_matches`, `regexp_split_to_array`.",
+          "Reach for regex when you need character classes, anchors, alternation, or capture groups — anything beyond `%` and `_`.",
+        ],
+        examples: [
+          {
+            code: "-- emails with a numeric local part\nSELECT email FROM customers WHERE email ~ '^[0-9]+@';\n\n-- extract domain\nSELECT regexp_replace(email, '^.*@', '') AS domain FROM customers;",
+          },
+        ],
+        practiceConcept: "string_functions",
+      },
+      {
+        id: "time-zones",
+        title: "Time zones",
+        blurb: "TIMESTAMP vs TIMESTAMPTZ — pick TIMESTAMPTZ.",
+        body: [
+          "TIMESTAMP stores 'wall clock' time with no zone — ambiguous. TIMESTAMPTZ stores an absolute UTC instant and converts to your session's zone on display. Almost always use TIMESTAMPTZ.",
+          "Convert with `AT TIME ZONE`: `ts AT TIME ZONE 'America/New_York'` returns the wall-clock time in that zone.",
+        ],
+        examples: [
+          {
+            code: "-- group orders by local-time day in New York\nSELECT DATE_TRUNC('day', order_ts AT TIME ZONE 'America/New_York') AS local_day, COUNT(*)\nFROM orders\nGROUP BY 1;",
+          },
+        ],
+        practiceConcept: "date_functions",
+      },
+      {
+        id: "generate-series",
+        title: "generate_series — build a row stream",
+        blurb: "Generate a sequence of numbers or dates as rows.",
+        body: [
+          "`generate_series(start, stop, step)` produces a row per value. Used everywhere: filling date gaps in time-series, generating test data, doing math you'd otherwise need a loop for.",
+          "Combine with LEFT JOIN to ensure every day/month has a row even if there's no activity (gap fill).",
+        ],
+        examples: [
+          {
+            code: "-- daily order count, with zeros for days with no orders\nWITH days AS (\n  SELECT generate_series('2025-01-01'::date, '2025-01-31'::date, '1 day') AS day\n)\nSELECT d.day, COUNT(o.id) AS orders\nFROM days d\nLEFT JOIN orders o ON o.order_date = d.day\nGROUP BY d.day\nORDER BY d.day;",
+          },
+        ],
+        practiceConcept: "date_functions",
       },
     ],
   },
@@ -807,6 +1108,46 @@ export const SYLLABUS: Module[] = [
           },
         ],
       },
+      {
+        id: "returning",
+        title: "RETURNING — get values back from a write",
+        blurb: "INSERT/UPDATE/DELETE can return the affected rows.",
+        body: [
+          "Append `RETURNING col1, col2, ...` to an INSERT, UPDATE, or DELETE to get those columns from the rows you changed — useful for getting auto-generated IDs back, logging deletions, or chaining writes.",
+        ],
+        examples: [
+          {
+            code: "INSERT INTO customers (name, email)\nVALUES ('Marie', 'marie@example.com')\nRETURNING id, signup_date;",
+          },
+        ],
+      },
+      {
+        id: "truncate",
+        title: "TRUNCATE vs DELETE",
+        blurb: "Empty a table fast.",
+        body: [
+          "DELETE removes rows one-at-a-time and respects triggers + foreign keys. TRUNCATE drops everything in the table in one shot — much faster but more brutal: it bypasses triggers, can reset sequences, and requires you to handle dependent rows yourself (CASCADE).",
+        ],
+        examples: [
+          {
+            code: "TRUNCATE TABLE staging_orders RESTART IDENTITY CASCADE;",
+          },
+        ],
+      },
+      {
+        id: "isolation-levels",
+        title: "Transaction isolation levels",
+        blurb: "How much your transaction can see of others'.",
+        body: [
+          "Postgres defaults to READ COMMITTED — each statement sees committed work as of when it ran. REPEATABLE READ gives the whole transaction a stable snapshot. SERIALIZABLE adds detection of conflicts that would violate true serial ordering.",
+          "You usually don't need to think about this. When you do (money transfers, inventory adjustments with concurrent updates), reach for SERIALIZABLE and be ready to retry on serialization failure.",
+        ],
+        examples: [
+          {
+            code: "BEGIN ISOLATION LEVEL SERIALIZABLE;\n  -- ... statements ...\nCOMMIT;",
+          },
+        ],
+      },
     ],
   },
 
@@ -863,6 +1204,47 @@ export const SYLLABUS: Module[] = [
         ],
         examples: [],
       },
+      {
+        id: "alter-table",
+        title: "ALTER TABLE — evolve the schema",
+        blurb: "Add, drop, rename columns; change types; add/drop constraints.",
+        body: [
+          "Schemas aren't frozen. ALTER TABLE lets you adapt as requirements change: add a column, rename one, change a type, add an index later. Some operations are instant; others rewrite the whole table.",
+          "Beware of locking on production tables — adding a NOT NULL column with a DEFAULT used to require a full rewrite, though modern Postgres avoids this for fixed defaults.",
+        ],
+        examples: [
+          {
+            code: "ALTER TABLE customers ADD COLUMN phone TEXT;\nALTER TABLE customers ALTER COLUMN phone SET NOT NULL;\nALTER TABLE customers RENAME COLUMN phone TO phone_number;\nALTER TABLE orders ADD CONSTRAINT positive_total CHECK (total_amount >= 0);",
+          },
+        ],
+      },
+      {
+        id: "on-delete-cascade",
+        title: "ON DELETE behavior for foreign keys",
+        blurb: "What happens to the child when the parent is deleted.",
+        body: [
+          "When a FK column references another table, you choose what happens if the referenced row goes away. ON DELETE RESTRICT (default) blocks the parent delete. CASCADE deletes children with the parent. SET NULL nulls the FK column. SET DEFAULT uses the column default.",
+          "Pick deliberately. CASCADE is convenient but dangerous — one parent delete can wipe out thousands of related rows.",
+        ],
+        examples: [
+          {
+            code: "CREATE TABLE order_items (\n  id SERIAL PRIMARY KEY,\n  order_id INTEGER NOT NULL\n    REFERENCES orders(id) ON DELETE CASCADE,\n  product TEXT NOT NULL\n);",
+          },
+        ],
+      },
+      {
+        id: "schemas-namespaces",
+        title: "Schemas (namespaces)",
+        blurb: "Group tables under a namespace — `public.customers`, `analytics.events`.",
+        body: [
+          "A Postgres schema (different from 'the schema' of a table) is a namespace inside a database. `CREATE SCHEMA analytics` then put tables in it with `analytics.events`. Useful for isolating concerns: app tables in `public`, BI tables in `analytics`, raw imports in `staging`.",
+        ],
+        examples: [
+          {
+            code: "CREATE SCHEMA analytics;\nCREATE TABLE analytics.daily_metrics (\n  d DATE PRIMARY KEY,\n  active_users INTEGER NOT NULL\n);",
+          },
+        ],
+      },
     ],
   },
 
@@ -911,6 +1293,47 @@ export const SYLLABUS: Module[] = [
         examples: [
           {
             code: "EXPLAIN ANALYZE\nSELECT * FROM orders WHERE customer_id = 42;",
+          },
+        ],
+      },
+      {
+        id: "other-index-types",
+        title: "Beyond B-tree: GIN, GiST, BRIN, Hash",
+        blurb: "Different index types for different shapes of data.",
+        body: [
+          "B-tree is the default and handles equality, ranges, and ordering. GIN excels at containment in JSONB and arrays, full-text search. GiST handles geometric and range types. BRIN is for huge tables where data is naturally ordered (time-series). Hash supports equality only and is usually not worth it.",
+        ],
+        examples: [
+          {
+            code: "-- GIN index for fast JSONB containment\nCREATE INDEX idx_events_payload ON events USING GIN (payload);\nSELECT * FROM events WHERE payload @> '{\"action\":\"login\"}';",
+          },
+        ],
+      },
+      {
+        id: "vacuum-analyze",
+        title: "VACUUM and ANALYZE",
+        blurb: "How Postgres keeps tables tidy and statistics fresh.",
+        body: [
+          "Updates and deletes leave 'dead' rows behind. VACUUM reclaims that space. ANALYZE updates the planner's statistics about how data is distributed, so it can pick good plans.",
+          "Postgres runs autovacuum in the background — you usually don't need to vacuum manually. But after big batch deletes or bulk loads, a one-off VACUUM ANALYZE is a healthy habit.",
+        ],
+        examples: [
+          {
+            code: "VACUUM ANALYZE orders;",
+          },
+        ],
+      },
+      {
+        id: "index-only-scans",
+        title: "Index-only scans",
+        blurb: "When the index alone has everything the query needs.",
+        body: [
+          "Postgres can answer a query straight from the index without touching the table — if all columns in SELECT and WHERE are in the index AND the visibility map says the rows are visible. Massive speedup.",
+          "The trick: include the columns you SELECT in the index with INCLUDE (covering index). Add WHERE columns first, INCLUDE columns after.",
+        ],
+        examples: [
+          {
+            code: "-- covering index for a common lookup\nCREATE INDEX idx_orders_lookup\nON orders (customer_id) INCLUDE (order_date, total_amount);",
           },
         ],
       },
@@ -972,6 +1395,59 @@ export const SYLLABUS: Module[] = [
         examples: [
           {
             code: "SELECT id, title\nFROM articles\nWHERE to_tsvector(title) @@ to_tsquery('postgres & index');",
+          },
+        ],
+      },
+      {
+        id: "uuid",
+        title: "UUIDs",
+        blurb: "Globally unique identifiers — when serial IDs aren't enough.",
+        body: [
+          "UUIDs are 128-bit identifiers you can generate independently (no need for a central sequence). Useful for distributed systems, IDs you expose publicly, or merging datasets from multiple sources.",
+          "Postgres has built-in `gen_random_uuid()` (enable `pgcrypto` extension if older versions). Indexes on UUIDs are larger and slower than on bigints — use only when you need the global uniqueness.",
+        ],
+        examples: [
+          {
+            code: "CREATE TABLE events (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  payload JSONB\n);",
+          },
+        ],
+      },
+      {
+        id: "generated-columns",
+        title: "Generated columns",
+        blurb: "A column whose value is computed from other columns.",
+        body: [
+          "`GENERATED ALWAYS AS (...) STORED` defines a column whose value is computed from a row expression. Postgres re-computes it whenever the source columns change. Lets you persist denormalized values consistently — no trigger needed.",
+        ],
+        examples: [
+          {
+            code: "CREATE TABLE order_items (\n  id SERIAL PRIMARY KEY,\n  quantity INTEGER NOT NULL,\n  unit_price NUMERIC(10,2) NOT NULL,\n  total NUMERIC(10,2) GENERATED ALWAYS AS (quantity * unit_price) STORED\n);",
+          },
+        ],
+      },
+      {
+        id: "triggers",
+        title: "Triggers",
+        blurb: "Code that runs automatically on INSERT/UPDATE/DELETE.",
+        body: [
+          "A trigger fires a function before or after a row change. Use them sparingly: audit logging, denormalized counters, validation that can't be expressed as a CHECK constraint. They make data flows harder to reason about — every write now has invisible side effects.",
+        ],
+        examples: [
+          {
+            code: "CREATE FUNCTION log_order_change() RETURNS trigger AS $$\nBEGIN\n  INSERT INTO order_log (order_id, action, changed_at)\n  VALUES (NEW.id, TG_OP, NOW());\n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\n\nCREATE TRIGGER orders_audit AFTER INSERT OR UPDATE\nON orders FOR EACH ROW EXECUTE FUNCTION log_order_change();",
+          },
+        ],
+      },
+      {
+        id: "stored-functions",
+        title: "Stored functions",
+        blurb: "Encapsulate logic the database can call.",
+        body: [
+          "Postgres has full procedural support via PL/pgSQL. Functions take parameters, return values or sets, and can be called from queries like built-ins. Useful for complex aggregations, encapsulating multi-step business logic, or making the same logic callable from many places.",
+        ],
+        examples: [
+          {
+            code: "CREATE FUNCTION customer_total(cust_id INTEGER)\nRETURNS NUMERIC AS $$\n  SELECT COALESCE(SUM(total_amount), 0)\n  FROM orders\n  WHERE customer_id = cust_id;\n$$ LANGUAGE SQL STABLE;\n\nSELECT name, customer_total(id) AS total FROM customers;",
           },
         ],
       },
@@ -1046,6 +1522,50 @@ export const SYLLABUS: Module[] = [
           "Build a CTE per step (signed up, placed order, completed order), then LEFT JOIN them sequentially. Count rows at each step to see the drop-off.",
         ],
         examples: [],
+      },
+      {
+        id: "sessionization",
+        title: "Sessionization",
+        blurb: "Group consecutive events that happened close in time.",
+        body: [
+          "User events come in as a long stream. Cluster them into 'sessions' by looking at the gap between consecutive events for each user — if the gap exceeds N minutes, start a new session.",
+          "The trick: LAG to get the previous event's timestamp, mark each row 1 or 0 depending on whether the gap exceeds the threshold, then SUM that as a running total — that becomes the session number.",
+        ],
+        examples: [
+          {
+            code: "WITH gaps AS (\n  SELECT user_id, event_at,\n         CASE WHEN event_at - LAG(event_at) OVER (\n           PARTITION BY user_id ORDER BY event_at\n         ) > INTERVAL '30 min' THEN 1 ELSE 0 END AS new_session\n  FROM events\n)\nSELECT user_id, event_at,\n       SUM(new_session) OVER (PARTITION BY user_id ORDER BY event_at) AS session_id\nFROM gaps;",
+          },
+        ],
+        practiceConcept: "window_functions",
+      },
+      {
+        id: "gap-fill",
+        title: "Time-series gap fill",
+        blurb: "Generate a row for every period, even ones with no activity.",
+        body: [
+          "Reports want a complete time axis: every day from Jan 1 to today, even days with zero orders. Naive GROUP BY only emits rows for days that had data — gaps appear as missing rows.",
+          "Solution: generate the full date range with `generate_series`, then LEFT JOIN your actual data. Missing days come back as NULL and you COALESCE to 0.",
+        ],
+        examples: [
+          {
+            code: "WITH days AS (\n  SELECT generate_series('2025-01-01'::date, CURRENT_DATE, '1 day') AS day\n)\nSELECT d.day, COALESCE(COUNT(o.id), 0) AS orders\nFROM days d\nLEFT JOIN orders o ON o.order_date = d.day\nGROUP BY d.day\nORDER BY d.day;",
+          },
+        ],
+        practiceConcept: "date_functions",
+      },
+      {
+        id: "hierarchical-queries",
+        title: "Hierarchical queries",
+        blurb: "Walk a tree: org charts, threaded comments, category trees.",
+        body: [
+          "Self-referencing tables (employees → manager_id, comments → parent_id) form a tree. Recursive CTEs walk that tree — top-down to find descendants, bottom-up to trace ancestors.",
+        ],
+        examples: [
+          {
+            code: "-- entire reporting tree under a director\nWITH RECURSIVE team AS (\n  SELECT id, name, manager_id, 0 AS level\n  FROM employees WHERE id = 1\n  UNION ALL\n  SELECT e.id, e.name, e.manager_id, t.level + 1\n  FROM employees e JOIN team t ON e.manager_id = t.id\n)\nSELECT * FROM team ORDER BY level;",
+          },
+        ],
+        practiceConcept: "cte",
       },
     ],
   },
