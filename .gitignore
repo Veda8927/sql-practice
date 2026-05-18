@@ -33,6 +33,8 @@ Thumbs.db
 
 # Local Claude tooling (regenerable via `uipro init --ai claude`)
 .claude/skills/
+.agents/
+.codex/
 
 # Logs
 *.log
