@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
@@ -140,30 +141,63 @@ function CommandSelect<T extends string>({
   onChange: (value: T) => void;
 }) {
   const [open, setOpen] = React.useState(false);
-  const ref = React.useRef<HTMLDivElement | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const menuRef = React.useRef<HTMLDivElement | null>(null);
+  const [pos, setPos] = React.useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
   const selected = options.find((option) => option.value === value) ?? options[0];
+
+  // Compute trigger position whenever the menu opens. Flip above when there
+  // isn't room below. Re-close on scroll/resize for crisp popover behavior.
+  React.useLayoutEffect(() => {
+    if (!open) return;
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const estimatedMenuHeight = 36 + options.length * 36 + 8; // ~ header + rows
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const flip = spaceBelow < estimatedMenuHeight + 16 && rect.top > spaceBelow;
+    setPos({
+      top: flip ? rect.top - estimatedMenuHeight : rect.bottom,
+      left: rect.left,
+      width: rect.width,
+    });
+  }, [open, options.length]);
 
   React.useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
-      if (!ref.current?.contains(event.target as Node)) {
+      const t = event.target as Node;
+      // Click outside both the trigger AND the portaled menu = close.
+      if (
+        !triggerRef.current?.contains(t) &&
+        !menuRef.current?.contains(t)
+      ) {
         setOpen(false);
       }
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
+    const onScrollOrResize = () => setOpen(false);
     window.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onScrollOrResize);
+    window.addEventListener("scroll", onScrollOrResize, true);
     return () => {
       window.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("scroll", onScrollOrResize, true);
     };
   }, [open]);
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <motion.button
+        ref={triggerRef}
         type="button"
         whileTap={{ scale: disabled ? 1 : 0.98 }}
         onClick={() => !disabled && setOpen((v) => !v)}
@@ -196,15 +230,24 @@ function CommandSelect<T extends string>({
         </motion.span>
       </motion.button>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 6, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.16, ease: [0.2, 0.8, 0.2, 1] }}
-            className="absolute left-0 top-full z-30 w-64 overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-xl shadow-background/40"
-          >
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {open && pos && (
+              <motion.div
+                ref={menuRef}
+                initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 6, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                transition={{ duration: 0.16, ease: [0.2, 0.8, 0.2, 1] }}
+                style={{
+                  position: "fixed",
+                  top: pos.top,
+                  left: pos.left,
+                  minWidth: Math.max(pos.width, 240),
+                }}
+                className="z-50 w-64 overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-xl shadow-background/40"
+              >
             <div className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               {label}
             </div>
@@ -252,9 +295,11 @@ function CommandSelect<T extends string>({
                 </motion.button>
               );
             })}
-          </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
     </div>
   );
 }
