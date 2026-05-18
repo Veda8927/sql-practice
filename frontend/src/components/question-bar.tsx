@@ -28,22 +28,18 @@ const DIFFICULTY_OPTIONS: SelectOption<DifficultyChoice>[] = [
   {
     value: "any",
     label: "Any level",
-    description: "Let the tutor choose",
   },
   {
     value: "easy",
     label: "Easy",
-    description: "Filters and simple groups",
   },
   {
     value: "medium",
     label: "Medium",
-    description: "Joins and aggregation",
   },
   {
     value: "hard",
     label: "Hard",
-    description: "CTEs, windows, subqueries",
   },
 ];
 const CONCEPTS = [
@@ -64,10 +60,6 @@ const CONCEPT_OPTIONS: SelectOption<ConceptChoice>[] = CONCEPTS.map(
   ([value, label]) => ({
     value,
     label,
-    description:
-      value === ""
-        ? "Mix concepts"
-        : value.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase()),
   }),
 );
 
@@ -124,7 +116,6 @@ function WordReveal({ text }: { text: string }) {
 type SelectOption<T extends string> = {
   value: T;
   label: string;
-  description?: string;
 };
 
 function CommandSelect<T extends string>({
@@ -235,11 +226,6 @@ function CommandSelect<T extends string>({
                     <span className="block truncate text-xs font-medium">
                       {option.label}
                     </span>
-                    {option.description && (
-                      <span className="block truncate text-[11px] text-muted-foreground">
-                        {option.description}
-                      </span>
-                    )}
                   </span>
                   <AnimatePresence>
                     {active && (
