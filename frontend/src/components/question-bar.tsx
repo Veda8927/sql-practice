@@ -46,15 +46,19 @@ const DIFFICULTY_OPTIONS: SelectOption<DifficultyChoice>[] = [
 const CONCEPTS = [
   ["", "Any concept"],
   ["joins", "Joins"],
+  ["left_joins", "Left joins"],
+  ["self_joins", "Self joins"],
   ["aggregations", "Aggregations"],
   ["group_by", "Group by"],
   ["having", "Having"],
-  ["window_functions", "Windows"],
+  ["window_functions", "Window functions"],
   ["cte", "CTEs"],
   ["subqueries", "Subqueries"],
-  ["case_when", "CASE"],
-  ["date_functions", "Dates"],
-  ["null_handling", "NULLs"],
+  ["set_operations", "Set operations"],
+  ["case_when", "CASE WHEN"],
+  ["date_functions", "Date functions"],
+  ["string_functions", "String functions"],
+  ["null_handling", "NULL handling"],
 ] as const;
 type ConceptChoice = (typeof CONCEPTS)[number][0];
 const CONCEPT_OPTIONS: SelectOption<ConceptChoice>[] = CONCEPTS.map(

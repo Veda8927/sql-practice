@@ -499,6 +499,8 @@ export default function Page() {
           {mode === "practice" && <StreakBadge />}
         </div>
         <div className="flex items-center gap-1">
+          {mode === "practice" && (
+            <>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -585,6 +587,8 @@ export default function Page() {
               Keyboard shortcuts — <kbd className="font-mono">?</kbd>
             </TooltipContent>
           </Tooltip>
+            </>
+          )}
           <ThemeToggleInline />
         </div>
       </header>
@@ -593,9 +597,9 @@ export default function Page() {
       <main className="flex flex-1 flex-col overflow-hidden">
         {mode === "learn" ? (
           <SyllabusView
-            onPracticeConcept={(concept) => {
+            onPracticeConcept={(concept, difficulty) => {
               setMode("practice");
-              newQuestionMutation.mutate({ concept });
+              newQuestionMutation.mutate({ concept, difficulty });
             }}
           />
         ) : (
