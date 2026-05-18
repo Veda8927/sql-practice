@@ -219,8 +219,14 @@ async def get_schema() -> SchemaInfo:
 @app.post("/api/new_question", response_model=QuestionResponse)
 async def new_question(req: NewQuestionRequest) -> QuestionResponse:
     schema = await data_gen.get_schema_info()
+    recent = [q.question for q in session_state.question_history[:5]]
     try:
-        data = await llm.generate_question(schema, req.concept, req.difficulty)
+        data = await llm.generate_question(
+            schema,
+            req.concept,
+            req.difficulty,
+            recent_questions=recent,
+        )
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
 

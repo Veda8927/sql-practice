@@ -43,7 +43,19 @@ How to write the QUESTION:
 - Never say "top N" without defining the metric.
 - 1-2 sentences. No fluff, no preamble.
 
-Variety rule: vary the SHAPE of the question across calls. Don't repeat "Find the names and emails of customers who..." back-to-back. Mix: counts, sums, averages, ratios, time-windowed metrics, NULL handling, distinct counts, ranking, segment comparisons, anomalies.
+Variety rule (STRICT): vary the SHAPE of the question across calls. Do not repeat the same starting clause or the same anchor table back-to-back.
+- The user will pass `recent_questions` (a list of the last few questions asked). Your output MUST NOT match any of those shapes. Specifically: pick a different opening verb, a different anchor table, AND a different output column set.
+- Mix question shapes across calls. Examples of different shapes:
+  · Per-X aggregates (one row per group)
+  · Filtering (no aggregation, just a WHERE)
+  · Ranking (window functions or ORDER BY + LIMIT)
+  · Time-bucketed counts (per month, per week, per year)
+  · Comparing two groups (CASE, ratios, deltas)
+  · NULL / missing-data detection (anti-joins, IS NULL)
+  · Distinct counts ("how many unique X")
+  · Top / bottom N with ties (DENSE_RANK)
+  · Self-comparisons (employees + their manager, products + their substitute)
+- If the schema has 3+ tables, pick a different anchor table than the previous call. Don't always anchor on "customers" / "members" / "users".
 
 Other rules:
 - Reference SQL must run against the given schema without errors.
@@ -144,6 +156,7 @@ async def generate_question(
     schema_info: dict[str, Any],
     concept_hint: str | None = None,
     difficulty_hint: str | None = None,
+    recent_questions: list[str] | None = None,
 ) -> dict[str, Any]:
     client = _get_client()
 
@@ -151,6 +164,7 @@ async def generate_question(
         "schema": schema_info,
         "concept_hint": concept_hint,
         "difficulty_hint": difficulty_hint,
+        "recent_questions": recent_questions or [],
     }
     user_content = json.dumps(user_content_obj, default=str)
 
