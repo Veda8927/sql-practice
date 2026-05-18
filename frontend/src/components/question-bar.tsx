@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CoachCard } from "@/components/coach-card";
 import {
   Tooltip,
   TooltipContent,
@@ -379,7 +380,6 @@ function HintCallout({
   onDismiss: () => void;
   onApply: (sql: string) => void;
 }) {
-  const suggestion = hint.suggested_sql;
   return (
     <motion.div
       initial={{ opacity: 0, y: -4, height: 0 }}
@@ -388,48 +388,15 @@ function HintCallout({
       transition={{ duration: 0.18 }}
       className="mt-4 overflow-hidden"
     >
-      <div className="rounded-lg border border-border bg-background">
-        <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
-          <div className="flex items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/10">
-              <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
-            </span>
-            <span className="text-xs font-medium text-foreground">
-              Tutor hint
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={onDismiss}
-            aria-label="Dismiss hint"
-            className="rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            Dismiss
-          </button>
-        </div>
-        <p className="px-3 py-2.5 text-sm leading-relaxed text-foreground">
-          {hint.hint}
-        </p>
-        {suggestion && (
-          <div className="border-t border-border bg-muted/30 px-3 py-2.5">
-            <div className="mb-1.5 flex items-center justify-between gap-3">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Suggested fix
-              </span>
-              <Button
-                size="sm"
-                onClick={() => onApply(suggestion)}
-                className="h-7 rounded-full px-3 text-xs"
-              >
-                Apply
-              </Button>
-            </div>
-            <pre className="max-h-40 overflow-auto rounded-md border border-border bg-background px-2.5 py-2 font-mono text-[11.5px] leading-relaxed text-foreground">
-              {suggestion}
-            </pre>
-          </div>
-        )}
-      </div>
+      <CoachCard
+        label="Hint"
+        icon={<Lightbulb className="h-3.5 w-3.5 text-amber-500" />}
+        onDismiss={onDismiss}
+        suggestedSql={hint.suggested_sql}
+        onApplySql={onApply}
+      >
+        {hint.hint}
+      </CoachCard>
     </motion.div>
   );
 }

@@ -2,8 +2,16 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, Check, Loader2, X } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  Check,
+  Loader2,
+  Sparkles,
+  X,
+} from "lucide-react";
 
+import { CoachCard } from "@/components/coach-card";
 import { DataTable } from "@/components/data-table";
 import { InsightsCard } from "@/components/insights-card";
 import { computeInsights } from "@/lib/insights";
@@ -202,33 +210,19 @@ export function ResultsPanel({
           <motion.div
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-3 overflow-hidden rounded-lg border border-amber-500/30 bg-amber-500/5 text-sm leading-relaxed text-foreground"
+            className="mb-3"
           >
-            <div className="p-3">
+            <CoachCard
+              label="What does this mean"
+              icon={<AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
+              suggestedSql={errorHelp.suggested_sql}
+              onApplySql={onApplySql}
+            >
               <div>{errorHelp.explanation}</div>
               <div className="mt-1 text-muted-foreground">
                 {errorHelp.next_step}
               </div>
-            </div>
-            {errorHelp.suggested_sql && (
-              <div className="border-t border-amber-500/20 bg-background/60 px-3 py-2.5">
-                <div className="mb-1.5 flex items-center justify-between gap-3">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Suggested fix
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onApplySql(errorHelp.suggested_sql ?? "")}
-                    className="inline-flex h-7 items-center rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
-                  >
-                    Apply
-                  </button>
-                </div>
-                <pre className="max-h-40 overflow-auto rounded-md border border-border bg-background px-2.5 py-2 font-mono text-[11.5px] leading-relaxed text-foreground">
-                  {errorHelp.suggested_sql}
-                </pre>
-              </div>
-            )}
+            </CoachCard>
           </motion.div>
         )}
 
@@ -236,24 +230,29 @@ export function ResultsPanel({
           <motion.div
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-3 rounded-lg border border-border bg-muted/30 p-3 text-sm leading-relaxed text-foreground"
+            className="mb-3"
           >
-            {explanation.typo_corrections.length > 0 && (
-              <div className="mb-2 font-mono text-xs">
-                {explanation.typo_corrections.map((t, i) => (
-                  <div key={i}>
-                    <span className="text-rose-600 dark:text-rose-400">
-                      {t.wrong}
-                    </span>
-                    {" → "}
-                    <span className="text-emerald-600 dark:text-emerald-400">
-                      {t.right}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {explanation.explanation}
+            <CoachCard
+              label="Why it's wrong"
+              icon={<Sparkles className="h-3.5 w-3.5 text-amber-500" />}
+            >
+              {explanation.typo_corrections.length > 0 && (
+                <div className="mb-2 font-mono text-xs">
+                  {explanation.typo_corrections.map((t, i) => (
+                    <div key={i}>
+                      <span className="text-rose-600 dark:text-rose-400">
+                        {t.wrong}
+                      </span>
+                      {" → "}
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        {t.right}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {explanation.explanation}
+            </CoachCard>
           </motion.div>
         )}
 
@@ -261,54 +260,42 @@ export function ResultsPanel({
           <motion.div
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-3 rounded-lg border border-border bg-muted/25 p-3 text-sm leading-relaxed text-foreground"
+            className="mb-3"
           >
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span className="font-medium">Performance</span>
-              {performance.user_time_ms !== null && (
-                <span className="font-mono text-[11px] text-muted-foreground">
-                  yours {performance.user_time_ms} ms
-                </span>
-              )}
-              {performance.reference_time_ms !== null && (
-                <span className="font-mono text-[11px] text-muted-foreground">
-                  reference {performance.reference_time_ms} ms
-                </span>
-              )}
-            </div>
-            <p>{performance.summary}</p>
-            {performance.suggestions.length > 0 && (
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-                {performance.suggestions.map((s, i) => (
-                  <li key={i}>{s}</li>
-                ))}
-              </ul>
-            )}
-            {performance.optimized_sql && (
-              <div className="mt-3">
-                <div className="mb-1 text-xs font-medium text-muted-foreground">
-                  Cleaner query
+            <CoachCard
+              label="Performance"
+              icon={<Activity className="h-3.5 w-3.5 text-blue-500" />}
+              suggestedSql={performance.optimized_sql}
+              onApplySql={onApplySql}
+            >
+              {(performance.user_time_ms !== null ||
+                performance.reference_time_ms !== null) && (
+                <div className="mb-2 flex flex-wrap items-center gap-2 font-mono text-[11px] text-muted-foreground">
+                  {performance.user_time_ms !== null && (
+                    <span>yours {performance.user_time_ms} ms</span>
+                  )}
+                  {performance.reference_time_ms !== null && (
+                    <span>reference {performance.reference_time_ms} ms</span>
+                  )}
                 </div>
-                <pre className="max-h-56 overflow-auto rounded-md border border-border bg-background p-3 font-mono text-xs">
-                  {performance.optimized_sql}
+              )}
+              <p>{performance.summary}</p>
+              {performance.suggestions.length > 0 && (
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                  {performance.suggestions.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ul>
+              )}
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                  Raw EXPLAIN plan
+                </summary>
+                <pre className="mt-2 max-h-72 overflow-auto rounded-md border border-border bg-background p-3 font-mono text-[11px]">
+                  {JSON.stringify(performance.raw_plan, null, 2)}
                 </pre>
-                <button
-                  type="button"
-                  onClick={() => onApplySql(performance.optimized_sql ?? "")}
-                  className="mt-2 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                >
-                  Put this in the editor
-                </button>
-              </div>
-            )}
-            <details className="mt-3">
-              <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
-                Raw EXPLAIN plan
-              </summary>
-              <pre className="mt-2 max-h-72 overflow-auto rounded-md border border-border bg-background p-3 font-mono text-[11px]">
-                {JSON.stringify(performance.raw_plan, null, 2)}
-              </pre>
-            </details>
+              </details>
+            </CoachCard>
           </motion.div>
         )}
 
