@@ -33,11 +33,31 @@ export type Example = {
   note?: string;
 };
 
+export type StepItem = {
+  title: string;
+  detail: string;
+  code?: string;
+};
+
+export type ContentBlock =
+  | { kind: "p"; text: string }
+  | { kind: "steps"; title?: string; items: StepItem[] }
+  | { kind: "bullets"; title?: string; items: string[] }
+  | { kind: "code"; code: string; note?: string }
+  | { kind: "callout"; tone: "tip" | "warning" | "note"; text: string };
+
 export type Topic = {
   id: string;
   title: string;
   blurb: string;
+  /** One-sentence summary of the "point" of the topic. Rendered prominently. */
+  bigIdea?: string;
+  /** Everyday-language analogy at the top of the topic. */
+  realWorld?: string;
+  /** Legacy paragraphs. Renderer wraps each as a `p` block if richBody is absent. */
   body: string[];
+  /** New, richer content. If present, takes precedence over `body`. */
+  richBody?: ContentBlock[];
   examples: Example[];
   practiceConcept?: PracticeConcept;
 };
@@ -59,10 +79,52 @@ export const SYLLABUS: Module[] = [
       {
         id: "what-is-sql",
         title: "What is SQL",
-        blurb: "A declarative language for asking questions of a database.",
-        body: [
-          "SQL (Structured Query Language) is how you talk to a relational database. You describe WHAT you want — 'all customers from Canada' — and the database figures out HOW to fetch it. That's the 'declarative' part.",
-          "Every relational database (Postgres, MySQL, SQLite, SQL Server, Oracle) speaks SQL, but each has its own dialect with small differences. This roadmap uses PostgreSQL — the dialect most data analysts and product engineers see today.",
+        blurb: "A short language for asking a database questions.",
+        bigIdea:
+          "SQL is how you ask a database for information. You describe WHAT you want; the database figures out HOW to fetch it.",
+        realWorld:
+          "Imagine a giant library. SQL is the form you fill out at the front desk: \"Bring me every book by an author from Canada, sorted by year.\" You don't tell the librarian which shelves to walk — they figure that out.",
+        body: [],
+        richBody: [
+          { kind: "p", text: "SQL stands for Structured Query Language. You write a short request, the database runs it on the data, and you get rows back." },
+          {
+            kind: "steps",
+            title: "How a query goes from your hands to an answer",
+            items: [
+              {
+                title: "You type a request",
+                detail: "A few lines of SQL that say which table and which columns you want.",
+                code: "SELECT name, email FROM customers WHERE country = 'Canada';",
+              },
+              {
+                title: "The database parses it",
+                detail: "Postgres reads your SQL and checks that the tables and columns exist and the syntax makes sense.",
+              },
+              {
+                title: "It builds a plan",
+                detail: "Postgres figures out the fastest way to find those rows — using an index, scanning a table, or joining things together.",
+              },
+              {
+                title: "It runs the plan and returns rows",
+                detail: "You see the answer as a table — usually in your editor or your app.",
+              },
+            ],
+          },
+          {
+            kind: "bullets",
+            title: "Why people use SQL",
+            items: [
+              "It's been around for 50 years and isn't going away.",
+              "Almost every database speaks it: Postgres, MySQL, SQLite, SQL Server, BigQuery, Snowflake.",
+              "It's declarative — you say WHAT you want, the database picks HOW.",
+              "It works on tiny apps and huge data warehouses with the same shape.",
+            ],
+          },
+          {
+            kind: "callout",
+            tone: "note",
+            text: "This roadmap uses PostgreSQL. Other dialects (MySQL, SQLite, etc.) are 95% the same. Once you know one, you can pick up another in a few hours.",
+          },
         ],
         examples: [
           {
@@ -74,47 +136,118 @@ export const SYLLABUS: Module[] = [
       {
         id: "tables-rows-columns",
         title: "Tables, rows, columns",
-        blurb: "The shape of relational data.",
-        body: [
-          "A relational database is a collection of TABLES. Each table is a grid of ROWS (records) and COLUMNS (fields). Every row in a table has the same columns; every column has a fixed data type.",
-          "Think of a spreadsheet, but with strict types per column (you can't put text in a number column) and the ability to link rows across sheets via shared IDs.",
-        ],
-        examples: [
+        blurb: "How data is stored — a grid with rules.",
+        bigIdea:
+          "A database is a collection of tables. Each table is a grid: columns are the fields, rows are the records.",
+        realWorld:
+          "Picture a spreadsheet. Each tab is a TABLE (Customers, Orders, Products). Each row is one customer or one order. Each column is one piece of info (name, email, signup_date). Unlike a spreadsheet, the column types are locked: a number column can't suddenly hold text.",
+        body: [],
+        richBody: [
+          { kind: "p", text: "Three words you'll hear forever in SQL:" },
           {
-            code: "-- customers table\n-- id  | name      | email           | country\n-- ----|-----------|-----------------|--------\n--   1 | Ava Patel | ava@example.com | Canada\n--   2 | Liam Chen | liam@example... | Japan",
-            note: "Every row has the same four columns, in the same types.",
+            kind: "bullets",
+            items: [
+              "TABLE — a named collection of rows. Example: customers.",
+              "ROW — one record. One customer, one order, one event.",
+              "COLUMN — one field in every row. Example: every customer has an email column.",
+            ],
+          },
+          {
+            kind: "code",
+            code: "-- the customers table\n-- ┌────┬───────────┬──────────────────┬─────────┐\n-- │ id │ name      │ email            │ country │\n-- ├────┼───────────┼──────────────────┼─────────┤\n-- │  1 │ Ava Patel │ ava@example.com  │ Canada  │\n-- │  2 │ Liam Chen │ liam@example.com │ Japan   │\n-- │  3 │ Maya Rao  │ maya@example.com │ India   │\n-- └────┴───────────┴──────────────────┴─────────┘",
+            note: "Three rows, four columns. Every row has the same four pieces of info.",
+          },
+          {
+            kind: "callout",
+            tone: "tip",
+            text: "The order of the rows isn't promised by the database. If you want a specific order, you have to ask for one with ORDER BY (coming soon).",
           },
         ],
+        examples: [],
       },
       {
         id: "data-types",
         title: "Data types",
-        blurb: "Numbers, text, dates, booleans, JSON, arrays.",
-        body: [
-          "Every column has a type. The big buckets in Postgres: INTEGER and NUMERIC for numbers, TEXT for strings, DATE / TIMESTAMP for time, BOOLEAN for true/false, JSONB for nested objects, and arrays for lists.",
-          "Picking the right type matters: NUMERIC(10,2) for money keeps cents precise where FLOAT would round; TIMESTAMPTZ stores time zones; TEXT is unbounded where VARCHAR(50) caps length.",
+        blurb: "Every column has a strict type. Picking the right one matters.",
+        bigIdea:
+          "Each column locks down what kind of value it can hold — numbers, words, dates, true/false. The database refuses anything else.",
+        realWorld:
+          "Like a vending machine slot. One slot only takes quarters, another only takes dollar bills. Try to push a banana in and it spits back at you. That strictness is a feature: the database catches bad data BEFORE it gets saved.",
+        body: [],
+        richBody: [
+          {
+            kind: "bullets",
+            title: "The buckets you'll see most",
+            items: [
+              "INTEGER — whole numbers. IDs, counts, ages.",
+              "NUMERIC(10,2) — decimals with exact precision. Money, prices.",
+              "TEXT — strings of any length. Names, emails, descriptions.",
+              "DATE — just a calendar date (2026-05-18).",
+              "TIMESTAMPTZ — a date AND time, with time zone. Use this for anything 'happened at'.",
+              "BOOLEAN — true / false.",
+              "JSONB — a nested object (like JSON in JavaScript).",
+            ],
+          },
+          {
+            kind: "callout",
+            tone: "warning",
+            text: "Money in FLOAT will round in ways that lose pennies. Always use NUMERIC for currency. NUMERIC(10,2) means up to 10 digits, 2 after the decimal point — i.e. $99,999,999.99 max.",
+          },
+          {
+            kind: "callout",
+            tone: "tip",
+            text: "For times: prefer TIMESTAMPTZ over TIMESTAMP. TIMESTAMPTZ stores an absolute moment in time; TIMESTAMP stores 'wall clock' time with no zone, which gets confusing fast.",
+          },
         ],
         examples: [
           {
             code: "CREATE TABLE orders (\n  id            SERIAL PRIMARY KEY,\n  customer_id   INTEGER NOT NULL,\n  order_date    DATE NOT NULL,\n  status        TEXT,\n  total_amount  NUMERIC(10, 2) NOT NULL\n);",
-            note: "Mixed types — SERIAL auto-numbers, NUMERIC keeps decimals exact.",
+            note: "SERIAL auto-numbers id. NUMERIC keeps decimals exact. TEXT is unbounded.",
           },
         ],
       },
       {
         id: "primary-foreign-keys",
         title: "Primary keys and foreign keys",
-        blurb: "How rows are uniquely identified and how tables link.",
-        body: [
-          "A PRIMARY KEY uniquely identifies a row. Usually it's a single column called `id`. No two rows can share a primary key, and it can't be NULL.",
-          "A FOREIGN KEY is a column that points to another table's primary key. `orders.customer_id` points to `customers.id` — that's how you say 'this order belongs to that customer'. Foreign keys keep your data honest: the DB refuses to insert an order pointing at a customer that doesn't exist.",
-        ],
-        examples: [
+        blurb: "How rows are uniquely identified and how tables link to each other.",
+        bigIdea:
+          "Primary key = the ID of a row. Foreign key = a pointer from one table to another's ID.",
+        realWorld:
+          "Think of a school. Each student has a unique student number (primary key). Each library book loan has a `student_number` field on it — that's the foreign key, pointing back to which student borrowed the book. Same idea in databases.",
+        body: [],
+        richBody: [
           {
-            code: "CREATE TABLE orders (\n  id SERIAL PRIMARY KEY,\n  customer_id INTEGER NOT NULL REFERENCES customers(id),\n  order_date DATE NOT NULL\n);",
-            note: "REFERENCES is the FK constraint. Now every order must point to a real customer.",
+            kind: "steps",
+            title: "How the two keys work together",
+            items: [
+              {
+                title: "Each row gets a unique ID — the primary key",
+                detail: "Usually a column called `id`. The database refuses two rows with the same primary key, and no row can have a NULL primary key.",
+                code: "CREATE TABLE customers (\n  id    SERIAL PRIMARY KEY,  -- unique, auto-numbered\n  name  TEXT NOT NULL\n);",
+              },
+              {
+                title: "Other tables refer to it — the foreign key",
+                detail: "When an order belongs to a customer, the order table stores `customer_id`. That column points at `customers.id`. The link between tables is just a number on each side.",
+                code: "CREATE TABLE orders (\n  id           SERIAL PRIMARY KEY,\n  customer_id  INTEGER NOT NULL\n    REFERENCES customers(id),   -- this is the FK\n  order_date   DATE NOT NULL\n);",
+              },
+              {
+                title: "The database enforces the link",
+                detail: "If you try to insert an order with customer_id = 999 and there's no customer 999, the database refuses. This is how you keep the data honest.",
+              },
+            ],
+          },
+          {
+            kind: "callout",
+            tone: "tip",
+            text: "When you see `tableA.col → tableB.id` in the Schema view, that's a foreign key. It's also exactly how you JOIN the two tables later: `ON orders.customer_id = customers.id`.",
+          },
+          {
+            kind: "callout",
+            tone: "note",
+            text: "Primary keys come with an index for free, so finding a row by id is fast. Foreign keys do NOT come with an index — adding one on the FK column is one of the most common performance wins.",
           },
         ],
+        examples: [],
       },
       {
         id: "reading-schema",
@@ -166,69 +299,197 @@ export const SYLLABUS: Module[] = [
       {
         id: "select-from",
         title: "SELECT and FROM",
-        blurb: "Pick which columns from which table.",
-        body: [
-          "Every query starts with SELECT (which columns) and FROM (which table). The order of clauses in a query is fixed: SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY, LIMIT.",
-          "Tip: avoid `SELECT *` in real code. Naming columns explicitly makes queries faster, safer, and clearer to readers.",
-        ],
-        examples: [
+        blurb: "The first two words of nearly every query.",
+        bigIdea:
+          "SELECT names the columns you want. FROM names the table they come from.",
+        realWorld:
+          "Like ordering at a coffee shop: \"I'll have an iced latte (SELECT) from the new menu (FROM).\" You're specifying WHAT you want and WHERE to get it from.",
+        body: [],
+        richBody: [
           {
-            code: "SELECT name, email, signup_date\nFROM customers;",
+            kind: "steps",
+            title: "Reading a basic query",
+            items: [
+              {
+                title: "SELECT — pick the columns",
+                detail: "List the column names you want, separated by commas. Use * to mean \"all columns\" (but try to avoid that in real code).",
+                code: "SELECT name, email",
+              },
+              {
+                title: "FROM — pick the table",
+                detail: "Name the table the columns come from. One table for now; we'll add joins later.",
+                code: "FROM customers",
+              },
+              {
+                title: "End with a semicolon",
+                detail: "Most editors don't require it, but it's how SQL marks the end of a statement.",
+                code: ";",
+              },
+            ],
+          },
+          { kind: "p", text: "Put together:" },
+          {
+            kind: "code",
+            code: "SELECT name, email\nFROM customers;",
+            note: "Reads as \"give me the name and email columns from the customers table\".",
           },
           {
-            code: "-- Aliases rename columns or tables\nSELECT name AS customer_name, signup_date AS joined\nFROM customers AS c;",
+            kind: "bullets",
+            title: "Useful tricks",
+            items: [
+              "Rename a column in the output with `AS`: `SELECT name AS customer_name`.",
+              "Compute new columns on the fly: `SELECT quantity * unit_price AS total`.",
+              "Alias the table for short names later: `FROM customers AS c`.",
+            ],
+          },
+          {
+            kind: "callout",
+            tone: "warning",
+            text: "Avoid `SELECT *` in real code. It's slower (the DB sends every column), more fragile (your code breaks if a column is renamed), and less clear to readers. Name what you actually need.",
           },
         ],
+        examples: [],
       },
       {
         id: "where-filtering",
-        title: "WHERE — filtering rows",
-        blurb: "Keep only the rows that match a condition.",
-        body: [
-          "WHERE is how you narrow a query. Use comparison operators (= < > <= >= <>), logical operators (AND, OR, NOT), and parentheses for grouping.",
-          "Common patterns: equality (`country = 'Canada'`), ranges (`age BETWEEN 18 AND 30`), set membership (`status IN ('completed','pending')`), pattern match (`email LIKE '%@gmail.com'`).",
-        ],
-        examples: [
+        title: "WHERE — keep only the rows you want",
+        blurb: "Narrow the result down to rows that match a condition.",
+        bigIdea:
+          "SELECT picks the columns. WHERE picks the rows. Without WHERE, you get everything.",
+        realWorld:
+          "Imagine sorting through a stack of mail. WHERE is the rule you use to throw some away: \"Only the bills.\" Or \"Only mail addressed to me from this month.\" Everything that doesn't match gets dropped.",
+        body: [],
+        richBody: [
           {
-            code: "SELECT *\nFROM orders\nWHERE status = 'completed'\n  AND total_amount > 100;",
+            kind: "p",
+            text: "WHERE goes right after FROM. It checks a condition against every row and keeps only the rows that pass.",
           },
           {
-            code: "SELECT name FROM customers\nWHERE country IN ('Canada', 'United States')\n   OR signup_date >= '2025-01-01';",
+            kind: "code",
+            code: "SELECT name, email\nFROM customers\nWHERE country = 'Canada';",
+            note: "Only Canadian customers come back.",
+          },
+          {
+            kind: "bullets",
+            title: "Comparison operators",
+            items: [
+              "= equals — `country = 'Canada'`",
+              "<> or != not equals",
+              "< <= > >= less than, less-or-equal, greater than, greater-or-equal",
+              "BETWEEN a AND b — inclusive range",
+              "IN (...) — value matches any item in the list",
+              "LIKE 'a%' — pattern match (% is any text, _ is one character)",
+              "IS NULL / IS NOT NULL — for missing values",
+            ],
+          },
+          {
+            kind: "bullets",
+            title: "Combine with AND, OR, NOT",
+            items: [
+              "AND — both conditions must be true",
+              "OR — either condition is enough",
+              "NOT — flips a condition",
+              "Use parentheses when mixing — `(A OR B) AND C` is different from `A OR (B AND C)`",
+            ],
+          },
+          {
+            kind: "code",
+            code: "-- multiple conditions\nSELECT *\nFROM orders\nWHERE status = 'completed'\n  AND total_amount > 100;\n\n-- OR with parentheses\nSELECT name FROM customers\nWHERE (country = 'Canada' OR country = 'Mexico')\n  AND signup_date >= '2025-01-01';",
+          },
+          {
+            kind: "callout",
+            tone: "warning",
+            text: "NULL is weird. `age = NULL` never matches anything — even rows where age IS actually NULL. Use `age IS NULL` instead.",
           },
         ],
+        examples: [],
       },
       {
         id: "order-by",
-        title: "ORDER BY",
-        blurb: "Sort the result rows.",
-        body: [
-          "Without ORDER BY, the database can return rows in any order. ORDER BY pins the order.",
-          "You can sort by multiple columns (the second is a tiebreaker) and choose ASC (default) or DESC for each.",
-        ],
-        examples: [
+        title: "ORDER BY — put the rows in order",
+        blurb: "Sort the result by one or more columns.",
+        bigIdea:
+          "Without ORDER BY, the database returns rows in whatever order is fastest — which can change run to run. ORDER BY pins the order.",
+        realWorld:
+          "Like asking a librarian for books by author. Without instructions, they hand them over in whatever order. With \"sort by year, newest first,\" you get a predictable line-up.",
+        body: [],
+        richBody: [
           {
-            code: "SELECT name, total_amount\nFROM orders\nORDER BY total_amount DESC, name ASC;",
-            note: "Highest spenders first, alphabetical name as tiebreaker.",
+            kind: "steps",
+            title: "How to use it",
+            items: [
+              {
+                title: "Pick the column to sort by",
+                detail: "Goes after WHERE. Default direction is ascending (smallest to largest, A to Z, oldest to newest).",
+                code: "SELECT name, age FROM customers ORDER BY age;",
+              },
+              {
+                title: "Flip with DESC for descending",
+                detail: "Largest to smallest, Z to A, newest to oldest.",
+                code: "SELECT name, age FROM customers ORDER BY age DESC;",
+              },
+              {
+                title: "Sort by multiple columns",
+                detail: "Separate with commas. The second column breaks ties from the first.",
+                code: "SELECT name, age FROM customers ORDER BY age DESC, name ASC;",
+              },
+            ],
+          },
+          {
+            kind: "callout",
+            tone: "tip",
+            text: "Want \"the top 5\"? Combine ORDER BY with LIMIT (next topic): order from highest to lowest, then take the first 5.",
+          },
+          {
+            kind: "callout",
+            tone: "note",
+            text: "NULL values sort last by default in Postgres. Override with `ORDER BY col NULLS FIRST` or `NULLS LAST`.",
           },
         ],
+        examples: [],
       },
       {
         id: "limit-offset",
-        title: "LIMIT and OFFSET",
-        blurb: "First N rows, or paginate.",
-        body: [
-          "LIMIT N keeps only the first N rows. OFFSET N skips the first N — together they paginate.",
-          "ORDER BY before LIMIT is almost always necessary — otherwise 'the first 10' is undefined.",
-        ],
-        examples: [
+        title: "LIMIT and OFFSET — keep only N rows",
+        blurb: "Take just the first N rows, or paginate through a long result.",
+        bigIdea:
+          "LIMIT N stops after N rows. OFFSET N skips the first N. Together, they let you paginate.",
+        realWorld:
+          "Like scrolling through a long Instagram feed. LIMIT is \"show me 20 at a time.\" OFFSET is \"I've seen the first 40; show me 41 through 60.\"",
+        body: [],
+        richBody: [
           {
-            code: "SELECT name, total_amount\nFROM orders\nORDER BY total_amount DESC\nLIMIT 10;",
-            note: "Top 10 orders by amount.",
+            kind: "bullets",
+            title: "The two parts",
+            items: [
+              "LIMIT 10 — keep the first 10 rows of the result.",
+              "OFFSET 20 — skip the first 20 rows before counting.",
+              "Combined: `LIMIT 10 OFFSET 20` = rows 21-30.",
+            ],
           },
           {
-            code: "-- Page 3, 20 per page\nSELECT * FROM customers ORDER BY id LIMIT 20 OFFSET 40;",
+            kind: "callout",
+            tone: "warning",
+            text: "Always pair LIMIT with ORDER BY. Without an order, \"the first 10\" is undefined — the database can give different rows each run.",
+          },
+          {
+            kind: "steps",
+            title: "Common patterns",
+            items: [
+              {
+                title: "Top 5 by some metric",
+                detail: "Order high to low, then take the top.",
+                code: "SELECT name, total_amount\nFROM orders\nORDER BY total_amount DESC\nLIMIT 5;",
+              },
+              {
+                title: "Page through results",
+                detail: "Page 1 is `LIMIT 20 OFFSET 0`, page 2 is `OFFSET 20`, page 3 is `OFFSET 40`...",
+                code: "-- page 3 of customers, 20 per page\nSELECT * FROM customers ORDER BY id LIMIT 20 OFFSET 40;",
+              },
+            ],
           },
         ],
+        examples: [],
       },
       {
         id: "distinct",
@@ -332,34 +593,89 @@ export const SYLLABUS: Module[] = [
       {
         id: "aggregate-funcs",
         title: "Aggregate functions",
-        blurb: "COUNT, SUM, AVG, MIN, MAX.",
-        body: [
-          "Aggregates take many rows and return one number. Without GROUP BY they reduce the whole table to a single row.",
-          "COUNT(*) counts rows (including NULLs). COUNT(col) counts non-NULL values in that column. COUNT(DISTINCT col) counts unique non-NULL values.",
-        ],
-        examples: [
+        blurb: "Collapse many rows into one number.",
+        bigIdea:
+          "Aggregates take a whole column of values and produce one summary value — a count, a sum, an average.",
+        realWorld:
+          "Like asking a classroom for their ages. Instead of getting back 30 numbers, you ask one question and get one answer: \"What's the average?\" or \"How many of you are over 18?\"",
+        body: [],
+        richBody: [
           {
-            code: "SELECT COUNT(*) AS total_customers,\n       COUNT(age) AS customers_with_age,\n       AVG(age) AS avg_age,\n       MAX(signup_date) AS most_recent_signup\nFROM customers;",
+            kind: "bullets",
+            title: "The five everyday aggregates",
+            items: [
+              "COUNT — how many rows. `COUNT(*)` counts every row, including ones with NULL.",
+              "SUM — adds up a numeric column.",
+              "AVG — the average of a numeric column.",
+              "MIN — smallest value. Works for numbers, dates, even text (alphabetical).",
+              "MAX — largest value.",
+            ],
+          },
+          {
+            kind: "code",
+            code: "SELECT COUNT(*)      AS total_customers,\n       COUNT(age)    AS customers_with_age,\n       AVG(age)      AS avg_age,\n       MIN(signup_date) AS earliest_signup,\n       MAX(signup_date) AS latest_signup\nFROM customers;",
+            note: "All in one query. Returns a single row with five columns.",
+          },
+          {
+            kind: "callout",
+            tone: "note",
+            text: "COUNT has three flavors: COUNT(*) counts rows. COUNT(col) counts rows where col is not NULL. COUNT(DISTINCT col) counts how many UNIQUE non-NULL values there are.",
+          },
+          {
+            kind: "callout",
+            tone: "warning",
+            text: "Aggregates ignore NULLs (except COUNT(*)). AVG of [10, NULL, 30] is 20, not 13.3 — the NULL is skipped entirely.",
           },
         ],
+        examples: [],
         practiceConcept: "aggregations",
       },
       {
         id: "group-by",
-        title: "GROUP BY",
-        blurb: "One summary row per group.",
-        body: [
-          "GROUP BY collapses rows that share a value. After GROUP BY country, you get one row per country — aggregates in the SELECT are computed per group.",
-          "Every column in SELECT must either be in GROUP BY or wrapped in an aggregate. The DB doesn't know which row to pick from a group otherwise.",
-        ],
-        examples: [
+        title: "GROUP BY — one summary row per group",
+        blurb: "Bucket rows that share a value, then aggregate within each bucket.",
+        bigIdea:
+          "Without GROUP BY, an aggregate collapses ALL rows into one. With GROUP BY country, you get one row per country instead.",
+        realWorld:
+          "Imagine a teacher counting students by grade. Without GROUP BY: \"125 students total.\" With GROUP BY grade: \"Grade 7: 40, Grade 8: 42, Grade 9: 43.\" Same students, summarized per bucket.",
+        body: [],
+        richBody: [
           {
-            code: "SELECT country, COUNT(*) AS customer_count\nFROM customers\nGROUP BY country\nORDER BY customer_count DESC;",
+            kind: "steps",
+            title: "How it works",
+            items: [
+              {
+                title: "Pick a column to group by",
+                detail: "Rows with the same value in that column become one bucket.",
+                code: "GROUP BY country",
+              },
+              {
+                title: "Add aggregates to the SELECT",
+                detail: "Each aggregate is computed per group, not across the whole table.",
+                code: "SELECT country, COUNT(*) AS customer_count\nFROM customers\nGROUP BY country;",
+              },
+              {
+                title: "Optionally sort or limit the groups",
+                detail: "ORDER BY after GROUP BY works on the grouped result.",
+                code: "SELECT country, COUNT(*) AS customer_count\nFROM customers\nGROUP BY country\nORDER BY customer_count DESC\nLIMIT 5;",
+              },
+            ],
           },
           {
-            code: "-- Multiple group columns: one row per (country, year)\nSELECT country, EXTRACT(YEAR FROM signup_date) AS year, COUNT(*)\nFROM customers\nGROUP BY country, year;",
+            kind: "callout",
+            tone: "warning",
+            text: "Every column in your SELECT must either be in the GROUP BY OR wrapped in an aggregate. Otherwise the database doesn't know which row's value to pick from each group.",
+          },
+          {
+            kind: "p",
+            text: "You can group by more than one column. Each unique combination becomes a bucket.",
+          },
+          {
+            kind: "code",
+            code: "-- one row per (country, year)\nSELECT country, EXTRACT(YEAR FROM signup_date) AS year, COUNT(*)\nFROM customers\nGROUP BY country, year\nORDER BY country, year;",
           },
         ],
+        examples: [],
         practiceConcept: "group_by",
       },
       {
@@ -448,51 +764,124 @@ export const SYLLABUS: Module[] = [
       {
         id: "join-mental-model",
         title: "The join mental model",
-        blurb: "Joins glue two tables together on matching values.",
-        body: [
-          "Think of a join as: for each row on the left, find every row on the right that matches a condition, and stitch them into one wider row.",
-          "If a left row matches three right rows, you get three combined rows. If it matches zero, the behavior depends on the join TYPE (inner vs outer).",
-        ],
-        examples: [
+        blurb: "Glue two tables together where they share a value.",
+        bigIdea:
+          "A JOIN pairs up rows from two tables based on a matching column. Each pair becomes one wider row in the result.",
+        realWorld:
+          "Like matching homework sheets to students. You have a stack of homework, each marked with a student ID. You have a class list with student IDs and names. JOIN them on the ID and you get one row per homework, with the student's name attached.",
+        body: [],
+        richBody: [
           {
-            code: "-- two tables, joined on customer_id\nSELECT c.name, o.order_date, o.total_amount\nFROM customers c\nJOIN orders o ON o.customer_id = c.id;",
-            note: "One result row per (customer, order) pair.",
+            kind: "steps",
+            title: "What a JOIN does, step by step",
+            items: [
+              {
+                title: "Start with the left table",
+                detail: "Look at the first row.",
+              },
+              {
+                title: "Find matches in the right table",
+                detail: "Scan the right table for any row where the join condition is true. Often that condition is `left.id = right.foreign_id`.",
+              },
+              {
+                title: "Stitch each match into a wider row",
+                detail: "For each match, output one row that combines columns from both tables.",
+              },
+              {
+                title: "Move to the next left row, repeat",
+                detail: "If a left row has 3 matches, you get 3 output rows for it. If it has 0 matches, the behavior depends on the JOIN type (INNER vs LEFT, coming up).",
+              },
+            ],
+          },
+          {
+            kind: "code",
+            code: "SELECT c.name, o.order_date, o.total_amount\nFROM customers c\nJOIN orders o ON o.customer_id = c.id;",
+            note: "For every order, attach the customer's name. One result row per (customer, order) pair.",
+          },
+          {
+            kind: "callout",
+            tone: "tip",
+            text: "The ON clause is where the matching condition lives. Almost always it's an equality between a primary key on one side and a foreign key on the other.",
           },
         ],
+        examples: [],
         practiceConcept: "joins",
       },
       {
         id: "inner-join",
         title: "INNER JOIN",
-        blurb: "Keep only rows that match on both sides.",
-        body: [
-          "INNER JOIN (or just JOIN) drops any left row that has no right match, and vice versa. The result has only rows where both sides exist.",
-          "Use it when you don't care about customers who never ordered. Use LEFT JOIN when you do.",
-        ],
-        examples: [
+        blurb: "Keep only rows that have a match on BOTH sides.",
+        bigIdea:
+          "INNER JOIN drops rows that don't have a partner. If a customer never ordered, they vanish from the result.",
+        realWorld:
+          "Imagine pairing up dance partners. INNER JOIN: anyone without a partner sits out. Just the matched pairs are on the floor.",
+        body: [],
+        richBody: [
           {
-            code: "SELECT c.name, COUNT(o.id) AS order_count\nFROM customers c\nINNER JOIN orders o ON o.customer_id = c.id\nGROUP BY c.name;",
-            note: "Customers without orders won't appear.",
+            kind: "p",
+            text: "Plain `JOIN` and `INNER JOIN` mean the same thing — the most common kind of join.",
+          },
+          {
+            kind: "code",
+            code: "SELECT c.name, o.order_date\nFROM customers c\nINNER JOIN orders o ON o.customer_id = c.id;",
+            note: "Customers with zero orders disappear. Orders without a valid customer would too (but FK constraints stop that from happening).",
+          },
+          {
+            kind: "bullets",
+            title: "When to reach for INNER JOIN",
+            items: [
+              "You only care about the matched cases — \"customers who actually placed orders\".",
+              "You're piecing together info that has to exist on both sides — like a name from one table and a date from another.",
+              "You DON'T care about the rows that have nothing on the other side.",
+            ],
+          },
+          {
+            kind: "callout",
+            tone: "warning",
+            text: "If you're counting customers and used INNER JOIN to orders, you'll undercount — customers with zero orders are silently dropped. Use LEFT JOIN (next topic) when you need every customer to appear.",
           },
         ],
+        examples: [],
         practiceConcept: "joins",
       },
       {
         id: "left-join",
         title: "LEFT JOIN",
-        blurb: "Keep every left row, even with no match.",
-        body: [
-          "LEFT JOIN preserves every row on the left. If there's no matching right row, the right columns come back as NULL.",
-          "This is how you find rows that DON'T have a match: LEFT JOIN, then WHERE right.id IS NULL.",
-        ],
-        examples: [
+        blurb: "Keep every row on the left, match-or-not.",
+        bigIdea:
+          "LEFT JOIN preserves every row from the left table. If a left row has no match on the right, the right columns come back as NULL.",
+        realWorld:
+          "Back to the dance partners. LEFT JOIN: everyone on the left is on the dance floor. The ones with a partner are paired; the ones without dance alone — their \"partner\" slot is empty (NULL).",
+        body: [],
+        richBody: [
           {
-            code: "-- all customers, even those with zero orders\nSELECT c.name, COUNT(o.id) AS order_count\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nGROUP BY c.name;",
+            kind: "steps",
+            title: "Two killer use cases",
+            items: [
+              {
+                title: "Counting things that might be zero",
+                detail: "Show every customer with their order count, including customers who placed zero orders.",
+                code: "SELECT c.name, COUNT(o.id) AS order_count\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nGROUP BY c.name;",
+              },
+              {
+                title: "Finding rows with NO match",
+                detail: "LEFT JOIN, then WHERE the right side IS NULL. That's the rows where nothing matched. Classic \"customers who never ordered\" query.",
+                code: "SELECT c.name\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nWHERE o.id IS NULL;",
+              },
+            ],
           },
           {
-            code: "-- customers who never placed an order\nSELECT c.name\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nWHERE o.id IS NULL;",
+            kind: "callout",
+            tone: "tip",
+            text: "Notice `COUNT(o.id)` not `COUNT(*)`. With LEFT JOIN, COUNT(*) includes the NULL-filled rows (one per customer-no-orders), counting them as 1. COUNT(o.id) only counts rows where o.id isn't NULL, which is what you actually want.",
+          },
+          {
+            kind: "callout",
+            tone: "note",
+            text: "RIGHT JOIN is the mirror image — preserves every row on the right. In practice, almost everyone just swaps the table order and uses LEFT JOIN, since it reads more naturally.",
           },
         ],
+        examples: [],
         practiceConcept: "left_joins",
       },
       {

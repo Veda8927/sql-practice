@@ -3,18 +3,186 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import {
+  AlertTriangle,
   BookOpen,
   ChevronDown,
   ChevronRight,
+  Info,
+  Lightbulb,
   Search,
   Sparkles,
+  Target,
   X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { SYLLABUS, type Module, type Topic } from "@/lib/syllabus";
+import {
+  SYLLABUS,
+  type ContentBlock,
+  type Module,
+  type Topic,
+} from "@/lib/syllabus";
 import { cn } from "@/lib/utils";
+
+function getBlocks(topic: Topic): ContentBlock[] {
+  if (topic.richBody && topic.richBody.length > 0) return topic.richBody;
+  return topic.body.map((text) => ({ kind: "p" as const, text }));
+}
+
+function Steps({
+  title,
+  items,
+}: {
+  title?: string;
+  items: { title: string; detail: string; code?: string }[];
+}) {
+  return (
+    <div className="my-5">
+      {title && (
+        <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </div>
+      )}
+      <ol className="space-y-3">
+        {items.map((it, i) => (
+          <li
+            key={i}
+            className="flex gap-3 rounded-lg border border-border bg-background p-3"
+          >
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-foreground/8 text-[11px] font-semibold tabular-nums text-foreground">
+              {i + 1}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[14px] font-semibold text-foreground">
+                {it.title}
+              </div>
+              <p className="mt-0.5 text-[14px] leading-relaxed text-foreground/90">
+                {it.detail}
+              </p>
+              {it.code && (
+                <pre className="mt-2 overflow-auto rounded-md border border-border bg-muted/40 px-2.5 py-2 font-mono text-[12px] leading-relaxed text-foreground">
+                  {it.code}
+                </pre>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function Bullets({
+  title,
+  items,
+}: {
+  title?: string;
+  items: string[];
+}) {
+  return (
+    <div className="my-5">
+      {title && (
+        <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </div>
+      )}
+      <ul className="space-y-1.5">
+        {items.map((item, i) => (
+          <li
+            key={i}
+            className="flex gap-2.5 text-[14.5px] leading-relaxed text-foreground"
+          >
+            <span className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-foreground/60" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function Callout({
+  tone,
+  text,
+}: {
+  tone: "tip" | "warning" | "note";
+  text: string;
+}) {
+  const config = {
+    tip: { Icon: Lightbulb, color: "amber", label: "Tip" },
+    warning: { Icon: AlertTriangle, color: "rose", label: "Watch out" },
+    note: { Icon: Info, color: "blue", label: "Note" },
+  }[tone];
+
+  const borderClass = {
+    amber: "border-amber-500/30",
+    rose: "border-rose-500/30",
+    blue: "border-blue-500/30",
+  }[config.color];
+
+  const iconClass = {
+    amber: "text-amber-500",
+    rose: "text-rose-500 dark:text-rose-400",
+    blue: "text-blue-500",
+  }[config.color];
+
+  return (
+    <div
+      className={cn(
+        "my-4 flex gap-3 rounded-lg border bg-background px-3.5 py-2.5",
+        borderClass,
+      )}
+    >
+      <config.Icon className={cn("mt-0.5 h-4 w-4 shrink-0", iconClass)} />
+      <div>
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {config.label}
+        </div>
+        <p className="mt-0.5 text-[14px] leading-relaxed text-foreground">
+          {text}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function CodeCard({ code, note }: { code: string; note?: string }) {
+  return (
+    <div className="my-4 overflow-hidden rounded-lg border border-border bg-muted/30">
+      <pre className="overflow-auto px-3.5 py-3 font-mono text-[12.5px] leading-relaxed text-foreground">
+        {code}
+      </pre>
+      {note && (
+        <div className="border-t border-border bg-background/60 px-3.5 py-2 text-[12.5px] text-muted-foreground">
+          {note}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function renderBlock(block: ContentBlock, i: number) {
+  switch (block.kind) {
+    case "p":
+      return (
+        <p
+          key={i}
+          className="my-4 text-[15px] leading-relaxed text-foreground"
+        >
+          {block.text}
+        </p>
+      );
+    case "steps":
+      return <Steps key={i} title={block.title} items={block.items} />;
+    case "bullets":
+      return <Bullets key={i} title={block.title} items={block.items} />;
+    case "code":
+      return <CodeCard key={i} code={block.code} note={block.note} />;
+    case "callout":
+      return <Callout key={i} tone={block.tone} text={block.text} />;
+  }
+}
 
 type Difficulty = "easy" | "medium" | "hard";
 
@@ -238,16 +406,41 @@ export function SyllabusView({ onPracticeConcept }: Props) {
                 {activeTopic.topic.blurb}
               </p>
 
-              <div className="mt-6 space-y-4 text-[15px] leading-relaxed text-foreground">
-                {activeTopic.topic.body.map((p, i) => (
-                  <p key={i}>{p}</p>
-                ))}
+              {activeTopic.topic.bigIdea && (
+                <div className="mt-5 flex gap-3 rounded-xl border border-blue-500/30 bg-blue-500/5 px-4 py-3">
+                  <Target className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                  <div>
+                    <div className="text-[10.5px] font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-400">
+                      The big idea
+                    </div>
+                    <p className="mt-0.5 text-[14.5px] leading-relaxed text-foreground">
+                      {activeTopic.topic.bigIdea}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {activeTopic.topic.realWorld && (
+                <div className="mt-4 rounded-xl border border-border bg-muted/30 px-4 py-3">
+                  <div className="mb-1 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Think of it like…
+                  </div>
+                  <p className="text-[14.5px] italic leading-relaxed text-foreground/90">
+                    {activeTopic.topic.realWorld}
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-2">
+                {getBlocks(activeTopic.topic).map((block, i) =>
+                  renderBlock(block, i),
+                )}
               </div>
 
               {activeTopic.topic.examples.length > 0 && (
                 <div className="mt-8 space-y-3">
                   <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Examples
+                    Try it
                   </div>
                   {activeTopic.topic.examples.map((ex, i) => (
                     <div
