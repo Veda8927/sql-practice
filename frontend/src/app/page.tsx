@@ -70,6 +70,7 @@ function useSplitDirection(): "horizontal" | "vertical" {
 }
 
 const SPLIT_LAYOUT_STORAGE_KEY = "sql-practice:split-layouts";
+const VSPLIT_LAYOUT_STORAGE_KEY = "sql-practice:vsplit-layout";
 const DRAFT_PREFIX = "sql-practice:draft:";
 const TOUR_STEPS = [
   {
@@ -161,6 +162,31 @@ export default function Page() {
       }
     } catch {
       // Ignore invalid stored layouts and fall back to the default split.
+    }
+  }, []);
+
+  const [vsplitLayout, setVsplitLayout] = React.useState<Layout | undefined>(
+    undefined,
+  );
+
+  React.useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(VSPLIT_LAYOUT_STORAGE_KEY);
+      if (stored) setVsplitLayout(JSON.parse(stored));
+    } catch {
+      // ignore corrupt stored layout
+    }
+  }, []);
+
+  const saveVsplitLayout = React.useCallback((layout: Layout) => {
+    setVsplitLayout(layout);
+    try {
+      window.localStorage.setItem(
+        VSPLIT_LAYOUT_STORAGE_KEY,
+        JSON.stringify(layout),
+      );
+    } catch {
+      // storage is best-effort
     }
   }, []);
 
@@ -604,7 +630,20 @@ export default function Page() {
           />
         ) : (
           <>
-        <section className={`shrink-0 ${tourClass("question")}`}>
+        <PanelGroup
+          orientation="vertical"
+          id="sql-practice-vsplit"
+          defaultLayout={vsplitLayout}
+          onLayoutChanged={saveVsplitLayout}
+          className="h-full w-full"
+        >
+          <Panel
+            id="question"
+            defaultSize="30%"
+            minSize="12%"
+            className={`min-h-0 ${tourClass("question")}`}
+          >
+            <div className="h-full overflow-auto">
           <QuestionBar
             question={question}
             loading={newQuestionMutation.isPending}
@@ -619,9 +658,14 @@ export default function Page() {
             }}
             difficultySuggestion={difficultySuggestion}
           />
-        </section>
-
-        <section className="min-h-0 flex-1 border-t border-border">
+            </div>
+          </Panel>
+          <PanelResizeHandle
+            className="group relative h-px bg-border transition-colors hover:bg-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[separator=active]:bg-primary data-[separator=focus]:bg-primary/50"
+          >
+            <div className="absolute inset-x-0 -top-1.5 h-3" aria-hidden />
+          </PanelResizeHandle>
+          <Panel id="working" defaultSize="70%" minSize="30%" className="min-h-0">
           <PanelGroup
             key={`${splitDirection}:${splitLayouts[splitDirection] ? "saved" : "default"}`}
             id={`sql-practice-split-${splitDirection}`}
@@ -687,7 +731,8 @@ export default function Page() {
               />
             </Panel>
           </PanelGroup>
-        </section>
+          </Panel>
+        </PanelGroup>
           </>
         )}
       </main>
