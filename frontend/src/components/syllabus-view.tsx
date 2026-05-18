@@ -18,6 +18,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  ComparePanel,
+  FlowStrip,
+  MiniTable,
+  TablePair,
+  VennDiagram,
+} from "@/components/syllabus-visuals";
+import {
   SYLLABUS,
   type ContentBlock,
   type Module,
@@ -181,6 +188,42 @@ function renderBlock(block: ContentBlock, i: number) {
       return <CodeCard key={i} code={block.code} note={block.note} />;
     case "callout":
       return <Callout key={i} tone={block.tone} text={block.text} />;
+    case "venn":
+      return (
+        <VennDiagram
+          key={i}
+          type={block.type}
+          leftLabel={block.leftLabel}
+          rightLabel={block.rightLabel}
+          caption={block.caption}
+          legend={block.legend}
+        />
+      );
+    case "table":
+      return <MiniTable key={i} table={block.table} />;
+    case "tablePair":
+      return (
+        <TablePair
+          key={i}
+          left={block.left}
+          right={block.right}
+          caption={block.caption}
+          arrow={block.arrow}
+        />
+      );
+    case "flow":
+      return (
+        <FlowStrip key={i} steps={block.steps} caption={block.caption} />
+      );
+    case "compare":
+      return (
+        <ComparePanel
+          key={i}
+          caption={block.caption}
+          left={block.left}
+          right={block.right}
+        />
+      );
   }
 }
 

@@ -39,12 +39,61 @@ export type StepItem = {
   code?: string;
 };
 
+export type VennType =
+  | "inner"
+  | "left"
+  | "right"
+  | "full"
+  | "leftOnly"
+  | "rightOnly"
+  | "outer";
+
+export type TableCell = string | number | null;
+export type CellHighlight = "match" | "drop" | "new";
+
+export type TableViz = {
+  caption?: string;
+  columns: string[];
+  rows: TableCell[][];
+  /** Per-row highlight ("match"/"drop") — index into rows. */
+  rowHighlights?: Record<number, CellHighlight>;
+  note?: string;
+};
+
 export type ContentBlock =
   | { kind: "p"; text: string }
   | { kind: "steps"; title?: string; items: StepItem[] }
   | { kind: "bullets"; title?: string; items: string[] }
   | { kind: "code"; code: string; note?: string }
-  | { kind: "callout"; tone: "tip" | "warning" | "note"; text: string };
+  | { kind: "callout"; tone: "tip" | "warning" | "note"; text: string }
+  | {
+      kind: "venn";
+      type: VennType;
+      caption?: string;
+      leftLabel?: string;
+      rightLabel?: string;
+      legend?: string;
+    }
+  | { kind: "table"; table: TableViz }
+  | {
+      kind: "tablePair";
+      caption?: string;
+      left: TableViz;
+      right: TableViz;
+      /** Symbol to render between the two tables. */
+      arrow?: "→" | "⇒" | "↓";
+    }
+  | {
+      kind: "flow";
+      caption?: string;
+      steps: { label: string; sub?: string }[];
+    }
+  | {
+      kind: "compare";
+      caption?: string;
+      left: { title: string; items: string[] };
+      right: { title: string; items: string[] };
+    };
 
 export type Topic = {
   id: string;
@@ -263,15 +312,45 @@ export const SYLLABUS: Module[] = [
         id: "execution-order",
         title: "How a query actually runs",
         blurb: "The order Postgres processes clauses isn't the order you write them.",
-        body: [
-          "You write SELECT first, but Postgres runs FROM/JOIN first (build the working rowset), then WHERE (filter rows), then GROUP BY, then HAVING, then SELECT (project columns + compute aliases), then ORDER BY, then LIMIT.",
-          "This is why you can't use a SELECT alias in WHERE — WHERE runs first, the alias doesn't exist yet. But you CAN use it in ORDER BY, which runs last.",
-        ],
-        examples: [
+        bigIdea:
+          "You WRITE SELECT first, but the database RUNS it almost last. The actual order is FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT.",
+        realWorld:
+          "Like cooking dinner. You announce the recipe name first (SELECT my pasta), but you don't START with the pasta. You gather ingredients (FROM), chop and filter (WHERE), group by dish type if you're making multiple, plate it (SELECT what to show), then arrange (ORDER BY), then portion (LIMIT).",
+        body: [],
+        richBody: [
           {
-            code: "-- fails: alias used in WHERE before it's computed\nSELECT total_amount * 0.1 AS tax FROM orders WHERE tax > 5;\n\n-- works: ORDER BY runs after SELECT\nSELECT total_amount * 0.1 AS tax FROM orders ORDER BY tax DESC;",
+            kind: "flow",
+            caption: "Logical execution order",
+            steps: [
+              { label: "FROM", sub: "load tables" },
+              { label: "WHERE", sub: "filter rows" },
+              { label: "GROUP BY", sub: "bucket rows" },
+              { label: "HAVING", sub: "filter buckets" },
+              { label: "SELECT", sub: "pick columns" },
+              { label: "ORDER BY", sub: "sort" },
+              { label: "LIMIT", sub: "take N" },
+            ],
+          },
+          {
+            kind: "p",
+            text: "This order has practical consequences. The biggest one: you can't use a SELECT alias in WHERE, because WHERE runs BEFORE SELECT. But you CAN use it in ORDER BY, which runs after.",
+          },
+          {
+            kind: "code",
+            code: "-- ✗ fails: alias `tax` used in WHERE before it's computed\nSELECT total_amount * 0.1 AS tax\nFROM orders\nWHERE tax > 5;",
+            note: "ERROR: column \"tax\" does not exist — WHERE ran first and tax wasn't defined yet.",
+          },
+          {
+            kind: "code",
+            code: "-- ✓ works: ORDER BY runs after SELECT so the alias is available\nSELECT total_amount * 0.1 AS tax\nFROM orders\nORDER BY tax DESC;",
+          },
+          {
+            kind: "callout",
+            tone: "tip",
+            text: "If you need a computed value in WHERE, either repeat the expression or wrap the query in a subquery / CTE so the alias is computed first.",
           },
         ],
+        examples: [],
       },
       {
         id: "comments-and-quoting",
@@ -363,6 +442,31 @@ export const SYLLABUS: Module[] = [
           {
             kind: "p",
             text: "WHERE goes right after FROM. It checks a condition against every row and keeps only the rows that pass.",
+          },
+          {
+            kind: "tablePair",
+            caption: "WHERE country = 'Canada'",
+            arrow: "→",
+            left: {
+              caption: "customers (before)",
+              columns: ["id", "name", "country"],
+              rows: [
+                [1, "Ava", "Canada"],
+                [2, "Liam", "Japan"],
+                [3, "Maya", "Canada"],
+                [4, "Theo", "France"],
+              ],
+              rowHighlights: { 0: "match", 1: "drop", 2: "match", 3: "drop" },
+            },
+            right: {
+              caption: "result",
+              columns: ["id", "name", "country"],
+              rows: [
+                [1, "Ava", "Canada"],
+                [3, "Maya", "Canada"],
+              ],
+              rowHighlights: { 0: "match", 1: "match" },
+            },
           },
           {
             kind: "code",
@@ -641,6 +745,31 @@ export const SYLLABUS: Module[] = [
         body: [],
         richBody: [
           {
+            kind: "tablePair",
+            caption: "GROUP BY country → one row per group",
+            arrow: "→",
+            left: {
+              caption: "customers (before)",
+              columns: ["id", "name", "country"],
+              rows: [
+                [1, "Ava", "Canada"],
+                [2, "Liam", "Japan"],
+                [3, "Maya", "Canada"],
+                [4, "Theo", "France"],
+                [5, "Sora", "Japan"],
+              ],
+            },
+            right: {
+              caption: "GROUP BY country, COUNT(*)",
+              columns: ["country", "count"],
+              rows: [
+                ["Canada", 2],
+                ["France", 1],
+                ["Japan", 2],
+              ],
+            },
+          },
+          {
             kind: "steps",
             title: "How it works",
             items: [
@@ -818,13 +947,48 @@ export const SYLLABUS: Module[] = [
         body: [],
         richBody: [
           {
+            kind: "venn",
+            type: "inner",
+            leftLabel: "customers",
+            rightLabel: "orders",
+            caption: "INNER JOIN",
+            legend: "Only rows where both sides match — the overlap.",
+          },
+          {
             kind: "p",
             text: "Plain `JOIN` and `INNER JOIN` mean the same thing — the most common kind of join.",
           },
           {
+            kind: "tablePair",
+            caption: "customers JOIN orders ON customer_id = id",
+            arrow: "→",
+            left: {
+              caption: "customers + orders",
+              columns: ["customer_id", "name", "order_id", "amount"],
+              rows: [
+                [1, "Ava", 100, 50],
+                [1, "Ava", 101, 30],
+                [2, "Liam", null, null],
+                [3, "Maya", 102, 80],
+              ],
+              rowHighlights: { 0: "match", 1: "match", 2: "drop", 3: "match" },
+              note: "Liam never ordered — that row will be dropped.",
+            },
+            right: {
+              caption: "result",
+              columns: ["customer_id", "name", "order_id", "amount"],
+              rows: [
+                [1, "Ava", 100, 50],
+                [1, "Ava", 101, 30],
+                [3, "Maya", 102, 80],
+              ],
+              rowHighlights: { 0: "match", 1: "match", 2: "match" },
+            },
+          },
+          {
             kind: "code",
             code: "SELECT c.name, o.order_date\nFROM customers c\nINNER JOIN orders o ON o.customer_id = c.id;",
-            note: "Customers with zero orders disappear. Orders without a valid customer would too (but FK constraints stop that from happening).",
+            note: "Customers with zero orders disappear from the result.",
           },
           {
             kind: "bullets",
@@ -854,6 +1018,60 @@ export const SYLLABUS: Module[] = [
           "Back to the dance partners. LEFT JOIN: everyone on the left is on the dance floor. The ones with a partner are paired; the ones without dance alone — their \"partner\" slot is empty (NULL).",
         body: [],
         richBody: [
+          {
+            kind: "venn",
+            type: "left",
+            leftLabel: "customers",
+            rightLabel: "orders",
+            caption: "LEFT JOIN",
+            legend: "Every customer kept. Right side is NULL when nothing matches.",
+          },
+          {
+            kind: "tablePair",
+            caption: "customers LEFT JOIN orders",
+            arrow: "→",
+            left: {
+              caption: "customers",
+              columns: ["id", "name"],
+              rows: [
+                [1, "Ava"],
+                [2, "Liam"],
+                [3, "Maya"],
+              ],
+            },
+            right: {
+              caption: "result (orders attached or NULL)",
+              columns: ["id", "name", "order_id", "amount"],
+              rows: [
+                [1, "Ava", 100, 50],
+                [1, "Ava", 101, 30],
+                [2, "Liam", null, null],
+                [3, "Maya", 102, 80],
+              ],
+              rowHighlights: { 2: "new" },
+              note: "Liam stays in the result — his order columns are NULL.",
+            },
+          },
+          {
+            kind: "compare",
+            caption: "INNER vs LEFT — when to use which",
+            left: {
+              title: "INNER JOIN",
+              items: [
+                "Drops left rows with no match",
+                "Use when you only care about the intersection",
+                "Right answer for \"customers who actually ordered\"",
+              ],
+            },
+            right: {
+              title: "LEFT JOIN",
+              items: [
+                "Keeps every left row, right columns NULL when no match",
+                "Use when zero-count rows are meaningful",
+                "Right answer for \"every customer with their order count\"",
+              ],
+            },
+          },
           {
             kind: "steps",
             title: "Two killer use cases",
@@ -888,15 +1106,40 @@ export const SYLLABUS: Module[] = [
         id: "right-full-cross",
         title: "RIGHT, FULL OUTER, CROSS",
         blurb: "The less common joins.",
-        body: [
-          "RIGHT JOIN is the mirror of LEFT JOIN — preserves every row on the right. In practice, almost nobody writes RIGHT JOIN; swap the table order and use LEFT JOIN instead.",
-          "FULL OUTER JOIN keeps every row from both sides, padding with NULL where there's no match. CROSS JOIN multiplies — every left row paired with every right row (the Cartesian product). Usually a mistake unless intentional.",
-        ],
-        examples: [
+        bigIdea:
+          "RIGHT mirrors LEFT (rarely used). FULL OUTER keeps everything from both sides. CROSS pairs every left row with every right row.",
+        realWorld:
+          "Back to dance partners. FULL OUTER: everyone is on the floor, paired or not — both sides preserved. CROSS: chaos. Every left person dances with every right person. 5×5 = 25 pairs.",
+        body: [],
+        richBody: [
           {
-            code: "-- Every (size, color) combination\nSELECT s.size, c.color\nFROM sizes s CROSS JOIN colors c;",
+            kind: "venn",
+            type: "full",
+            leftLabel: "A",
+            rightLabel: "B",
+            caption: "FULL OUTER JOIN",
+            legend: "Keep every row from both sides. NULLs fill the gaps.",
+          },
+          {
+            kind: "callout",
+            tone: "note",
+            text: "RIGHT JOIN is just LEFT JOIN with the tables swapped. Almost no one writes RIGHT JOIN in real code — it reads more naturally to put the kept-everything side first and call it LEFT.",
+          },
+          {
+            kind: "p",
+            text: "CROSS JOIN has no ON clause. Every left row is paired with every right row. Result size = left_rows × right_rows. Useful for generating combinations (every size × every color = your full product catalog).",
+          },
+          {
+            kind: "code",
+            code: "-- every (size, color) combination\nSELECT s.size, c.color\nFROM sizes s CROSS JOIN colors c;",
+          },
+          {
+            kind: "callout",
+            tone: "warning",
+            text: "Accidental CROSS JOIN is a classic bug — if you forget the ON clause, some databases treat your INNER JOIN as a CROSS JOIN, multiplying your rows. Always include ON.",
           },
         ],
+        examples: [],
       },
       {
         id: "self-join",
