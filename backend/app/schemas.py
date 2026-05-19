@@ -164,3 +164,18 @@ class PerformanceResponse(BaseModel):
     summary: str
     suggestions: list[str]
     optimized_sql: str | None = None
+
+
+class LoadCuratedQuestionRequest(BaseModel):
+    """Frontend ships the full curated question payload; backend applies the
+    schema and registers it as the session's active question for grading."""
+
+    id: str
+    concept: str
+    difficulty: Literal["easy", "medium", "hard"]
+    prompt: str
+    ordered_results: bool
+    schema_setup_sql: str
+    schema_context: QuestionSchemaContext
+    expected_output: TableResult
+    reference_solution_sql: str

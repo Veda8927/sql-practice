@@ -1,4 +1,5 @@
 import type {
+  CuratedQuestion,
   ExplainResponse,
   ErrorHelpResponse,
   GiveUpResponse,
@@ -100,5 +101,20 @@ export const api = {
     request<PerformanceResponse>("/api/performance", {
       method: "POST",
       body: JSON.stringify({ sql }),
+    }),
+  loadCurated: (q: CuratedQuestion) =>
+    request<Question>("/api/curated/load", {
+      method: "POST",
+      body: JSON.stringify({
+        id: q.id,
+        concept: q.concept,
+        difficulty: q.difficulty,
+        prompt: q.prompt,
+        ordered_results: q.ordered_results,
+        schema_setup_sql: q.schema_setup_sql,
+        schema_context: q.schema_context,
+        expected_output: q.expected_output,
+        reference_solution_sql: q.reference_solution_sql,
+      }),
     }),
 };

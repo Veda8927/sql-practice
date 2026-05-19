@@ -1,0 +1,384 @@
+[
+  {
+    "id": "joins-001",
+    "concept": "joins",
+    "subconcept": "inner-join-basic",
+    "difficulty": "easy",
+    "prompt": "List every order with the customer's name and the order date. Return order_id, customer_name, order_date, sorted by order_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS order_items CASCADE;\nDROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS products CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, country TEXT NOT NULL, created_at DATE NOT NULL);\nCREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, price NUMERIC(10,2) NOT NULL);\nCREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(id), order_date DATE NOT NULL, status TEXT NOT NULL);\nCREATE TABLE order_items (order_id INTEGER NOT NULL REFERENCES orders(id), product_id INTEGER NOT NULL REFERENCES products(id), quantity INTEGER NOT NULL, PRIMARY KEY (order_id, product_id));\n\nINSERT INTO customers VALUES (1,'Ada Lovelace','ada@x.com','UK','2023-01-15'),(2,'Alan Turing','alan@x.com','UK','2023-02-20'),(3,'Grace Hopper','grace@x.com','US','2023-03-10'),(4,'Linus Torvalds','linus@x.com','FI','2023-04-05'),(5,'Margaret Hamilton','margaret@x.com','US','2023-05-22');\nINSERT INTO products VALUES (1,'Laptop','Electronics',1200.00),(2,'Mouse','Electronics',25.00),(3,'Notebook','Stationery',5.00),(4,'Pen Set','Stationery',15.00);\nINSERT INTO orders VALUES (1,1,'2024-01-10','completed'),(2,2,'2024-01-15','completed'),(3,1,'2024-02-01','shipped'),(4,3,'2024-02-12','completed'),(5,4,'2024-03-05','cancelled'),(6,3,'2024-03-20','completed');\nINSERT INTO order_items VALUES (1,1,1),(1,2,2),(2,3,5),(2,4,2),(3,2,1),(4,1,1),(4,3,3),(5,4,1),(6,2,3);",
+    "schema_context": {
+      "tables": [
+        { "name": "customers", "columns": ["id", "name", "email", "country", "created_at"] },
+        { "name": "products", "columns": ["id", "name", "category", "price"] },
+        { "name": "orders", "columns": ["id", "customer_id", "order_date", "status"] },
+        { "name": "order_items", "columns": ["order_id", "product_id", "quantity"] }
+      ],
+      "joins": [
+        { "from_table": "orders", "from_column": "customer_id", "to_table": "customers", "to_column": "id" },
+        { "from_table": "order_items", "from_column": "order_id", "to_table": "orders", "to_column": "id" },
+        { "from_table": "order_items", "from_column": "product_id", "to_table": "products", "to_column": "id" }
+      ]
+    },
+    "expected_output": {
+      "columns": ["order_id", "customer_name", "order_date"],
+      "rows": [
+        [1, "Ada Lovelace", "2024-01-10"],
+        [2, "Alan Turing", "2024-01-15"],
+        [3, "Ada Lovelace", "2024-02-01"],
+        [4, "Grace Hopper", "2024-02-12"],
+        [5, "Linus Torvalds", "2024-03-05"],
+        [6, "Grace Hopper", "2024-03-20"]
+      ]
+    },
+    "reference_solution_sql": "SELECT o.id AS order_id, c.name AS customer_name, o.order_date\nFROM orders o\nINNER JOIN customers c ON c.id = o.customer_id\nORDER BY o.id;",
+    "hints": [
+      { "hint": "You need columns from two tables (orders and customers). What kind of join keeps only rows that match in both?", "suggested_sql": null },
+      { "hint": "Join orders to customers on customer_id = id. Don't forget to alias the columns the prompt asks for.", "suggested_sql": null },
+      { "hint": "Use INNER JOIN and ORDER BY o.id at the end.", "suggested_sql": "SELECT o.id AS order_id, c.name AS customer_name, o.order_date\nFROM orders o\nINNER JOIN customers c ON c.id = o.customer_id\nORDER BY o.id;" }
+    ],
+    "solution_steps": [
+      { "title": "Pick the driver table", "what_it_does": "Start FROM orders because every row in the result corresponds to one order.", "sql_snippet": "FROM orders o", "how_postgres_reads_it": "Postgres scans the orders table first and treats each row as a candidate for the result." },
+      { "title": "Attach the customer name", "what_it_does": "INNER JOIN customers on the foreign key so each order picks up its customer's name.", "sql_snippet": "INNER JOIN customers c ON c.id = o.customer_id", "how_postgres_reads_it": "For each order row, Postgres looks up the matching customer by id and joins them side by side. Rows without a match are dropped — here every order has a customer." },
+      { "title": "Sort by order id", "what_it_does": "ORDER BY enforces the requested ascending order.", "sql_snippet": "ORDER BY o.id", "how_postgres_reads_it": "Postgres sorts the joined rows by o.id before returning them." }
+    ],
+    "solution_summary": "An INNER JOIN between orders and customers on the customer_id foreign key, sorted by order id.",
+    "solution_final_thought": "INNER JOIN is the default tool when you want only the rows that exist in both tables.",
+    "explanation": "INNER JOIN returns only rows where the ON condition matches in both tables. Since every order has a valid customer_id, all 6 orders appear. If an order had a customer_id that didn't exist in customers, it would be silently dropped — which is sometimes a bug worth checking for with a LEFT JOIN.",
+    "source": "hand-written",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "joins-002",
+    "concept": "joins",
+    "subconcept": "left-join-anti-join",
+    "difficulty": "easy",
+    "prompt": "Find every customer who has never placed an order. Return their name.",
+    "ordered_results": false,
+    "schema_setup_sql": "DROP TABLE IF EXISTS order_items CASCADE;\nDROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS products CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, country TEXT NOT NULL, created_at DATE NOT NULL);\nCREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, price NUMERIC(10,2) NOT NULL);\nCREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(id), order_date DATE NOT NULL, status TEXT NOT NULL);\nCREATE TABLE order_items (order_id INTEGER NOT NULL REFERENCES orders(id), product_id INTEGER NOT NULL REFERENCES products(id), quantity INTEGER NOT NULL, PRIMARY KEY (order_id, product_id));\n\nINSERT INTO customers VALUES (1,'Ada Lovelace','ada@x.com','UK','2023-01-15'),(2,'Alan Turing','alan@x.com','UK','2023-02-20'),(3,'Grace Hopper','grace@x.com','US','2023-03-10'),(4,'Linus Torvalds','linus@x.com','FI','2023-04-05'),(5,'Margaret Hamilton','margaret@x.com','US','2023-05-22');\nINSERT INTO products VALUES (1,'Laptop','Electronics',1200.00),(2,'Mouse','Electronics',25.00),(3,'Notebook','Stationery',5.00),(4,'Pen Set','Stationery',15.00);\nINSERT INTO orders VALUES (1,1,'2024-01-10','completed'),(2,2,'2024-01-15','completed'),(3,1,'2024-02-01','shipped'),(4,3,'2024-02-12','completed'),(5,4,'2024-03-05','cancelled'),(6,3,'2024-03-20','completed');\nINSERT INTO order_items VALUES (1,1,1),(1,2,2),(2,3,5),(2,4,2),(3,2,1),(4,1,1),(4,3,3),(5,4,1),(6,2,3);",
+    "schema_context": {
+      "tables": [
+        { "name": "customers", "columns": ["id", "name", "email", "country", "created_at"] },
+        { "name": "products", "columns": ["id", "name", "category", "price"] },
+        { "name": "orders", "columns": ["id", "customer_id", "order_date", "status"] },
+        { "name": "order_items", "columns": ["order_id", "product_id", "quantity"] }
+      ],
+      "joins": [
+        { "from_table": "orders", "from_column": "customer_id", "to_table": "customers", "to_column": "id" },
+        { "from_table": "order_items", "from_column": "order_id", "to_table": "orders", "to_column": "id" },
+        { "from_table": "order_items", "from_column": "product_id", "to_table": "products", "to_column": "id" }
+      ]
+    },
+    "expected_output": {
+      "columns": ["name"],
+      "rows": [["Margaret Hamilton"]]
+    },
+    "reference_solution_sql": "SELECT c.name\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nWHERE o.id IS NULL;",
+    "hints": [
+      { "hint": "Think about it as 'customers minus customers-who-have-orders'. What join keeps every customer even when no order matches?", "suggested_sql": null },
+      { "hint": "LEFT JOIN preserves all rows from the left side and fills the right side with NULLs when there's no match.", "suggested_sql": null },
+      { "hint": "After the LEFT JOIN, filter for WHERE orders.id IS NULL — those are the customers without any orders.", "suggested_sql": "SELECT c.name\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nWHERE o.id IS NULL;" }
+    ],
+    "solution_steps": [
+      { "title": "Start with all customers", "what_it_does": "We want a row for every customer, even those with no orders, so customers is the LEFT table.", "sql_snippet": "FROM customers c", "how_postgres_reads_it": "Postgres begins with every customer row." },
+      { "title": "LEFT JOIN to orders", "what_it_does": "A LEFT JOIN keeps every customer; non-matching customers get NULLs for orders' columns.", "sql_snippet": "LEFT JOIN orders o ON o.customer_id = c.id", "how_postgres_reads_it": "For each customer, Postgres looks for orders. If none exist, it still emits the customer with NULL order fields." },
+      { "title": "Filter for the NULL side", "what_it_does": "Customers who never ordered are exactly the rows where the orders side is NULL.", "sql_snippet": "WHERE o.id IS NULL", "how_postgres_reads_it": "Postgres keeps only rows where the orders.id field is NULL — i.e., no match was found." }
+    ],
+    "solution_summary": "LEFT JOIN + WHERE IS NULL — the classic anti-join pattern.",
+    "solution_final_thought": "This pattern is everywhere: 'find X without any Y' = LEFT JOIN X to Y, filter where Y.id IS NULL.",
+    "explanation": "LEFT JOIN preserves every row from customers. Customers who have orders produce one or more joined rows with non-NULL orders.id. Customers with no orders produce a single row with NULL on the orders side. Filtering WHERE o.id IS NULL isolates exactly the second group.",
+    "source": "hand-written",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "joins-003",
+    "concept": "joins",
+    "subconcept": "join-with-group-by-count",
+    "difficulty": "medium",
+    "prompt": "For each customer who has placed at least one order, return the customer name and the number of orders they have placed. Sort by order count descending, breaking ties by name ascending.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS order_items CASCADE;\nDROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS products CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, country TEXT NOT NULL, created_at DATE NOT NULL);\nCREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, price NUMERIC(10,2) NOT NULL);\nCREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(id), order_date DATE NOT NULL, status TEXT NOT NULL);\nCREATE TABLE order_items (order_id INTEGER NOT NULL REFERENCES orders(id), product_id INTEGER NOT NULL REFERENCES products(id), quantity INTEGER NOT NULL, PRIMARY KEY (order_id, product_id));\n\nINSERT INTO customers VALUES (1,'Ada Lovelace','ada@x.com','UK','2023-01-15'),(2,'Alan Turing','alan@x.com','UK','2023-02-20'),(3,'Grace Hopper','grace@x.com','US','2023-03-10'),(4,'Linus Torvalds','linus@x.com','FI','2023-04-05'),(5,'Margaret Hamilton','margaret@x.com','US','2023-05-22');\nINSERT INTO products VALUES (1,'Laptop','Electronics',1200.00),(2,'Mouse','Electronics',25.00),(3,'Notebook','Stationery',5.00),(4,'Pen Set','Stationery',15.00);\nINSERT INTO orders VALUES (1,1,'2024-01-10','completed'),(2,2,'2024-01-15','completed'),(3,1,'2024-02-01','shipped'),(4,3,'2024-02-12','completed'),(5,4,'2024-03-05','cancelled'),(6,3,'2024-03-20','completed');\nINSERT INTO order_items VALUES (1,1,1),(1,2,2),(2,3,5),(2,4,2),(3,2,1),(4,1,1),(4,3,3),(5,4,1),(6,2,3);",
+    "schema_context": {
+      "tables": [
+        { "name": "customers", "columns": ["id", "name", "email", "country", "created_at"] },
+        { "name": "products", "columns": ["id", "name", "category", "price"] },
+        { "name": "orders", "columns": ["id", "customer_id", "order_date", "status"] },
+        { "name": "order_items", "columns": ["order_id", "product_id", "quantity"] }
+      ],
+      "joins": [
+        { "from_table": "orders", "from_column": "customer_id", "to_table": "customers", "to_column": "id" },
+        { "from_table": "order_items", "from_column": "order_id", "to_table": "orders", "to_column": "id" },
+        { "from_table": "order_items", "from_column": "product_id", "to_table": "products", "to_column": "id" }
+      ]
+    },
+    "expected_output": {
+      "columns": ["name", "order_count"],
+      "rows": [
+        ["Ada Lovelace", 2],
+        ["Grace Hopper", 2],
+        ["Alan Turing", 1],
+        ["Linus Torvalds", 1]
+      ]
+    },
+    "reference_solution_sql": "SELECT c.name, COUNT(o.id) AS order_count\nFROM customers c\nINNER JOIN orders o ON o.customer_id = c.id\nGROUP BY c.name\nORDER BY order_count DESC, c.name;",
+    "hints": [
+      { "hint": "You need a join plus an aggregation. Which join only keeps customers who have orders?", "suggested_sql": null },
+      { "hint": "INNER JOIN + GROUP BY customer + COUNT of orders.", "suggested_sql": null },
+      { "hint": "GROUP BY the customer's name, COUNT(orders.id), then ORDER BY count DESC, name ASC.", "suggested_sql": "SELECT c.name, COUNT(o.id) AS order_count\nFROM customers c\nINNER JOIN orders o ON o.customer_id = c.id\nGROUP BY c.name\nORDER BY order_count DESC, c.name;" }
+    ],
+    "solution_steps": [
+      { "title": "Inner-join customers to orders", "what_it_does": "INNER JOIN drops customers with no orders, which is exactly what the prompt asks for.", "sql_snippet": "FROM customers c INNER JOIN orders o ON o.customer_id = c.id", "how_postgres_reads_it": "For each customer, Postgres pairs them with each of their orders, dropping customers with zero matches." },
+      { "title": "Aggregate by customer", "what_it_does": "GROUP BY collapses the per-order rows back to one row per customer; COUNT counts them.", "sql_snippet": "GROUP BY c.name", "how_postgres_reads_it": "Postgres buckets joined rows by name and computes COUNT(o.id) per bucket." },
+      { "title": "Sort by count, then name", "what_it_does": "ORDER BY produces the exact ordering the prompt demands.", "sql_snippet": "ORDER BY order_count DESC, c.name", "how_postgres_reads_it": "Postgres sorts: first by count descending, ties broken by name ascending." }
+    ],
+    "solution_summary": "INNER JOIN customers to orders, GROUP BY name, COUNT(orders), order by count then name.",
+    "solution_final_thought": "When a prompt says 'for each X that has Y', INNER JOIN naturally enforces the 'has Y' part.",
+    "explanation": "The INNER JOIN naturally excludes Margaret (who has no orders) because there's no row in orders for her. GROUP BY c.name buckets the joined rows by customer, and COUNT(o.id) counts orders per bucket. Ada and Grace each have 2 orders; Alan and Linus each have 1.",
+    "source": "hand-written",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "joins-004",
+    "concept": "joins",
+    "subconcept": "multi-table-join-aggregation",
+    "difficulty": "medium",
+    "prompt": "For each customer who has placed at least one order, compute their total spend (sum of price × quantity across every order item). Return name and total_spend, sorted by total_spend descending.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS order_items CASCADE;\nDROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS products CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, country TEXT NOT NULL, created_at DATE NOT NULL);\nCREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, price NUMERIC(10,2) NOT NULL);\nCREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(id), order_date DATE NOT NULL, status TEXT NOT NULL);\nCREATE TABLE order_items (order_id INTEGER NOT NULL REFERENCES orders(id), product_id INTEGER NOT NULL REFERENCES products(id), quantity INTEGER NOT NULL, PRIMARY KEY (order_id, product_id));\n\nINSERT INTO customers VALUES (1,'Ada Lovelace','ada@x.com','UK','2023-01-15'),(2,'Alan Turing','alan@x.com','UK','2023-02-20'),(3,'Grace Hopper','grace@x.com','US','2023-03-10'),(4,'Linus Torvalds','linus@x.com','FI','2023-04-05'),(5,'Margaret Hamilton','margaret@x.com','US','2023-05-22');\nINSERT INTO products VALUES (1,'Laptop','Electronics',1200.00),(2,'Mouse','Electronics',25.00),(3,'Notebook','Stationery',5.00),(4,'Pen Set','Stationery',15.00);\nINSERT INTO orders VALUES (1,1,'2024-01-10','completed'),(2,2,'2024-01-15','completed'),(3,1,'2024-02-01','shipped'),(4,3,'2024-02-12','completed'),(5,4,'2024-03-05','cancelled'),(6,3,'2024-03-20','completed');\nINSERT INTO order_items VALUES (1,1,1),(1,2,2),(2,3,5),(2,4,2),(3,2,1),(4,1,1),(4,3,3),(5,4,1),(6,2,3);",
+    "schema_context": {
+      "tables": [
+        { "name": "customers", "columns": ["id", "name", "email", "country", "created_at"] },
+        { "name": "products", "columns": ["id", "name", "category", "price"] },
+        { "name": "orders", "columns": ["id", "customer_id", "order_date", "status"] },
+        { "name": "order_items", "columns": ["order_id", "product_id", "quantity"] }
+      ],
+      "joins": [
+        { "from_table": "orders", "from_column": "customer_id", "to_table": "customers", "to_column": "id" },
+        { "from_table": "order_items", "from_column": "order_id", "to_table": "orders", "to_column": "id" },
+        { "from_table": "order_items", "from_column": "product_id", "to_table": "products", "to_column": "id" }
+      ]
+    },
+    "expected_output": {
+      "columns": ["name", "total_spend"],
+      "rows": [
+        ["Grace Hopper", "1290.00"],
+        ["Ada Lovelace", "1275.00"],
+        ["Alan Turing", "55.00"],
+        ["Linus Torvalds", "15.00"]
+      ]
+    },
+    "reference_solution_sql": "SELECT c.name, SUM(p.price * oi.quantity) AS total_spend\nFROM customers c\nINNER JOIN orders o ON o.customer_id = c.id\nINNER JOIN order_items oi ON oi.order_id = o.id\nINNER JOIN products p ON p.id = oi.product_id\nGROUP BY c.name\nORDER BY total_spend DESC;",
+    "hints": [
+      { "hint": "Trace the path from a customer to a price: customers → orders → order_items → products. That's four tables.", "suggested_sql": null },
+      { "hint": "Chain three INNER JOINs to thread customers all the way to products, then SUM(price * quantity).", "suggested_sql": null },
+      { "hint": "GROUP BY customer name, aggregate SUM(p.price * oi.quantity), order by it descending.", "suggested_sql": "SELECT c.name, SUM(p.price * oi.quantity) AS total_spend\nFROM customers c\nINNER JOIN orders o ON o.customer_id = c.id\nINNER JOIN order_items oi ON oi.order_id = o.id\nINNER JOIN products p ON p.id = oi.product_id\nGROUP BY c.name\nORDER BY total_spend DESC;" }
+    ],
+    "solution_steps": [
+      { "title": "Walk the foreign keys", "what_it_does": "Each JOIN follows one FK relationship: customer → order → order_item → product.", "sql_snippet": "FROM customers c\nINNER JOIN orders o ON o.customer_id = c.id\nINNER JOIN order_items oi ON oi.order_id = o.id\nINNER JOIN products p ON p.id = oi.product_id", "how_postgres_reads_it": "Postgres expands the row set step by step: every customer gets paired with their orders, each order with its items, each item with its product." },
+      { "title": "Sum the line totals", "what_it_does": "Each row in the joined set is one order item; price × quantity gives its dollar value.", "sql_snippet": "SUM(p.price * oi.quantity) AS total_spend", "how_postgres_reads_it": "Within each customer group, Postgres multiplies and sums across every joined order_item row." },
+      { "title": "Group and sort", "what_it_does": "GROUP BY collapses to one row per customer; ORDER BY ranks them by spend.", "sql_snippet": "GROUP BY c.name\nORDER BY total_spend DESC", "how_postgres_reads_it": "Postgres buckets by name, computes the SUM per bucket, then sorts descending." }
+    ],
+    "solution_summary": "Four-table INNER JOIN chain along the FKs, then GROUP BY customer with SUM(price × quantity).",
+    "solution_final_thought": "When in doubt, draw the FK graph on paper. Joins follow the arrows.",
+    "explanation": "Each row in the joined set represents one product within one order placed by one customer. Multiplying price by quantity gives a per-line dollar amount; summing within each customer group gives their total. Margaret is excluded by INNER JOIN since she has no orders. Postgres returns NUMERIC(10,2) totals as strings to preserve precision, hence the quoted values.",
+    "source": "hand-written",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "joins-005",
+    "concept": "joins",
+    "subconcept": "left-join-coalesce-zero",
+    "difficulty": "medium",
+    "prompt": "List every customer with their total spend, including customers who have spent nothing (show 0 for them). Return name and total_spend, sorted by name ascending.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS order_items CASCADE;\nDROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS products CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, country TEXT NOT NULL, created_at DATE NOT NULL);\nCREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, price NUMERIC(10,2) NOT NULL);\nCREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(id), order_date DATE NOT NULL, status TEXT NOT NULL);\nCREATE TABLE order_items (order_id INTEGER NOT NULL REFERENCES orders(id), product_id INTEGER NOT NULL REFERENCES products(id), quantity INTEGER NOT NULL, PRIMARY KEY (order_id, product_id));\n\nINSERT INTO customers VALUES (1,'Ada Lovelace','ada@x.com','UK','2023-01-15'),(2,'Alan Turing','alan@x.com','UK','2023-02-20'),(3,'Grace Hopper','grace@x.com','US','2023-03-10'),(4,'Linus Torvalds','linus@x.com','FI','2023-04-05'),(5,'Margaret Hamilton','margaret@x.com','US','2023-05-22');\nINSERT INTO products VALUES (1,'Laptop','Electronics',1200.00),(2,'Mouse','Electronics',25.00),(3,'Notebook','Stationery',5.00),(4,'Pen Set','Stationery',15.00);\nINSERT INTO orders VALUES (1,1,'2024-01-10','completed'),(2,2,'2024-01-15','completed'),(3,1,'2024-02-01','shipped'),(4,3,'2024-02-12','completed'),(5,4,'2024-03-05','cancelled'),(6,3,'2024-03-20','completed');\nINSERT INTO order_items VALUES (1,1,1),(1,2,2),(2,3,5),(2,4,2),(3,2,1),(4,1,1),(4,3,3),(5,4,1),(6,2,3);",
+    "schema_context": {
+      "tables": [
+        { "name": "customers", "columns": ["id", "name", "email", "country", "created_at"] },
+        { "name": "products", "columns": ["id", "name", "category", "price"] },
+        { "name": "orders", "columns": ["id", "customer_id", "order_date", "status"] },
+        { "name": "order_items", "columns": ["order_id", "product_id", "quantity"] }
+      ],
+      "joins": [
+        { "from_table": "orders", "from_column": "customer_id", "to_table": "customers", "to_column": "id" },
+        { "from_table": "order_items", "from_column": "order_id", "to_table": "orders", "to_column": "id" },
+        { "from_table": "order_items", "from_column": "product_id", "to_table": "products", "to_column": "id" }
+      ]
+    },
+    "expected_output": {
+      "columns": ["name", "total_spend"],
+      "rows": [
+        ["Ada Lovelace", "1275.00"],
+        ["Alan Turing", "55.00"],
+        ["Grace Hopper", "1290.00"],
+        ["Linus Torvalds", "15.00"],
+        ["Margaret Hamilton", "0.00"]
+      ]
+    },
+    "reference_solution_sql": "SELECT c.name, COALESCE(SUM(p.price * oi.quantity), 0)::numeric(10,2) AS total_spend\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nLEFT JOIN order_items oi ON oi.order_id = o.id\nLEFT JOIN products p ON p.id = oi.product_id\nGROUP BY c.name\nORDER BY c.name;",
+    "hints": [
+      { "hint": "INNER JOIN would drop customers with no orders. What join keeps them?", "suggested_sql": null },
+      { "hint": "Chain LEFT JOINs from customers outward. SUM of NULL is NULL — handle that.", "suggested_sql": null },
+      { "hint": "Use COALESCE(SUM(...), 0) to turn the NULL total into 0 for customers without orders.", "suggested_sql": "SELECT c.name, COALESCE(SUM(p.price * oi.quantity), 0)::numeric(10,2) AS total_spend\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nLEFT JOIN order_items oi ON oi.order_id = o.id\nLEFT JOIN products p ON p.id = oi.product_id\nGROUP BY c.name\nORDER BY c.name;" }
+    ],
+    "solution_steps": [
+      { "title": "Switch every JOIN to LEFT JOIN", "what_it_does": "Preserves every customer, even if the downstream tables have nothing to attach.", "sql_snippet": "FROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nLEFT JOIN order_items oi ON oi.order_id = o.id\nLEFT JOIN products p ON p.id = oi.product_id", "how_postgres_reads_it": "Margaret survives every join because LEFT JOIN keeps her row with NULLs on the right." },
+      { "title": "Aggregate, but handle NULL", "what_it_does": "SUM ignores NULLs and returns NULL when every input is NULL. COALESCE rewrites that as 0.", "sql_snippet": "COALESCE(SUM(p.price * oi.quantity), 0) AS total_spend", "how_postgres_reads_it": "For Margaret's bucket, all the price × quantity values are NULL, so SUM returns NULL; COALESCE turns it into 0." },
+      { "title": "Cast for nice formatting", "what_it_does": "Casting to numeric(10,2) gives 0.00 instead of plain 0.", "sql_snippet": "::numeric(10,2)", "how_postgres_reads_it": "Postgres formats the integer 0 as 0.00 to match the other rows' precision." }
+    ],
+    "solution_summary": "LEFT JOIN preserves every customer; COALESCE(SUM(...), 0) prevents NULLs in the spend column.",
+    "solution_final_thought": "INNER vs LEFT is the single biggest source of off-by-one bugs in real SQL. Default to LEFT when the prompt says 'every X, including those without Y'.",
+    "explanation": "LEFT JOIN keeps Margaret in the result set with NULL on the right side of every join. SUM over an all-NULL group returns NULL (not 0), so we wrap it in COALESCE to coerce to 0. The explicit cast to numeric(10,2) gives consistent decimal formatting across all rows.",
+    "source": "hand-written",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "joins-006",
+    "concept": "joins",
+    "subconcept": "self-join-hierarchy",
+    "difficulty": "hard",
+    "prompt": "Return every employee's name alongside their manager's name. Top-level employees with no manager should appear with NULL as the manager. Sort by employee name ascending.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS order_items CASCADE;\nDROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS products CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\nDROP TABLE IF EXISTS employees CASCADE;\n\nCREATE TABLE employees (id INTEGER PRIMARY KEY, name TEXT NOT NULL, title TEXT NOT NULL, manager_id INTEGER REFERENCES employees(id));\n\nINSERT INTO employees VALUES (1,'Alice','CEO',NULL),(2,'Bob','VP Engineering',1),(3,'Carol','VP Sales',1),(4,'Dave','Engineering Manager',2),(5,'Eve','Senior Engineer',4),(6,'Frank','Sales Rep',3);",
+    "schema_context": {
+      "tables": [
+        { "name": "employees", "columns": ["id", "name", "title", "manager_id"] }
+      ],
+      "joins": [
+        { "from_table": "employees", "from_column": "manager_id", "to_table": "employees", "to_column": "id" }
+      ]
+    },
+    "expected_output": {
+      "columns": ["employee", "manager"],
+      "rows": [
+        ["Alice", null],
+        ["Bob", "Alice"],
+        ["Carol", "Alice"],
+        ["Dave", "Bob"],
+        ["Eve", "Dave"],
+        ["Frank", "Carol"]
+      ]
+    },
+    "reference_solution_sql": "SELECT e.name AS employee, m.name AS manager\nFROM employees e\nLEFT JOIN employees m ON m.id = e.manager_id\nORDER BY e.name;",
+    "hints": [
+      { "hint": "You only have one table. Can you use it twice?", "suggested_sql": null },
+      { "hint": "Self-join: alias the same table as both 'e' (the employee) and 'm' (the manager).", "suggested_sql": null },
+      { "hint": "LEFT JOIN — not INNER — because Alice has no manager and you still want to see her.", "suggested_sql": "SELECT e.name AS employee, m.name AS manager\nFROM employees e\nLEFT JOIN employees m ON m.id = e.manager_id\nORDER BY e.name;" }
+    ],
+    "solution_steps": [
+      { "title": "Alias the table twice", "what_it_does": "Treat employees as two logical tables: one for the employee, one for their manager.", "sql_snippet": "FROM employees e\nLEFT JOIN employees m ON m.id = e.manager_id", "how_postgres_reads_it": "Postgres scans employees once for the 'e' alias, then re-scans for each lookup against the 'm' alias matched by id." },
+      { "title": "Choose LEFT JOIN", "what_it_does": "Preserves employees who have no manager (their manager_id is NULL).", "sql_snippet": "LEFT JOIN employees m ON m.id = e.manager_id", "how_postgres_reads_it": "Alice has manager_id NULL — LEFT JOIN keeps her row with NULL on the manager side." },
+      { "title": "Project and sort", "what_it_does": "Alias the columns to 'employee' and 'manager', and sort by employee name.", "sql_snippet": "SELECT e.name AS employee, m.name AS manager\nORDER BY e.name", "how_postgres_reads_it": "Postgres outputs the two name columns and sorts the result alphabetically by employee." }
+    ],
+    "solution_summary": "Self-join the employees table to itself: 'e' for employee, 'm' for manager. LEFT JOIN so top-level rows survive.",
+    "solution_final_thought": "Self-joins feel weird the first time but they're just two aliases of the same table. Reading 'e' and 'm' helps your brain treat them as separate.",
+    "explanation": "A self-join lets one row of a table reference another row of the same table. Aliasing the table as 'e' and 'm' makes it look like two tables to Postgres. LEFT JOIN ensures Alice (manager_id IS NULL) still appears in the output, with NULL on the manager side.",
+    "source": "hand-written",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "joins-007",
+    "concept": "joins",
+    "subconcept": "join-with-filter",
+    "difficulty": "medium",
+    "prompt": "Find every distinct product (by name) that has ever been ordered by a customer from the US. Return product names sorted alphabetically.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS order_items CASCADE;\nDROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS products CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, country TEXT NOT NULL, created_at DATE NOT NULL);\nCREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, price NUMERIC(10,2) NOT NULL);\nCREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(id), order_date DATE NOT NULL, status TEXT NOT NULL);\nCREATE TABLE order_items (order_id INTEGER NOT NULL REFERENCES orders(id), product_id INTEGER NOT NULL REFERENCES products(id), quantity INTEGER NOT NULL, PRIMARY KEY (order_id, product_id));\n\nINSERT INTO customers VALUES (1,'Ada Lovelace','ada@x.com','UK','2023-01-15'),(2,'Alan Turing','alan@x.com','UK','2023-02-20'),(3,'Grace Hopper','grace@x.com','US','2023-03-10'),(4,'Linus Torvalds','linus@x.com','FI','2023-04-05'),(5,'Margaret Hamilton','margaret@x.com','US','2023-05-22');\nINSERT INTO products VALUES (1,'Laptop','Electronics',1200.00),(2,'Mouse','Electronics',25.00),(3,'Notebook','Stationery',5.00),(4,'Pen Set','Stationery',15.00);\nINSERT INTO orders VALUES (1,1,'2024-01-10','completed'),(2,2,'2024-01-15','completed'),(3,1,'2024-02-01','shipped'),(4,3,'2024-02-12','completed'),(5,4,'2024-03-05','cancelled'),(6,3,'2024-03-20','completed');\nINSERT INTO order_items VALUES (1,1,1),(1,2,2),(2,3,5),(2,4,2),(3,2,1),(4,1,1),(4,3,3),(5,4,1),(6,2,3);",
+    "schema_context": {
+      "tables": [
+        { "name": "customers", "columns": ["id", "name", "email", "country", "created_at"] },
+        { "name": "products", "columns": ["id", "name", "category", "price"] },
+        { "name": "orders", "columns": ["id", "customer_id", "order_date", "status"] },
+        { "name": "order_items", "columns": ["order_id", "product_id", "quantity"] }
+      ],
+      "joins": [
+        { "from_table": "orders", "from_column": "customer_id", "to_table": "customers", "to_column": "id" },
+        { "from_table": "order_items", "from_column": "order_id", "to_table": "orders", "to_column": "id" },
+        { "from_table": "order_items", "from_column": "product_id", "to_table": "products", "to_column": "id" }
+      ]
+    },
+    "expected_output": {
+      "columns": ["name"],
+      "rows": [["Laptop"], ["Mouse"], ["Notebook"]]
+    },
+    "reference_solution_sql": "SELECT DISTINCT p.name\nFROM products p\nINNER JOIN order_items oi ON oi.product_id = p.id\nINNER JOIN orders o ON o.id = oi.order_id\nINNER JOIN customers c ON c.id = o.customer_id\nWHERE c.country = 'US'\nORDER BY p.name;",
+    "hints": [
+      { "hint": "Trace the path: a product is connected to a customer via order_items and orders. You need three joins.", "suggested_sql": null },
+      { "hint": "After joining, filter WHERE customers.country = 'US' and use DISTINCT since the same product can be ordered multiple times.", "suggested_sql": null },
+      { "hint": "SELECT DISTINCT p.name, chain three INNER JOINs, WHERE c.country='US', ORDER BY p.name.", "suggested_sql": "SELECT DISTINCT p.name\nFROM products p\nINNER JOIN order_items oi ON oi.product_id = p.id\nINNER JOIN orders o ON o.id = oi.order_id\nINNER JOIN customers c ON c.id = o.customer_id\nWHERE c.country = 'US'\nORDER BY p.name;" }
+    ],
+    "solution_steps": [
+      { "title": "Connect product to customer", "what_it_does": "Three INNER JOINs walk from products through order_items and orders to customers.", "sql_snippet": "FROM products p\nINNER JOIN order_items oi ON oi.product_id = p.id\nINNER JOIN orders o ON o.id = oi.order_id\nINNER JOIN customers c ON c.id = o.customer_id", "how_postgres_reads_it": "Postgres builds a row per (product, order_item, order, customer) tuple where every FK matches." },
+      { "title": "Filter on customer country", "what_it_does": "Keep only joined rows where the customer is in the US.", "sql_snippet": "WHERE c.country = 'US'", "how_postgres_reads_it": "Postgres drops every joined tuple whose customer is not American." },
+      { "title": "De-duplicate", "what_it_does": "DISTINCT collapses duplicate product names (Grace ordered Mouse twice across two orders).", "sql_snippet": "SELECT DISTINCT p.name", "how_postgres_reads_it": "Postgres outputs each unique product name once." }
+    ],
+    "solution_summary": "Join product → order_item → order → customer, filter on country, DISTINCT the names.",
+    "solution_final_thought": "Whenever a join can fan out (one product appears in many order_items), reach for DISTINCT — or rewrite with EXISTS.",
+    "explanation": "After joining, each row is one order-item placed by some customer. Filtering on country = 'US' keeps only rows where the buyer is American. Without DISTINCT, the Mouse would appear twice (Grace ordered it across two different orders).",
+    "source": "hand-written",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "joins-008",
+    "concept": "joins",
+    "subconcept": "cross-join-anti-pattern",
+    "difficulty": "hard",
+    "prompt": "For each customer, list the products they have never ordered. Return customer_name and product_name, sorted by both ascending.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS order_items CASCADE;\nDROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS products CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, country TEXT NOT NULL, created_at DATE NOT NULL);\nCREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, price NUMERIC(10,2) NOT NULL);\nCREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(id), order_date DATE NOT NULL, status TEXT NOT NULL);\nCREATE TABLE order_items (order_id INTEGER NOT NULL REFERENCES orders(id), product_id INTEGER NOT NULL REFERENCES products(id), quantity INTEGER NOT NULL, PRIMARY KEY (order_id, product_id));\n\nINSERT INTO customers VALUES (1,'Ada Lovelace','ada@x.com','UK','2023-01-15'),(2,'Alan Turing','alan@x.com','UK','2023-02-20'),(3,'Grace Hopper','grace@x.com','US','2023-03-10'),(4,'Linus Torvalds','linus@x.com','FI','2023-04-05'),(5,'Margaret Hamilton','margaret@x.com','US','2023-05-22');\nINSERT INTO products VALUES (1,'Laptop','Electronics',1200.00),(2,'Mouse','Electronics',25.00),(3,'Notebook','Stationery',5.00),(4,'Pen Set','Stationery',15.00);\nINSERT INTO orders VALUES (1,1,'2024-01-10','completed'),(2,2,'2024-01-15','completed'),(3,1,'2024-02-01','shipped'),(4,3,'2024-02-12','completed'),(5,4,'2024-03-05','cancelled'),(6,3,'2024-03-20','completed');\nINSERT INTO order_items VALUES (1,1,1),(1,2,2),(2,3,5),(2,4,2),(3,2,1),(4,1,1),(4,3,3),(5,4,1),(6,2,3);",
+    "schema_context": {
+      "tables": [
+        { "name": "customers", "columns": ["id", "name", "email", "country", "created_at"] },
+        { "name": "products", "columns": ["id", "name", "category", "price"] },
+        { "name": "orders", "columns": ["id", "customer_id", "order_date", "status"] },
+        { "name": "order_items", "columns": ["order_id", "product_id", "quantity"] }
+      ],
+      "joins": [
+        { "from_table": "orders", "from_column": "customer_id", "to_table": "customers", "to_column": "id" },
+        { "from_table": "order_items", "from_column": "order_id", "to_table": "orders", "to_column": "id" },
+        { "from_table": "order_items", "from_column": "product_id", "to_table": "products", "to_column": "id" }
+      ]
+    },
+    "expected_output": {
+      "columns": ["customer_name", "product_name"],
+      "rows": [
+        ["Ada Lovelace", "Notebook"],
+        ["Ada Lovelace", "Pen Set"],
+        ["Alan Turing", "Laptop"],
+        ["Alan Turing", "Mouse"],
+        ["Grace Hopper", "Pen Set"],
+        ["Linus Torvalds", "Laptop"],
+        ["Linus Torvalds", "Mouse"],
+        ["Linus Torvalds", "Notebook"],
+        ["Margaret Hamilton", "Laptop"],
+        ["Margaret Hamilton", "Mouse"],
+        ["Margaret Hamilton", "Notebook"],
+        ["Margaret Hamilton", "Pen Set"]
+      ]
+    },
+    "reference_solution_sql": "SELECT c.name AS customer_name, p.name AS product_name\nFROM customers c\nCROSS JOIN products p\nWHERE NOT EXISTS (\n  SELECT 1 FROM orders o\n  JOIN order_items oi ON oi.order_id = o.id\n  WHERE o.customer_id = c.id AND oi.product_id = p.id\n)\nORDER BY c.name, p.name;",
+    "hints": [
+      { "hint": "Start by generating every possible (customer, product) pair. What join produces a cartesian product?", "suggested_sql": null },
+      { "hint": "CROSS JOIN customers with products to get all pairs. Then exclude the ones that exist in orders.", "suggested_sql": null },
+      { "hint": "Use NOT EXISTS with a correlated subquery against orders + order_items to subtract the pairs the customer has actually ordered.", "suggested_sql": "SELECT c.name AS customer_name, p.name AS product_name\nFROM customers c\nCROSS JOIN products p\nWHERE NOT EXISTS (\n  SELECT 1 FROM orders o\n  JOIN order_items oi ON oi.order_id = o.id\n  WHERE o.customer_id = c.id AND oi.product_id = p.id\n)\nORDER BY c.name, p.name;" }
+    ],
+    "solution_steps": [
+      { "title": "Generate every pair", "what_it_does": "CROSS JOIN pairs every customer with every product — 5 × 4 = 20 candidate rows.", "sql_snippet": "FROM customers c CROSS JOIN products p", "how_postgres_reads_it": "Postgres emits the cartesian product: every customer row combined with every product row." },
+      { "title": "Subtract the pairs that exist", "what_it_does": "NOT EXISTS keeps only pairs for which no matching order_item row exists.", "sql_snippet": "WHERE NOT EXISTS (\n  SELECT 1 FROM orders o\n  JOIN order_items oi ON oi.order_id = o.id\n  WHERE o.customer_id = c.id AND oi.product_id = p.id\n)", "how_postgres_reads_it": "For each (customer, product) pair, Postgres checks whether any order from that customer contains that product. If yes, the pair is dropped." },
+      { "title": "Sort the final list", "what_it_does": "Two-key ORDER BY produces the requested ordering.", "sql_snippet": "ORDER BY c.name, p.name", "how_postgres_reads_it": "Postgres sorts alphabetically by customer first, then by product within each customer." }
+    ],
+    "solution_summary": "CROSS JOIN gives every possible (customer, product) pair; NOT EXISTS removes the pairs the customer has actually ordered.",
+    "solution_final_thought": "When the question is 'for every X, find the Ys that DON'T exist', the cross-join-plus-anti-join pattern is your tool.",
+    "explanation": "CROSS JOIN produces 20 (customer, product) candidate pairs. The correlated NOT EXISTS subquery removes the 8 pairs that do exist as orders. The remaining 12 pairs are the answer. Equivalent rewrites exist using LEFT JOIN ... WHERE IS NULL or EXCEPT, but NOT EXISTS is usually the most readable.",
+    "source": "hand-written",
+    "license": "MIT",
+    "attribution_url": null
+  }
+]

@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-05-19",
+  "concepts": [
+    {
+      "concept": "joins",
+      "label": "Joins",
+      "category": "joins_relationships",
+      "count": 8,
+      "file": "joins.json"
+    },
+    {
+      "concept": "subqueries",
+      "label": "Subqueries",
+      "category": "query_patterns",
+      "count": 5,
+      "file": "subqueries.json"
+    },
+    {
+      "concept": "left_joins",
+      "label": "Left joins",
+      "category": "query_patterns",
+      "count": 25,
+      "file": "left_joins.json"
+    },
+    {
+      "concept": "self_joins",
+      "label": "Self joins",
+      "category": "query_patterns",
+      "count": 36,
+      "file": "self_joins.json"
+    }
+  ]
+}

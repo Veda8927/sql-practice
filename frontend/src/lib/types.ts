@@ -126,3 +126,43 @@ export type PerformanceResponse = {
   suggestions: string[];
   optimized_sql: string | null;
 };
+
+export type CuratedHint = {
+  hint: string;
+  suggested_sql: string | null;
+};
+
+export type CuratedQuestion = {
+  id: string;
+  concept: string;
+  subconcept?: string;
+  difficulty: Difficulty;
+  prompt: string;
+  ordered_results: boolean;
+  schema_setup_sql: string;
+  schema_context: QuestionSchemaContext | null;
+  expected_output: TableResult;
+  reference_solution_sql: string;
+  hints: CuratedHint[];
+  solution_steps: SolutionStep[];
+  solution_summary: string;
+  solution_final_thought: string;
+  explanation: string;
+  source: string;
+  license: string;
+  attribution_url: string | null;
+};
+
+export type CuratedConceptIndex = {
+  concept: string;
+  label: string;
+  category: string;
+  count: number;
+  file: string;
+};
+
+export type CuratedIndex = {
+  generated_at: string;
+  concepts: CuratedConceptIndex[];
+};
+

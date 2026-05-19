@@ -1,0 +1,455 @@
+[
+  {
+    "id": "subqueries-001",
+    "concept": "subqueries",
+    "subconcept": "scalar-subquery-basics",
+    "difficulty": "easy",
+    "prompt": "Retrieve the names of all doctors who have treated patients with a specific condition 'Flu'. Return doctor_id and doctor_name, ensuring that each doctor is listed only once.",
+    "ordered_results": false,
+    "schema_setup_sql": "DROP TABLE IF EXISTS treatments CASCADE;\nDROP TABLE IF EXISTS doctors CASCADE;\nDROP TABLE IF EXISTS patients CASCADE;\n\nCREATE TABLE doctors (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE patients (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE treatments (patient_id INTEGER REFERENCES patients(id), doctor_id INTEGER REFERENCES doctors(id), condition TEXT NOT NULL);\n\nINSERT INTO doctors VALUES (1, 'Dr. Smith'), (2, 'Dr. Jones'), (3, 'Dr. Taylor');\nINSERT INTO patients VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');\nINSERT INTO treatments VALUES (1, 1, 'Flu'), (2, 1, 'Cold'), (3, 2, 'Flu'), (1, 3, 'Flu');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "doctors",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "patients",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "treatments",
+          "columns": [
+            "patient_id",
+            "doctor_id",
+            "condition"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "doctor_id",
+        "doctor_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Dr. Smith"
+        ],
+        [
+          2,
+          "Dr. Jones"
+        ],
+        [
+          3,
+          "Dr. Taylor"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT DISTINCT d.id AS doctor_id, d.name AS doctor_name\nFROM doctors d\nWHERE d.id IN (SELECT t.doctor_id FROM treatments t WHERE t.condition = 'Flu');",
+    "hints": [
+      {
+        "hint": "You need to find doctors based on a condition present in treatments. Can you think of a way to filter on a subquery?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using an IN clause to filter doctors based on the results of a subquery from treatments.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a subquery in the WHERE clause to select doctor_ids from treatments where the condition is 'Flu'.",
+        "suggested_sql": "SELECT DISTINCT d.id AS doctor_id, d.name AS doctor_name\nFROM doctors d\nWHERE d.id IN (SELECT t.doctor_id FROM treatments t WHERE t.condition = 'Flu');"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Identify distinct doctors",
+        "what_it_does": "Select distinct doctors who treated patients with 'Flu'.",
+        "sql_snippet": "SELECT DISTINCT d.id AS doctor_id, d.name AS doctor_name",
+        "how_postgres_reads_it": "Postgres prepares to fetch unique doctor information."
+      },
+      {
+        "title": "Subquery for filtering",
+        "what_it_does": "Filter doctors based on their IDs matching the ones found in treatments for 'Flu'.",
+        "sql_snippet": "WHERE d.id IN (SELECT t.doctor_id FROM treatments t WHERE t.condition = 'Flu')",
+        "how_postgres_reads_it": "Postgres executes the subquery first, retrieving all doctor_ids associated with 'Flu' and then filtering the main query."
+      },
+      {
+        "title": "Return results",
+        "what_it_does": "Return the final list of doctor IDs and names.",
+        "sql_snippet": "",
+        "how_postgres_reads_it": "Postgres compiles the results based on the conditions met in the previous steps."
+      }
+    ],
+    "solution_summary": "A subquery is used to filter doctors based on treatments for 'Flu'.",
+    "solution_final_thought": "Using a subquery allows you to dynamically filter results based on related data.",
+    "explanation": "The use of a subquery in the WHERE clause allows us to filter doctors based on conditions treated. The subquery retrieves relevant doctor_ids, which are then used to select the distinct doctors. This approach prevents duplicate entries and ensures that we only get the relevant doctors who treated the specified condition.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "subqueries-002",
+    "concept": "subqueries",
+    "subconcept": "correlated-subquery",
+    "difficulty": "medium",
+    "prompt": "List each patient along with the total number of treatments they have received. Return patient_id, patient_name, and treatment_count, sorted by treatment_count in descending order.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS treatments CASCADE;\nDROP TABLE IF EXISTS patients CASCADE;\n\nCREATE TABLE patients (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE treatments (patient_id INTEGER REFERENCES patients(id), condition TEXT NOT NULL);\n\nINSERT INTO patients VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');\nINSERT INTO treatments VALUES (1, 'Flu'), (1, 'Cold'), (2, 'Flu'), (3, 'Flu'), (3, 'Cold'), (3, 'Headache');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "patients",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "treatments",
+          "columns": [
+            "patient_id",
+            "condition"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "patient_id",
+        "patient_name",
+        "treatment_count"
+      ],
+      "rows": [
+        [
+          3,
+          "Charlie",
+          3
+        ],
+        [
+          1,
+          "Alice",
+          2
+        ],
+        [
+          2,
+          "Bob",
+          1
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.id AS patient_id, p.name AS patient_name,\n       (SELECT COUNT(*) FROM treatments t WHERE t.patient_id = p.id) AS treatment_count\nFROM patients p\nORDER BY treatment_count DESC;",
+    "hints": [
+      {
+        "hint": "You need to count treatments for each patient. Think about how to relate the treatments back to each patient.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using a correlated subquery that counts treatments based on the patient ID.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a subquery in the SELECT clause to count the treatments for each patient by matching patient_id.",
+        "suggested_sql": "SELECT p.id AS patient_id, p.name AS patient_name,\n       (SELECT COUNT(*) FROM treatments t WHERE t.patient_id = p.id) AS treatment_count\nFROM patients p\nORDER BY treatment_count DESC;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select patient details",
+        "what_it_does": "Select patient id and name from patients table.",
+        "sql_snippet": "SELECT p.id AS patient_id, p.name AS patient_name",
+        "how_postgres_reads_it": "Postgres starts with the patients table to gather basic information."
+      },
+      {
+        "title": "Count treatments with a correlated subquery",
+        "what_it_does": "Add a subquery to count the number of treatments for each patient.",
+        "sql_snippet": "(SELECT COUNT(*) FROM treatments t WHERE t.patient_id = p.id) AS treatment_count",
+        "how_postgres_reads_it": "For each patient row, Postgres runs the subquery, counting how many treatments correspond to that patient."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "Sort the final results by treatment count in descending order.",
+        "sql_snippet": "ORDER BY treatment_count DESC",
+        "how_postgres_reads_it": "Postgres organizes the output based on the treatment counts, ensuring the highest counts appear first."
+      }
+    ],
+    "solution_summary": "A correlated subquery is used to count the number of treatments per patient, sorted by treatment count.",
+    "solution_final_thought": "Correlated subqueries allow you to reference the outer query's row, making them powerful for row-specific calculations.",
+    "explanation": "The correlated subquery counts treatments for each patient by referencing the patient's ID in the outer query. This enables precise counting based on the unique patient, and ordering by treatment count ensures the desired sorting of results.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "subqueries-003",
+    "concept": "subqueries",
+    "subconcept": "exists-subquery",
+    "difficulty": "medium",
+    "prompt": "Find all doctors who have treated patients with more than one condition. Return doctor_id and doctor_name, sorted by doctor_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS treatments CASCADE;\nDROP TABLE IF EXISTS doctors CASCADE;\nDROP TABLE IF EXISTS patients CASCADE;\n\nCREATE TABLE doctors (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE patients (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE treatments (patient_id INTEGER REFERENCES patients(id), doctor_id INTEGER REFERENCES doctors(id), condition TEXT NOT NULL);\n\nINSERT INTO doctors VALUES (1, 'Dr. Smith'), (2, 'Dr. Jones'), (3, 'Dr. Taylor');\nINSERT INTO patients VALUES (1, 'Alice'), (2, 'Bob');\nINSERT INTO treatments VALUES (1, 1, 'Flu'), (1, 1, 'Cold'), (2, 1, 'Allergy'), (2, 2, 'Flu'), (2, 2, 'Cold');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "doctors",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "patients",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "treatments",
+          "columns": [
+            "patient_id",
+            "doctor_id",
+            "condition"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "doctor_id",
+        "doctor_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Dr. Smith"
+        ],
+        [
+          2,
+          "Dr. Jones"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT d.id AS doctor_id, d.name AS doctor_name\nFROM doctors d\nWHERE EXISTS (\n    SELECT 1\n    FROM treatments t\n    WHERE t.doctor_id = d.id\n    GROUP BY t.patient_id\n    HAVING COUNT(DISTINCT t.condition) > 1\n)\nORDER BY d.id;",
+    "hints": [
+      {
+        "hint": "You need to filter doctors based on the number of conditions they have treated. What SQL construct can help with this?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "A EXISTS clause can be useful here to check if a condition is met based on a subquery.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use an EXISTS subquery to ensure that a doctor has treated at least one patient with more than one distinct condition.",
+        "suggested_sql": "SELECT d.id AS doctor_id, d.name AS doctor_name\nFROM doctors d\nWHERE EXISTS (\n    SELECT 1\n    FROM treatments t\n    WHERE t.doctor_id = d.id\n    GROUP BY t.patient_id\n    HAVING COUNT(DISTINCT t.condition) > 1\n)\nORDER BY d.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select doctor details",
+        "what_it_does": "Select the doctor ID and name from the doctors table.",
+        "sql_snippet": "SELECT d.id AS doctor_id, d.name AS doctor_name",
+        "how_postgres_reads_it": "Postgres starts with the doctors table to get basic information."
+      },
+      {
+        "title": "Check for multiple conditions",
+        "what_it_does": "Use EXISTS to check for the presence of patients treated for multiple conditions.",
+        "sql_snippet": "WHERE EXISTS (SELECT 1 FROM treatments t WHERE t.doctor_id = d.id GROUP BY t.patient_id HAVING COUNT(DISTINCT t.condition) > 1)",
+        "how_postgres_reads_it": "For each doctor, Postgres evaluates the subquery, checking if the doctor has treated patients for more than one condition."
+      },
+      {
+        "title": "Order results by doctor ID",
+        "what_it_does": "Sort the results based on doctor ID in ascending order.",
+        "sql_snippet": "ORDER BY d.id",
+        "how_postgres_reads_it": "Postgres organizes the output rows by the doctor ID."
+      }
+    ],
+    "solution_summary": "An EXISTS subquery checks if a doctor has treated patients with more than one distinct condition, filtering the results accordingly.",
+    "solution_final_thought": "EXISTS is a powerful way to validate the existence of rows meeting certain criteria in subqueries.",
+    "explanation": "The EXISTS subquery efficiently validates whether a doctor has patients associated with multiple distinct conditions. By grouping treatments by patient and counting distinct conditions, we ensure only those doctors who meet the criteria are returned.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "subqueries-004",
+    "concept": "subqueries",
+    "subconcept": "from-clause-subquery",
+    "difficulty": "hard",
+    "prompt": "List the names of patients who have received treatments only for the condition 'Flu'. Return patient_id and patient_name, sorted by patient_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS treatments CASCADE;\nDROP TABLE IF EXISTS patients CASCADE;\n\nCREATE TABLE patients (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE treatments (patient_id INTEGER REFERENCES patients(id), condition TEXT NOT NULL);\n\nINSERT INTO patients VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');\nINSERT INTO treatments VALUES (1, 'Flu'), (1, 'Cold'), (2, 'Flu'), (3, 'Flu'), (3, 'Headache');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "patients",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "treatments",
+          "columns": [
+            "patient_id",
+            "condition"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "patient_id",
+        "patient_name"
+      ],
+      "rows": [
+        [
+          2,
+          "Bob"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.id AS patient_id, p.name AS patient_name\nFROM patients p\nWHERE p.id IN (\n    SELECT t.patient_id\n    FROM treatments t\n    GROUP BY t.patient_id\n    HAVING COUNT(DISTINCT t.condition) = 1 AND MAX(t.condition) = 'Flu'\n)\nORDER BY p.id;",
+    "hints": [
+      {
+        "hint": "You want to identify patients based on their treatment conditions. Think about how to filter patients with specific conditions using a subquery.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider a subquery in the FROM clause to isolate patients treated only for 'Flu'.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a subquery to group treatments by patient and check for a single distinct condition that equals 'Flu'.",
+        "suggested_sql": "SELECT p.id AS patient_id, p.name AS patient_name\nFROM patients p\nWHERE p.id IN (\n    SELECT t.patient_id\n    FROM treatments t\n    GROUP BY t.patient_id\n    HAVING COUNT(DISTINCT t.condition) = 1 AND MAX(t.condition) = 'Flu'\n)\nORDER BY p.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select patient details",
+        "what_it_does": "Start by selecting patient details from the patients table.",
+        "sql_snippet": "SELECT p.id AS patient_id, p.name AS patient_name",
+        "how_postgres_reads_it": "Postgres prepares to fetch patient information."
+      },
+      {
+        "title": "Subquery to filter patients",
+        "what_it_does": "Use a subquery to find patients treated only for 'Flu'.",
+        "sql_snippet": "WHERE p.id IN (SELECT t.patient_id FROM treatments t GROUP BY t.patient_id HAVING COUNT(DISTINCT t.condition) = 1 AND MAX(t.condition) = 'Flu')",
+        "how_postgres_reads_it": "Postgres evaluates the subquery, grouping treatments by patient and filtering for those with only 'Flu' treatments."
+      },
+      {
+        "title": "Order the final results",
+        "what_it_does": "Sort results based on patient_id in ascending order.",
+        "sql_snippet": "ORDER BY p.id",
+        "how_postgres_reads_it": "Postgres organizes the output by patient ID before returning the rows."
+      }
+    ],
+    "solution_summary": "A subquery in the WHERE clause identifies patients treated only for 'Flu', ensuring accurate filtering of results.",
+    "solution_final_thought": "Using a subquery can efficiently isolate specific criteria from a larger dataset.",
+    "explanation": "The subquery groups treatments by patient and uses HAVING to ensure only patients with a single distinct condition, 'Flu', are selected. This effectively filters out patients treated for other conditions, returning only those who meet the specified criteria.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "subqueries-005",
+    "concept": "subqueries",
+    "subconcept": "in-clause-subquery",
+    "difficulty": "medium",
+    "prompt": "Retrieve the names of doctors who have treated patients that have never been treated for 'Flu'. Return doctor_id and doctor_name, sorted by doctor_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS treatments CASCADE;\nDROP TABLE IF EXISTS doctors CASCADE;\nDROP TABLE IF EXISTS patients CASCADE;\n\nCREATE TABLE doctors (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE patients (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE treatments (patient_id INTEGER REFERENCES patients(id), doctor_id INTEGER REFERENCES doctors(id), condition TEXT NOT NULL);\n\nINSERT INTO doctors VALUES (1, 'Dr. Smith'), (2, 'Dr. Jones'), (3, 'Dr. Taylor');\nINSERT INTO patients VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');\nINSERT INTO treatments VALUES (1, 1, 'Flu'), (2, 1, 'Cold'), (2, 2, 'Flu'), (3, 2, 'Cold');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "doctors",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "patients",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "treatments",
+          "columns": [
+            "patient_id",
+            "doctor_id",
+            "condition"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "doctor_id",
+        "doctor_name"
+      ],
+      "rows": [
+        [
+          2,
+          "Dr. Jones"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT d.id AS doctor_id, d.name AS doctor_name\nFROM doctors d\nWHERE d.id IN (\n    SELECT t.doctor_id\n    FROM treatments t\n    WHERE t.patient_id NOT IN (\n        SELECT patient_id FROM treatments WHERE condition = 'Flu'\n    )\n)\nORDER BY d.id;",
+    "hints": [
+      {
+        "hint": "You need to find doctors treating patients without any 'Flu' treatments. What structure can help you filter based on this condition?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using a nested IN clause to filter doctors based on the absence of 'Flu' treatments for their patients.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use an IN clause with a subquery that selects doctors by checking for patients not treated for 'Flu'.",
+        "suggested_sql": "SELECT d.id AS doctor_id, d.name AS doctor_name\nFROM doctors d\nWHERE d.id IN (\n    SELECT t.doctor_id\n    FROM treatments t\n    WHERE t.patient_id NOT IN (\n        SELECT patient_id FROM treatments WHERE condition = 'Flu'\n    )\n)\nORDER BY d.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select doctor details",
+        "what_it_does": "Start by selecting doctor ID and name from the doctors table.",
+        "sql_snippet": "SELECT d.id AS doctor_id, d.name AS doctor_name",
+        "how_postgres_reads_it": "Postgres prepares to fetch the doctor information."
+      },
+      {
+        "title": "Filter by doctors treating non-'Flu' patients",
+        "what_it_does": "Use a nested IN clause to filter doctors based on treatments for patients without 'Flu'.",
+        "sql_snippet": "WHERE d.id IN (SELECT t.doctor_id FROM treatments t WHERE t.patient_id NOT IN (SELECT patient_id FROM treatments WHERE condition = 'Flu'))",
+        "how_postgres_reads_it": "Postgres evaluates the inner subquery first to find all patients treated for 'Flu' and then filters doctors who treated patients not in that list."
+      },
+      {
+        "title": "Order results by doctor ID",
+        "what_it_does": "Sort the results based on doctor ID in ascending order.",
+        "sql_snippet": "ORDER BY d.id",
+        "how_postgres_reads_it": "Postgres organizes the output by doctor ID before returning the results."
+      }
+    ],
+    "solution_summary": "An IN clause with a nested subquery filters doctors treating patients who have never been treated for 'Flu'.",
+    "solution_final_thought": "Nested IN clauses can effectively filter data based on multiple levels of criteria.",
+    "explanation": "The nested IN clause first identifies patients treated for 'Flu', then filters out doctors who have treated any of those patients. This approach ensures that only doctors treating patients without any 'Flu' treatments are returned.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  }
+]

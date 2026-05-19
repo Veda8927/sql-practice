@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
+  BookOpen,
   Check,
   ChevronDown,
   ChevronRight,
@@ -15,6 +16,7 @@ import {
   Link2,
   Loader2,
   Search,
+  Sparkles,
   Table2,
   X,
 } from "lucide-react";
@@ -143,6 +145,8 @@ function findCategoryIdForConcept(value: string): string | null {
   return null;
 }
 
+export type QuestionSource = "ai" | "curated";
+
 type Props = {
   question: Question | null;
   onNewQuestion: (opts: { concept?: string; difficulty?: string }) => void;
@@ -153,6 +157,8 @@ type Props = {
   onDismissHint: () => void;
   onApplyHintSql: (sql: string) => void;
   difficultySuggestion?: DifficultyChoice | null;
+  source: QuestionSource;
+  onSourceChange: (source: QuestionSource) => void;
 };
 
 function ThinkingDots() {
@@ -910,6 +916,58 @@ function HintCallout({
   );
 }
 
+function SourceToggle({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: QuestionSource;
+  onChange: (v: QuestionSource) => void;
+  disabled?: boolean;
+}) {
+  const options: { value: QuestionSource; label: string; icon: React.ReactNode; tip: string }[] = [
+    { value: "ai", label: "AI", icon: <Sparkles className="h-3 w-3" />, tip: "LLM-generated questions, fresh each time" },
+    { value: "curated", label: "Curated", icon: <BookOpen className="h-3 w-3" />, tip: "Hand-vetted interview-style bank" },
+  ];
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Question source"
+      className={cn(
+        "inline-flex h-8 items-center rounded-lg border border-border bg-muted/40 p-0.5",
+        disabled && "opacity-50",
+      )}
+    >
+      {options.map((opt) => {
+        const active = value === opt.value;
+        return (
+          <Tooltip key={opt.value}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={active}
+                disabled={disabled}
+                onClick={() => onChange(opt.value)}
+                className={cn(
+                  "inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors",
+                  active
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {opt.icon}
+                {opt.label}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{opt.tip}</TooltipContent>
+          </Tooltip>
+        );
+      })}
+    </div>
+  );
+}
+
 export function QuestionBar({
   question,
   onNewQuestion,
@@ -920,6 +978,8 @@ export function QuestionBar({
   onDismissHint,
   onApplyHintSql,
   difficultySuggestion,
+  source,
+  onSourceChange,
 }: Props) {
   const [difficulty, setDifficulty] = React.useState<DifficultyChoice>("any");
   const [concept, setConcept] = React.useState<ConceptChoice>("");
@@ -930,6 +990,13 @@ export function QuestionBar({
 
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-8">
+      <div className="mb-5 flex justify-center">
+        <SourceToggle
+          value={source}
+          onChange={onSourceChange}
+          disabled={loading}
+        />
+      </div>
       <div className="min-h-[64px]">
         <AnimatePresence mode="wait">
           {loading ? (

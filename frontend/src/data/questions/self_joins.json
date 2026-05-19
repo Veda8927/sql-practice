@@ -1,0 +1,3633 @@
+[
+  {
+    "id": "self_joins-001",
+    "concept": "self_joins",
+    "subconcept": "basic-relationship",
+    "difficulty": "easy",
+    "prompt": "List all menu items that have the same price as another item. Return item_id, item_name, and price, sorted by price.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS menu_items CASCADE;\nCREATE TABLE menu_items (item_id SERIAL PRIMARY KEY, item_name TEXT NOT NULL, price NUMERIC(10,2) NOT NULL);\nINSERT INTO menu_items (item_name, price) VALUES ('Pasta', 12.00), ('Salad', 8.00), ('Burger', 12.00), ('Pizza', 10.00), ('Soda', 2.00), ('Water', 1.00);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "menu_items",
+          "columns": [
+            "item_id",
+            "item_name",
+            "price"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "item_id",
+        "item_name",
+        "price"
+      ],
+      "rows": [
+        [
+          1,
+          "Pasta",
+          "12.00"
+        ],
+        [
+          3,
+          "Burger",
+          "12.00"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT m1.item_id, m1.item_name, m1.price\nFROM menu_items m1\nJOIN menu_items m2 ON m1.price = m2.price AND m1.item_id <> m2.item_id\nORDER BY m1.price;",
+    "hints": [
+      {
+        "hint": "You want to match items with the same price. How can you compare rows in the same table?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a JOIN on the same table, and ensure to exclude matches with the same item_id.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use JOIN menu_items m2 ON m1.price = m2.price AND m1.item_id <> m2.item_id.",
+        "suggested_sql": "SELECT m1.item_id, m1.item_name, m1.price\nFROM menu_items m1\nJOIN menu_items m2 ON m1.price = m2.price AND m1.item_id <> m2.item_id\nORDER BY m1.price;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from the menu_items table",
+        "what_it_does": "Start the query by selecting from the menu_items table and alias it as m1.",
+        "sql_snippet": "FROM menu_items m1",
+        "how_postgres_reads_it": "Postgres starts by scanning the menu_items table and treats each row as a candidate for the result."
+      },
+      {
+        "title": "Join with the same table",
+        "what_it_does": "Join the menu_items table again as m2 to find other items with the same price.",
+        "sql_snippet": "JOIN menu_items m2 ON m1.price = m2.price AND m1.item_id <> m2.item_id",
+        "how_postgres_reads_it": "Postgres compares each row in m1 with all rows in m2, filtering for those with equal prices but different IDs."
+      },
+      {
+        "title": "Sort the result",
+        "what_it_does": "Finally, order the results by price.",
+        "sql_snippet": "ORDER BY m1.price",
+        "how_postgres_reads_it": "Postgres sorts the resulting rows by the price column before returning them."
+      }
+    ],
+    "solution_summary": "A self-join on the menu_items table to find items with the same price, excluding self-matches.",
+    "solution_final_thought": "Self-joins are useful for comparing rows within the same table.",
+    "explanation": "The self-join connects rows in the menu_items table with themselves based on the price. The condition ensures that the same item isn't compared to itself. As a result, items with the same price are listed, achieving the goal of identifying duplicates in pricing.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-002",
+    "concept": "self_joins",
+    "subconcept": "hierarchical-data",
+    "difficulty": "medium",
+    "prompt": "Retrieve the names of customers who made reservations for the same date. Return customer_name, reservation_date, sorted by reservation_date and customer_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS reservations CASCADE;\nCREATE TABLE reservations (reservation_id SERIAL PRIMARY KEY, customer_name TEXT NOT NULL, reservation_date DATE NOT NULL);\nINSERT INTO reservations (customer_name, reservation_date) VALUES ('John Doe', '2024-05-01'), ('Jane Smith', '2024-05-01'), ('Mary Johnson', '2024-05-02'), ('Mike Brown', '2024-05-01');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "reservations",
+          "columns": [
+            "reservation_id",
+            "customer_name",
+            "reservation_date"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "customer_name",
+        "reservation_date"
+      ],
+      "rows": [
+        [
+          "Jane Smith",
+          "2024-05-01"
+        ],
+        [
+          "Jane Smith",
+          "2024-05-01"
+        ],
+        [
+          "John Doe",
+          "2024-05-01"
+        ],
+        [
+          "John Doe",
+          "2024-05-01"
+        ],
+        [
+          "Mike Brown",
+          "2024-05-01"
+        ],
+        [
+          "Mike Brown",
+          "2024-05-01"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT r1.customer_name, r1.reservation_date\nFROM reservations r1\nJOIN reservations r2 ON r1.reservation_date = r2.reservation_date AND r1.customer_name <> r2.customer_name\nORDER BY r1.reservation_date, r1.customer_name;",
+    "hints": [
+      {
+        "hint": "You need to find customers with the same reservation date. How can this be done with a self-join?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Join the reservations table with itself on reservation_date and exclude the same customer.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use JOIN reservations r2 ON r1.reservation_date = r2.reservation_date AND r1.customer_name <> r2.customer_name.",
+        "suggested_sql": "SELECT r1.customer_name, r1.reservation_date\nFROM reservations r1\nJOIN reservations r2 ON r1.reservation_date = r2.reservation_date AND r1.customer_name <> r2.customer_name\nORDER BY r1.reservation_date, r1.customer_name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from reservations table",
+        "what_it_does": "Start the query by selecting from the reservations table, aliasing it as r1.",
+        "sql_snippet": "FROM reservations r1",
+        "how_postgres_reads_it": "Postgres scans the reservations table to prepare each row for processing."
+      },
+      {
+        "title": "Self-join on reservation_date",
+        "what_it_does": "Join the same reservations table as r2 to find other customers with the same reservation date.",
+        "sql_snippet": "JOIN reservations r2 ON r1.reservation_date = r2.reservation_date AND r1.customer_name <> r2.customer_name",
+        "how_postgres_reads_it": "Postgres matches each row in r1 with rows in r2 based on the reservation_date, excluding matches with the same customer name."
+      },
+      {
+        "title": "Sort the results",
+        "what_it_does": "Order the final results first by reservation_date, then by customer_name.",
+        "sql_snippet": "ORDER BY r1.reservation_date, r1.customer_name",
+        "how_postgres_reads_it": "Postgres sorts the resulting rows accordingly before returning them."
+      }
+    ],
+    "solution_summary": "A self-join on the reservations table to find customers who share reservation dates, excluding duplicates.",
+    "solution_final_thought": "Self-joins can help identify relationships within the same data set, such as shared attributes.",
+    "explanation": "The self-join connects customers who made reservations on the same date. By excluding self-matches, we only get pairs of different customers who reserved on the same day. This highlights customers sharing the same reservation date effectively.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-003",
+    "concept": "self_joins",
+    "subconcept": "same-category-items",
+    "difficulty": "medium",
+    "prompt": "Identify items on the menu that belong to the same category as another item. Return item_name, category, sorted by category and item_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS menu_items CASCADE;\nCREATE TABLE menu_items (item_id SERIAL PRIMARY KEY, item_name TEXT NOT NULL, category TEXT NOT NULL);\nINSERT INTO menu_items (item_name, category) VALUES ('Spaghetti', 'Pasta'), ('Fettuccine', 'Pasta'), ('Caesar Salad', 'Salad'), ('Garden Salad', 'Salad'), ('Cheeseburger', 'Burger');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "menu_items",
+          "columns": [
+            "item_id",
+            "item_name",
+            "category"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "item_name",
+        "category"
+      ],
+      "rows": [
+        [
+          "Fettuccine",
+          "Pasta"
+        ],
+        [
+          "Spaghetti",
+          "Pasta"
+        ],
+        [
+          "Caesar Salad",
+          "Salad"
+        ],
+        [
+          "Garden Salad",
+          "Salad"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT m1.item_name, m1.category\nFROM menu_items m1\nJOIN menu_items m2 ON m1.category = m2.category AND m1.item_id <> m2.item_id\nORDER BY m1.category, m1.item_name;",
+    "hints": [
+      {
+        "hint": "You want to group items based on their category. How can you compare items within the same table?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Perform a self-join on category while ensuring to exclude the same item.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use JOIN menu_items m2 ON m1.category = m2.category AND m1.item_id <> m2.item_id.",
+        "suggested_sql": "SELECT m1.item_name, m1.category\nFROM menu_items m1\nJOIN menu_items m2 ON m1.category = m2.category AND m1.item_id <> m2.item_id\nORDER BY m1.category, m1.item_name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Starting from menu_items",
+        "what_it_does": "Select from the menu_items table, aliasing as m1.",
+        "sql_snippet": "FROM menu_items m1",
+        "how_postgres_reads_it": "Postgres scans the menu_items table to process each row."
+      },
+      {
+        "title": "Self-join on category",
+        "what_it_does": "Join the menu_items table again as m2 to find items in the same category.",
+        "sql_snippet": "JOIN menu_items m2 ON m1.category = m2.category AND m1.item_id <> m2.item_id",
+        "how_postgres_reads_it": "Postgres connects rows in m1 with those in m2 based on equal category values, excluding identical item_ids."
+      },
+      {
+        "title": "Order by category and item name",
+        "what_it_does": "Sort the results by category and item name.",
+        "sql_snippet": "ORDER BY m1.category, m1.item_name",
+        "how_postgres_reads_it": "Postgres arranges the final output rows first by category, then by item name."
+      }
+    ],
+    "solution_summary": "A self-join on the menu_items table to find items that share a category, excluding self-matches.",
+    "solution_final_thought": "Self-joins are powerful for finding relationships in the same dataset, such as shared categories.",
+    "explanation": "The self-join allows us to find menu items that share the same category by comparing rows within the same table. By excluding self-matches, we ensure that only different items appear, giving us a clear view of items within each category.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-004",
+    "concept": "self_joins",
+    "subconcept": "customer-recommendations",
+    "difficulty": "hard",
+    "prompt": "List customers who have made reservations on the same date as another customer and recommend them. Return customer_name, reservation_date, sorted by reservation_date and customer_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS reservations CASCADE;\nCREATE TABLE reservations (reservation_id SERIAL PRIMARY KEY, customer_name TEXT NOT NULL, reservation_date DATE NOT NULL);\nINSERT INTO reservations (customer_name, reservation_date) VALUES ('Alice', '2024-06-01'), ('Bob', '2024-06-01'), ('Charlie', '2024-06-02'), ('David', '2024-06-01');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "reservations",
+          "columns": [
+            "reservation_id",
+            "customer_name",
+            "reservation_date"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "customer_name",
+        "reservation_date"
+      ],
+      "rows": [
+        [
+          "Alice",
+          "2024-06-01"
+        ],
+        [
+          "Alice",
+          "2024-06-01"
+        ],
+        [
+          "Bob",
+          "2024-06-01"
+        ],
+        [
+          "Bob",
+          "2024-06-01"
+        ],
+        [
+          "David",
+          "2024-06-01"
+        ],
+        [
+          "David",
+          "2024-06-01"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT r1.customer_name, r1.reservation_date\nFROM reservations r1\nJOIN reservations r2 ON r1.reservation_date = r2.reservation_date AND r1.customer_name <> r2.customer_name\nORDER BY r1.reservation_date, r1.customer_name;",
+    "hints": [
+      {
+        "hint": "Look for customers with reservations on the same date. How do you compare rows in the same table?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Join the reservations table with itself on the reservation_date, excluding the same customer.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use JOIN reservations r2 ON r1.reservation_date = r2.reservation_date AND r1.customer_name <> r2.customer_name.",
+        "suggested_sql": "SELECT r1.customer_name, r1.reservation_date\nFROM reservations r1\nJOIN reservations r2 ON r1.reservation_date = r2.reservation_date AND r1.customer_name <> r2.customer_name\nORDER BY r1.reservation_date, r1.customer_name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from reservations table",
+        "what_it_does": "Start the query by selecting from the reservations table, aliasing as r1.",
+        "sql_snippet": "FROM reservations r1",
+        "how_postgres_reads_it": "Postgres prepares the rows from the reservations table for processing."
+      },
+      {
+        "title": "Self-join on reservation_date",
+        "what_it_does": "Join the same table as r2 to find other customers with the same reservation date.",
+        "sql_snippet": "JOIN reservations r2 ON r1.reservation_date = r2.reservation_date AND r1.customer_name <> r2.customer_name",
+        "how_postgres_reads_it": "Postgres matches rows in r1 with those in r2 based on shared reservation dates, while filtering out self-matches."
+      },
+      {
+        "title": "Sort the results",
+        "what_it_does": "Order the result set by reservation_date and customer_name.",
+        "sql_snippet": "ORDER BY r1.reservation_date, r1.customer_name",
+        "how_postgres_reads_it": "Postgres arranges the final output before returning it to ensure proper ordering."
+      }
+    ],
+    "solution_summary": "A self-join on the reservations table to identify customers with overlapping reservation dates, excluding duplicates.",
+    "solution_final_thought": "Self-joins help find connections within the same dataset, highlighting related information.",
+    "explanation": "The self-join identifies customers who made reservations on the same date by comparing rows within the same table. By ensuring self-references are excluded, we achieve a list of unique customers that can be recommended based on their shared reservation dates.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-005",
+    "concept": "self_joins",
+    "subconcept": "order-item-associations",
+    "difficulty": "medium",
+    "prompt": "List all menu items that have been ordered together in the same order. Return item_name, order_id, sorted by order_id and item_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS order_items CASCADE;\nCREATE TABLE orders (order_id SERIAL PRIMARY KEY);\nCREATE TABLE order_items (order_item_id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL REFERENCES orders(order_id), item_name TEXT NOT NULL);\nINSERT INTO orders (order_id) VALUES (1), (2);\nINSERT INTO order_items (order_id, item_name) VALUES (1, 'Pizza'), (1, 'Soda'), (1, 'Burger'), (2, 'Salad'), (2, 'Soda');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "orders",
+          "columns": [
+            "order_id"
+          ]
+        },
+        {
+          "name": "order_items",
+          "columns": [
+            "order_item_id",
+            "order_id",
+            "item_name"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "item_name",
+        "order_id"
+      ],
+      "rows": [
+        [
+          "Burger",
+          1
+        ],
+        [
+          "Burger",
+          1
+        ],
+        [
+          "Pizza",
+          1
+        ],
+        [
+          "Pizza",
+          1
+        ],
+        [
+          "Soda",
+          1
+        ],
+        [
+          "Soda",
+          1
+        ],
+        [
+          "Salad",
+          2
+        ],
+        [
+          "Soda",
+          2
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT oi1.item_name, oi1.order_id\nFROM order_items oi1\nJOIN order_items oi2 ON oi1.order_id = oi2.order_id AND oi1.order_item_id <> oi2.order_item_id\nORDER BY oi1.order_id, oi1.item_name;",
+    "hints": [
+      {
+        "hint": "You need to find items ordered together in the same order. How can you reference the same table multiple times?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Join order_items on order_id while excluding the same item.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use JOIN order_items oi2 ON oi1.order_id = oi2.order_id AND oi1.order_item_id <> oi2.order_item_id.",
+        "suggested_sql": "SELECT oi1.item_name, oi1.order_id\nFROM order_items oi1\nJOIN order_items oi2 ON oi1.order_id = oi2.order_id AND oi1.order_item_id <> oi2.order_item_id\nORDER BY oi1.order_id, oi1.item_name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from order_items",
+        "what_it_does": "Start by selecting from the order_items table, aliasing it as oi1.",
+        "sql_snippet": "FROM order_items oi1",
+        "how_postgres_reads_it": "Postgres reads the order_items table and prepares each item row for the result set."
+      },
+      {
+        "title": "Self-join on order_id",
+        "what_it_does": "Join the same table as oi2 to find other items in the same order.",
+        "sql_snippet": "JOIN order_items oi2 ON oi1.order_id = oi2.order_id AND oi1.order_item_id <> oi2.order_item_id",
+        "how_postgres_reads_it": "Postgres connects rows in oi1 with those in oi2 based on shared order_id, excluding the same item_id."
+      },
+      {
+        "title": "Sort the results",
+        "what_it_does": "Order the results by order_id and item_name.",
+        "sql_snippet": "ORDER BY oi1.order_id, oi1.item_name",
+        "how_postgres_reads_it": "Postgres sorts the final output according to the specified order before returning it."
+      }
+    ],
+    "solution_summary": "A self-join on order_items to find items ordered together in the same order, excluding duplicates.",
+    "solution_final_thought": "Self-joins allow for complex relationships within the same dataset, such as co-occurring items.",
+    "explanation": "The self-join compares items within the order_items table to find items that were ordered together. By excluding self-matches, we ensure that only unique pairs of items appear, showcasing the relationships between orders and their items effectively.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-006",
+    "concept": "self_joins",
+    "subconcept": "item-pair-similarity",
+    "difficulty": "hard",
+    "prompt": "Find pairs of menu items that have the same price. Return item1_name, item2_name, price, sorted by price.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS menu_items CASCADE;\nCREATE TABLE menu_items (item_id SERIAL PRIMARY KEY, item_name TEXT NOT NULL, price NUMERIC(10,2) NOT NULL);\nINSERT INTO menu_items (item_name, price) VALUES ('Lasagna', 15.00), ('Ravioli', 15.00), ('Cheesecake', 5.00), ('Brownie', 5.00), ('Coffee', 3.00);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "menu_items",
+          "columns": [
+            "item_id",
+            "item_name",
+            "price"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "item1_name",
+        "item2_name",
+        "price"
+      ],
+      "rows": [
+        [
+          "Cheesecake",
+          "Brownie",
+          "5.00"
+        ],
+        [
+          "Lasagna",
+          "Ravioli",
+          "15.00"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT m1.item_name AS item1_name, m2.item_name AS item2_name, m1.price\nFROM menu_items m1\nJOIN menu_items m2 ON m1.price = m2.price AND m1.item_id < m2.item_id\nORDER BY m1.price;",
+    "hints": [
+      {
+        "hint": "You need to compare items in the same table to find pairs with equal prices. How would you reference the same table twice?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Join menu_items on price, but ensure that you're comparing different items.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use JOIN menu_items m2 ON m1.price = m2.price AND m1.item_id < m2.item_id.",
+        "suggested_sql": "SELECT m1.item_name AS item1_name, m2.item_name AS item2_name, m1.price\nFROM menu_items m1\nJOIN menu_items m2 ON m1.price = m2.price AND m1.item_id < m2.item_id\nORDER BY m1.price;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from menu_items",
+        "what_it_does": "Start the query by selecting from the menu_items table, aliasing as m1.",
+        "sql_snippet": "FROM menu_items m1",
+        "how_postgres_reads_it": "Postgres scans the menu_items table to prepare each row for processing."
+      },
+      {
+        "title": "Self-join on price",
+        "what_it_does": "Join the same table as m2 to compare prices.",
+        "sql_snippet": "JOIN menu_items m2 ON m1.price = m2.price AND m1.item_id < m2.item_id",
+        "how_postgres_reads_it": "Postgres matches rows in m1 with those in m2 based on equal prices, ensuring that the item_ids are distinct and ordered."
+      },
+      {
+        "title": "Sort the results",
+        "what_it_does": "Order the resulting pairs by price.",
+        "sql_snippet": "ORDER BY m1.price",
+        "how_postgres_reads_it": "Postgres sorts the final output before returning it."
+      }
+    ],
+    "solution_summary": "A self-join on menu_items to find pairs of items with identical prices, ensuring each pair is unique.",
+    "solution_final_thought": "Self-joins can effectively identify relationships like price similarities between items.",
+    "explanation": "The self-join allows us to find pairs of menu items that share the same price without repeating pairs. By ensuring that item_id comparisons are made with a less than operator, we can avoid duplicates in our results, yielding a clean list of similar-priced items.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-007",
+    "concept": "self_joins",
+    "subconcept": "basic-join",
+    "difficulty": "easy",
+    "prompt": "List all customers who have made orders, along with their names and the total number of orders they have made. Return customer_id, customer_name, and total_orders, sorted by customer_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(id));\n\nINSERT INTO customers VALUES (1,'Alice'),(2,'Bob'),(3,'Charlie'),(4,'Diana');\nINSERT INTO orders VALUES (1,1),(2,1),(3,2),(4,3),(5,3),(6,4);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "orders",
+          "columns": [
+            "id",
+            "customer_id"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "customer_id",
+        "customer_name",
+        "total_orders"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          2
+        ],
+        [
+          2,
+          "Bob",
+          1
+        ],
+        [
+          3,
+          "Charlie",
+          2
+        ],
+        [
+          4,
+          "Diana",
+          1
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT c.id AS customer_id, c.name AS customer_name, COUNT(o.id) AS total_orders\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nGROUP BY c.id, c.name\nORDER BY c.id;",
+    "hints": [
+      {
+        "hint": "You need to count the number of orders. What aggregate function could you use?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Remember to group by customer_id and customer_name after the join.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use COUNT() to get the total orders along with GROUP BY for customer details.",
+        "suggested_sql": "SELECT c.id AS customer_id, c.name AS customer_name, COUNT(o.id) AS total_orders\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nGROUP BY c.id, c.name\nORDER BY c.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join customers and orders",
+        "what_it_does": "Combine the customers table with the orders table to get order details for each customer.",
+        "sql_snippet": "JOIN orders o ON c.id = o.customer_id",
+        "how_postgres_reads_it": "Postgres matches each customer with their corresponding orders based on the customer_id."
+      },
+      {
+        "title": "Count the orders",
+        "what_it_does": "Use COUNT() to aggregate the total number of orders for each customer.",
+        "sql_snippet": "COUNT(o.id) AS total_orders",
+        "how_postgres_reads_it": "Postgres counts the number of orders associated with each customer in the grouped result."
+      },
+      {
+        "title": "Group by customer",
+        "what_it_does": "Group the results by customer_id and customer_name to prepare for aggregate functions.",
+        "sql_snippet": "GROUP BY c.id, c.name",
+        "how_postgres_reads_it": "Postgres organizes the results into unique groups for each customer."
+      }
+    ],
+    "solution_summary": "A JOIN between customers and orders, counting orders per customer and grouping by their details.",
+    "solution_final_thought": "Always remember to use GROUP BY when using aggregate functions like COUNT.",
+    "explanation": "The query counts the number of orders for each customer by joining the customers and orders tables on the customer_id. It groups the results by customer, allowing for an accurate count of orders per customer.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-008",
+    "concept": "self_joins",
+    "subconcept": "recursive-relationship",
+    "difficulty": "medium",
+    "prompt": "Identify customers who have placed orders with the same product more than once. Return customer_id, customer_name, product_id, and count of orders, sorted by customer_id and product_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS order_items CASCADE;\nDROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\nDROP TABLE IF EXISTS products CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(id));\nCREATE TABLE order_items (order_id INTEGER NOT NULL REFERENCES orders(id), product_id INTEGER NOT NULL REFERENCES products(id), PRIMARY KEY (order_id, product_id));\n\nINSERT INTO customers VALUES (1,'Alice'),(2,'Bob'),(3,'Charlie');\nINSERT INTO products VALUES (1,'Laptop'),(2,'Mouse');\nINSERT INTO orders VALUES (1,1),(2,1),(3,2),(4,3); \nINSERT INTO order_items VALUES (1,1),(1,2),(2,1),(3,1);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "products",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "orders",
+          "columns": [
+            "id",
+            "customer_id"
+          ]
+        },
+        {
+          "name": "order_items",
+          "columns": [
+            "order_id",
+            "product_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "orders",
+          "from_column": "id",
+          "to_table": "order_items",
+          "to_column": "order_id"
+        },
+        {
+          "from_table": "order_items",
+          "from_column": "product_id",
+          "to_table": "products",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "customer_id",
+        "customer_name",
+        "product_id",
+        "count_orders"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          1,
+          2
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT c.id AS customer_id, c.name AS customer_name, oi.product_id, COUNT(o.id) AS count_orders\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nJOIN order_items oi ON o.id = oi.order_id\nWHERE oi.product_id IN (SELECT product_id FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE customer_id = c.id) GROUP BY product_id HAVING COUNT(*) > 1)\nGROUP BY c.id, c.name, oi.product_id\nORDER BY c.id, oi.product_id;",
+    "hints": [
+      {
+        "hint": "You need to identify products ordered multiple times. How can you filter those?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using a subquery to count occurrences of product_id per customer.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a subquery in the WHERE clause to find products with COUNT() > 1.",
+        "suggested_sql": "SELECT c.id AS customer_id, c.name AS customer_name, oi.product_id, COUNT(o.id) AS count_orders\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nJOIN order_items oi ON o.id = oi.order_id\nWHERE oi.product_id IN (SELECT product_id FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE customer_id = c.id) GROUP BY product_id HAVING COUNT(*) > 1)\nGROUP BY c.id, c.name, oi.product_id\nORDER BY c.id, oi.product_id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join customers and orders",
+        "what_it_does": "Combine customers with their orders to get details of which customer placed which order.",
+        "sql_snippet": "JOIN orders o ON c.id = o.customer_id",
+        "how_postgres_reads_it": "Postgres matches each customer with their corresponding orders based on customer_id."
+      },
+      {
+        "title": "Join order items",
+        "what_it_does": "Add order items to get information on which products were purchased in each order.",
+        "sql_snippet": "JOIN order_items oi ON o.id = oi.order_id",
+        "how_postgres_reads_it": "Postgres connects order items to their respective orders, providing access to product details."
+      },
+      {
+        "title": "Filter by product count",
+        "what_it_does": "Use a subquery to find products ordered multiple times by each customer.",
+        "sql_snippet": "WHERE oi.product_id IN (SELECT product_id FROM order_items ... HAVING COUNT(*) > 1)",
+        "how_postgres_reads_it": "Postgres evaluates the subquery first to identify eligible products before filtering the main result."
+      }
+    ],
+    "solution_summary": "A query that identifies customers who ordered the same product multiple times using a subquery to filter product_ids.",
+    "solution_final_thought": "Subqueries can help filter results based on aggregate conditions, especially in complex joins.",
+    "explanation": "This query identifies customers who have ordered the same product more than once by using a subquery that counts the occurrences of each product for each customer. The final result groups by customer and product, showing only those with multiple orders.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-009",
+    "concept": "self_joins",
+    "subconcept": "hierarchical-relationship",
+    "difficulty": "medium",
+    "prompt": "Find customers who have referred other customers. Return referrer_id, referrer_name, referred_customer_id, and referred_customer_name, sorted by referrer_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, referred_by INTEGER REFERENCES customers(id));\n\nINSERT INTO customers VALUES (1,'Alice',NULL),(2,'Bob',1),(3,'Charlie',1),(4,'Diana',2),(5,'Eve',3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name",
+            "referred_by"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "customers",
+          "from_column": "id",
+          "to_table": "customers",
+          "to_column": "referred_by"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "referrer_id",
+        "referrer_name",
+        "referred_customer_id",
+        "referred_customer_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          2,
+          "Bob"
+        ],
+        [
+          1,
+          "Alice",
+          3,
+          "Charlie"
+        ],
+        [
+          2,
+          "Bob",
+          4,
+          "Diana"
+        ],
+        [
+          3,
+          "Charlie",
+          5,
+          "Eve"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT c1.id AS referrer_id, c1.name AS referrer_name, c2.id AS referred_customer_id, c2.name AS referred_customer_name\nFROM customers c1\nJOIN customers c2 ON c1.id = c2.referred_by\nORDER BY c1.id;",
+    "hints": [
+      {
+        "hint": "You need to join the customers table to itself. What type of join allows this?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Remember to alias the tables differently to distinguish referrers and referred customers.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use JOIN where one customer refers another based on the referred_by column.",
+        "suggested_sql": "SELECT c1.id AS referrer_id, c1.name AS referrer_name, c2.id AS referred_customer_id, c2.name AS referred_customer_name\nFROM customers c1\nJOIN customers c2 ON c1.id = c2.referred_by\nORDER BY c1.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Self-join the customers table",
+        "what_it_does": "Join the customers table to itself to find referrer and referred relationships.",
+        "sql_snippet": "JOIN customers c2 ON c1.id = c2.referred_by",
+        "how_postgres_reads_it": "Postgres matches each customer as a referrer with the referred customers based on the referred_by foreign key."
+      },
+      {
+        "title": "Select necessary columns",
+        "what_it_does": "Choose the columns that represent the referrer and referred customer information.",
+        "sql_snippet": "SELECT c1.id AS referrer_id, c1.name AS referrer_name, c2.id AS referred_customer_id, c2.name AS referred_customer_name",
+        "how_postgres_reads_it": "Postgres retrieves the selected fields from both joined instances of the customers table."
+      },
+      {
+        "title": "Sort the results",
+        "what_it_does": "Order the results by referrer_id to make the output organized.",
+        "sql_snippet": "ORDER BY c1.id",
+        "how_postgres_reads_it": "Postgres sorts the rows based on the referrer_id before returning the final results."
+      }
+    ],
+    "solution_summary": "A self-join that lists customers and their referred customers, sorted by referrer ID.",
+    "solution_final_thought": "Self-joins are essential for exploring relationships within the same table.",
+    "explanation": "This query demonstrates a self-join that connects customers to their referred counterparts. The join condition uses the referred_by column to find relationships, allowing us to see who has referred whom within the customer base.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-010",
+    "concept": "self_joins",
+    "subconcept": "aggregate-relationship",
+    "difficulty": "hard",
+    "prompt": "List products that have been ordered by more than one customer. Return product_id, product_name, and the count of distinct customers, sorted by product_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS order_items CASCADE;\nDROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS products CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(id));\nCREATE TABLE order_items (order_id INTEGER NOT NULL REFERENCES orders(id), product_id INTEGER NOT NULL REFERENCES products(id), PRIMARY KEY (order_id, product_id));\n\nINSERT INTO customers VALUES (1,'Alice'),(2,'Bob'),(3,'Charlie');\nINSERT INTO products VALUES (1,'Laptop'),(2,'Mouse'),(3,'Keyboard');\nINSERT INTO orders VALUES (1,1),(2,1),(3,2),(4,3); \nINSERT INTO order_items VALUES (1,1),(1,2),(2,1),(3,2),(4,1);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "products",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "orders",
+          "columns": [
+            "id",
+            "customer_id"
+          ]
+        },
+        {
+          "name": "order_items",
+          "columns": [
+            "order_id",
+            "product_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "orders",
+          "from_column": "id",
+          "to_table": "order_items",
+          "to_column": "order_id"
+        },
+        {
+          "from_table": "order_items",
+          "from_column": "product_id",
+          "to_table": "products",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "product_id",
+        "product_name",
+        "customer_count"
+      ],
+      "rows": [
+        [
+          1,
+          "Laptop",
+          2
+        ],
+        [
+          2,
+          "Mouse",
+          2
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.id AS product_id, p.name AS product_name, COUNT(DISTINCT o.customer_id) AS customer_count\nFROM products p\nJOIN order_items oi ON p.id = oi.product_id\nJOIN orders o ON oi.order_id = o.id\nGROUP BY p.id, p.name\nHAVING COUNT(DISTINCT o.customer_id) > 1\nORDER BY p.id;",
+    "hints": [
+      {
+        "hint": "You need to count unique customers for each product. What will help you achieve that?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use DISTINCT in your COUNT to avoid duplicate customers for the same product.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Apply GROUP BY on product details and filter with HAVING for counts greater than one.",
+        "suggested_sql": "SELECT p.id AS product_id, p.name AS product_name, COUNT(DISTINCT o.customer_id) AS customer_count\nFROM products p\nJOIN order_items oi ON p.id = oi.product_id\nJOIN orders o ON oi.order_id = o.id\nGROUP BY p.id, p.name\nHAVING COUNT(DISTINCT o.customer_id) > 1\nORDER BY p.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join products with order items",
+        "what_it_does": "Link products to their order items to establish which products were ordered.",
+        "sql_snippet": "JOIN order_items oi ON p.id = oi.product_id",
+        "how_postgres_reads_it": "Postgres matches each product with its corresponding order items."
+      },
+      {
+        "title": "Join orders to get customers",
+        "what_it_does": "Connect orders to pull in customer information for counting distinct customers.",
+        "sql_snippet": "JOIN orders o ON oi.order_id = o.id",
+        "how_postgres_reads_it": "Postgres retrieves customer IDs associated with each order item for counting."
+      },
+      {
+        "title": "Count distinct customers",
+        "what_it_does": "Use COUNT(DISTINCT ...) to count unique customers for each product.",
+        "sql_snippet": "COUNT(DISTINCT o.customer_id) AS customer_count",
+        "how_postgres_reads_it": "Postgres counts the number of unique customer IDs associated with each product."
+      }
+    ],
+    "solution_summary": "A query that counts distinct customers for each product, filtering for products ordered by more than one customer.",
+    "solution_final_thought": "COUNT(DISTINCT ...) is key when you need unique entries in your aggregation.",
+    "explanation": "This query counts how many distinct customers have ordered each product. By joining the products, order_items, and orders tables, we can group by product and filter for those with multiple customers using a HAVING clause. This ensures we only return products that have a customer count greater than one.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-011",
+    "concept": "self_joins",
+    "subconcept": "multi-level-relationship",
+    "difficulty": "hard",
+    "prompt": "Retrieve customers who have made purchases and also refer other customers. Return customer_id, customer_name, referred_customer_id, and referred_customer_name, sorted by referred_customer_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, referred_by INTEGER REFERENCES customers(id));\n\nINSERT INTO customers VALUES (1,'Alice',NULL),(2,'Bob',1),(3,'Charlie',1),(4,'Diana',2),(5,'Eve',3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name",
+            "referred_by"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "customers",
+          "from_column": "id",
+          "to_table": "customers",
+          "to_column": "referred_by"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "customer_id",
+        "customer_name",
+        "referred_customer_id",
+        "referred_customer_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          2,
+          "Bob"
+        ],
+        [
+          1,
+          "Alice",
+          3,
+          "Charlie"
+        ],
+        [
+          2,
+          "Bob",
+          4,
+          "Diana"
+        ],
+        [
+          3,
+          "Charlie",
+          5,
+          "Eve"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT c1.id AS customer_id, c1.name AS customer_name, c2.id AS referred_customer_id, c2.name AS referred_customer_name\nFROM customers c1\nJOIN customers c2 ON c1.id = c2.referred_by\nWHERE c1.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)\nORDER BY c2.id;",
+    "hints": [
+      {
+        "hint": "You need to find customers who have referred others. What condition should you add?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider filtering the main query with a subquery to check if they have referred others.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a subquery in the WHERE clause to check for customers who have made referrals.",
+        "suggested_sql": "SELECT c1.id AS customer_id, c1.name AS customer_name, c2.id AS referred_customer_id, c2.name AS referred_customer_name\nFROM customers c1\nJOIN customers c2 ON c1.id = c2.referred_by\nWHERE c1.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)\nORDER BY c2.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Self-join customers to find referrals",
+        "what_it_does": "Join the customers table to itself to get the relationship between referrer and referred customers.",
+        "sql_snippet": "JOIN customers c2 ON c1.id = c2.referred_by",
+        "how_postgres_reads_it": "Postgres matches each customer with their referred counterparts."
+      },
+      {
+        "title": "Filter customers who have made referrals",
+        "what_it_does": "Use a subquery to identify customers who have referred others.",
+        "sql_snippet": "WHERE c1.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)",
+        "how_postgres_reads_it": "Postgres checks the subquery for customers who have a non-null referred_by value, ensuring they have referred someone."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "Sort the final output by referred_customer_id for better readability.",
+        "sql_snippet": "ORDER BY c2.id",
+        "how_postgres_reads_it": "Postgres sorts the resulting rows based on the referred customer's ID."
+      }
+    ],
+    "solution_summary": "A self-join query that identifies customers who have made referrals and lists the referred customers.",
+    "solution_final_thought": "Subqueries can effectively filter results based on complex relationships.",
+    "explanation": "This query uses a self-join to connect customers with those they referred, while filtering to ensure only customers who have made referrals are included. The subquery ensures that only relevant referrers are listed, displaying a clear relationship in the output.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-012",
+    "concept": "self_joins",
+    "subconcept": "complex-relationship",
+    "difficulty": "hard",
+    "prompt": "Find customers who have both referred others and have been referred by others. Return customer_id, customer_name, referred_customer_id, and referred_customer_name, sorted by customer_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, referred_by INTEGER REFERENCES customers(id));\n\nINSERT INTO customers VALUES (1,'Alice',NULL),(2,'Bob',1),(3,'Charlie',1),(4,'Diana',2),(5,'Eve',3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name",
+            "referred_by"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "customers",
+          "from_column": "id",
+          "to_table": "customers",
+          "to_column": "referred_by"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "customer_id",
+        "customer_name",
+        "referred_customer_id",
+        "referred_customer_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          2,
+          "Bob"
+        ],
+        [
+          1,
+          "Alice",
+          3,
+          "Charlie"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT c1.id AS customer_id, c1.name AS customer_name, c2.id AS referred_customer_id, c2.name AS referred_customer_name\nFROM customers c1\nJOIN customers c2 ON c1.id = c2.referred_by\nWHERE c1.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)\nAND c2.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)\nORDER BY c1.id;",
+    "hints": [
+      {
+        "hint": "You need to ensure that both customers have referred and been referred. What should your WHERE conditions include?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using subqueries to filter based on both referral conditions.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use subqueries in the WHERE clause for customers who have referred others as well as those who have been referred.",
+        "suggested_sql": "SELECT c1.id AS customer_id, c1.name AS customer_name, c2.id AS referred_customer_id, c2.name AS referred_customer_name\nFROM customers c1\nJOIN customers c2 ON c1.id = c2.referred_by\nWHERE c1.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)\nAND c2.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)\nORDER BY c1.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Self-join to find mutual referrals",
+        "what_it_does": "Join the customers table on itself to establish referral relationships.",
+        "sql_snippet": "JOIN customers c2 ON c1.id = c2.referred_by",
+        "how_postgres_reads_it": "Postgres matches each customer with their referred counterpart based on the referred_by foreign key."
+      },
+      {
+        "title": "Filter for customers who have referred others",
+        "what_it_does": "Use a subquery to ensure the first customer has referred others.",
+        "sql_snippet": "WHERE c1.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)",
+        "how_postgres_reads_it": "Postgres checks the subquery to confirm that the customer has been a referrer."
+      },
+      {
+        "title": "Filter for customers who have been referred",
+        "what_it_does": "Use another subquery to confirm the referred customer has also referred others.",
+        "sql_snippet": "AND c2.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)",
+        "how_postgres_reads_it": "Postgres checks the second subquery to ensure the referred customer has also been a referrer."
+      }
+    ],
+    "solution_summary": "A self-join query that identifies customers who have both referred others and been referred, ensuring mutual relationships are captured.",
+    "solution_final_thought": "Subqueries can effectively filter for complex multi-attribute relationships in self-joins.",
+    "explanation": "This query identifies customers who are both referrers and referred by others. By joining the customers table on itself and using subqueries to filter on both conditions, we can capture a more complex relationship structure within the customer base.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-013",
+    "concept": "self_joins",
+    "subconcept": "advanced-relationship",
+    "difficulty": "hard",
+    "prompt": "Retrieve customers who have both referred and been referred to by other customers. Return customer_id, customer_name, referred_customer_id, and referred_customer_name, sorted by customer_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, referred_by INTEGER REFERENCES customers(id));\n\nINSERT INTO customers VALUES (1,'Alice',NULL),(2,'Bob',1),(3,'Charlie',1),(4,'Diana',2),(5,'Eve',3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name",
+            "referred_by"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "customers",
+          "from_column": "id",
+          "to_table": "customers",
+          "to_column": "referred_by"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "customer_id",
+        "customer_name",
+        "referred_customer_id",
+        "referred_customer_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          2,
+          "Bob"
+        ],
+        [
+          1,
+          "Alice",
+          3,
+          "Charlie"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT c1.id AS customer_id, c1.name AS customer_name, c2.id AS referred_customer_id, c2.name AS referred_customer_name\nFROM customers c1\nJOIN customers c2 ON c1.id = c2.referred_by\nWHERE c1.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)\nAND c2.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)\nORDER BY c1.id;",
+    "hints": [
+      {
+        "hint": "You need to find customers that have both referred and been referred to by others. How can you ensure both conditions are met?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using subqueries to filter customers who have performed both actions.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Apply WHERE clauses with subqueries to check for mutual referral relationships.",
+        "suggested_sql": "SELECT c1.id AS customer_id, c1.name AS customer_name, c2.id AS referred_customer_id, c2.name AS referred_customer_name\nFROM customers c1\nJOIN customers c2 ON c1.id = c2.referred_by\nWHERE c1.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)\nAND c2.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)\nORDER BY c1.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Self-join to find mutual referrals",
+        "what_it_does": "Join the customers table to connect referrer and referred customers.",
+        "sql_snippet": "JOIN customers c2 ON c1.id = c2.referred_by",
+        "how_postgres_reads_it": "Postgres matches each customer with their referred counterpart based on the referred_by foreign key."
+      },
+      {
+        "title": "Filter for customers who have referred others",
+        "what_it_does": "Use a subquery to ensure the first customer has been a referrer.",
+        "sql_snippet": "WHERE c1.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)",
+        "how_postgres_reads_it": "Postgres checks the subquery to confirm that the customer has referred someone."
+      },
+      {
+        "title": "Filter for customers who have been referred",
+        "what_it_does": "Use another subquery to ensure the referred customer has also made referrals.",
+        "sql_snippet": "AND c2.id IN (SELECT DISTINCT referred_by FROM customers WHERE referred_by IS NOT NULL)",
+        "how_postgres_reads_it": "Postgres checks the second subquery to ensure the referred customer has also referred someone."
+      }
+    ],
+    "solution_summary": "A self-join query that identifies customers who have both referred others and been referred to, ensuring mutual relationships are captured.",
+    "solution_final_thought": "Subqueries are powerful tools for filtering complex relationships in self-joins.",
+    "explanation": "This query identifies customers who have both referred and been referred to by others. By joining the customers table and using subqueries to enforce both conditions, we can capture intricate referral relationships within the customer base.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-014",
+    "concept": "self_joins",
+    "subconcept": "basic-self-join",
+    "difficulty": "easy",
+    "prompt": "Retrieve the names of warehouses that are located in the same city. Return warehouse1.name and warehouse2.name, sorted alphabetically by warehouse1.name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS warehouses CASCADE;\nCREATE TABLE warehouses (id SERIAL PRIMARY KEY, name TEXT NOT NULL, city TEXT NOT NULL);\nINSERT INTO warehouses (name, city) VALUES ('Warehouse A', 'New York'), ('Warehouse B', 'Los Angeles'), ('Warehouse C', 'New York'), ('Warehouse D', 'Chicago'), ('Warehouse E', 'Los Angeles');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "warehouses",
+          "columns": [
+            "id",
+            "name",
+            "city"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "warehouse1",
+        "warehouse2"
+      ],
+      "rows": [
+        [
+          "Warehouse A",
+          "Warehouse C"
+        ],
+        [
+          "Warehouse B",
+          "Warehouse E"
+        ],
+        [
+          "Warehouse C",
+          "Warehouse A"
+        ],
+        [
+          "Warehouse E",
+          "Warehouse B"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT w1.name AS warehouse1, w2.name AS warehouse2\nFROM warehouses w1, warehouses w2\nWHERE w1.city = w2.city AND w1.id <> w2.id\nORDER BY w1.name;",
+    "hints": [
+      {
+        "hint": "You need to compare rows within the same table. What do you call this kind of join?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using aliases for the same table to differentiate between the two rows being compared.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You can use a Cartesian product (cross join) filtered by city and excluding the same warehouse. Try: SELECT w1.name, w2.name FROM warehouses w1, warehouses w2 WHERE w1.city = w2.city AND w1.id <> w2.id;",
+        "suggested_sql": "SELECT w1.name AS warehouse1, w2.name AS warehouse2\nFROM warehouses w1, warehouses w2\nWHERE w1.city = w2.city AND w1.id <> w2.id\nORDER BY w1.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from the same table twice",
+        "what_it_does": "Use the warehouses table twice with different aliases to compare rows within it.",
+        "sql_snippet": "FROM warehouses w1, warehouses w2",
+        "how_postgres_reads_it": "Postgres creates a Cartesian product of warehouses w1 and w2."
+      },
+      {
+        "title": "Filter for matching cities",
+        "what_it_does": "Add a condition to ensure both warehouses are in the same city.",
+        "sql_snippet": "WHERE w1.city = w2.city",
+        "how_postgres_reads_it": "Postgres checks each pair of warehouses to see if their cities match, keeping only those pairs."
+      },
+      {
+        "title": "Exclude identical warehouses",
+        "what_it_does": "Ensure that the same warehouse isn't compared with itself.",
+        "sql_snippet": "AND w1.id <> w2.id",
+        "how_postgres_reads_it": "Postgres filters out any pairs where the warehouse IDs are equal, ensuring distinct warehouses."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "Sort the results to meet the output requirements.",
+        "sql_snippet": "ORDER BY w1.name",
+        "how_postgres_reads_it": "Postgres arranges the filtered results by the name of the first warehouse."
+      }
+    ],
+    "solution_summary": "A self join on the warehouses table to find pairs of warehouses in the same city, ensuring they are distinct.",
+    "solution_final_thought": "Self joins allow you to compare rows within a single table by using aliases.",
+    "explanation": "By using a self join, we can compare rows within the same table. The condition w1.city = w2.city finds warehouses in the same city, while w1.id <> w2.id prevents duplicates. This results in pairs of warehouses located in the same city being returned.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-015",
+    "concept": "self_joins",
+    "subconcept": "advanced-self-join",
+    "difficulty": "medium",
+    "prompt": "List each shipment and the name of the warehouse it originated from and the name of the destination warehouse. Return shipment_id, source_warehouse.name, destination_warehouse.name, sorted by shipment_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS shipments CASCADE;\nDROP TABLE IF EXISTS warehouses CASCADE;\nCREATE TABLE warehouses (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE shipments (id SERIAL PRIMARY KEY, source_warehouse_id INTEGER REFERENCES warehouses(id), destination_warehouse_id INTEGER REFERENCES warehouses(id));\nINSERT INTO warehouses (name) VALUES ('Warehouse A'), ('Warehouse B'), ('Warehouse C');\nINSERT INTO shipments (source_warehouse_id, destination_warehouse_id) VALUES (1, 2), (2, 3), (1, 3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "warehouses",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "shipments",
+          "columns": [
+            "id",
+            "source_warehouse_id",
+            "destination_warehouse_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "shipments",
+          "from_column": "source_warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        },
+        {
+          "from_table": "shipments",
+          "from_column": "destination_warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "shipment_id",
+        "source_warehouse",
+        "destination_warehouse"
+      ],
+      "rows": [
+        [
+          1,
+          "Warehouse A",
+          "Warehouse B"
+        ],
+        [
+          2,
+          "Warehouse B",
+          "Warehouse C"
+        ],
+        [
+          3,
+          "Warehouse A",
+          "Warehouse C"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT s.id AS shipment_id, sw.name AS source_warehouse, dw.name AS destination_warehouse\nFROM shipments s\nJOIN warehouses sw ON s.source_warehouse_id = sw.id\nJOIN warehouses dw ON s.destination_warehouse_id = dw.id\nORDER BY s.id;",
+    "hints": [
+      {
+        "hint": "You need to join the shipments table to the warehouses table twice, once for each type of warehouse.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Make sure to use different aliases for each join to distinguish between source and destination.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You can use two INNER JOINs to retrieve the names: SELECT s.id, sw.name AS source, dw.name AS destination FROM shipments s JOIN warehouses sw ON s.source_warehouse_id = sw.id JOIN warehouses dw ON s.destination_warehouse_id = dw.id;",
+        "suggested_sql": "SELECT s.id AS shipment_id, sw.name AS source_warehouse, dw.name AS destination_warehouse\nFROM shipments s\nJOIN warehouses sw ON s.source_warehouse_id = sw.id\nJOIN warehouses dw ON s.destination_warehouse_id = dw.id\nORDER BY s.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Start with the shipments table",
+        "what_it_does": "Use the shipments table as the base for the query.",
+        "sql_snippet": "FROM shipments s",
+        "how_postgres_reads_it": "Postgres processes the shipments table and treats each row as the starting point."
+      },
+      {
+        "title": "Join for source warehouse",
+        "what_it_does": "Join the warehouses table to get the source warehouse's name.",
+        "sql_snippet": "JOIN warehouses sw ON s.source_warehouse_id = sw.id",
+        "how_postgres_reads_it": "Postgres finds matching rows in warehouses based on source_warehouse_id, adding source names to each shipment."
+      },
+      {
+        "title": "Join for destination warehouse",
+        "what_it_does": "Join again to get the destination warehouse's name.",
+        "sql_snippet": "JOIN warehouses dw ON s.destination_warehouse_id = dw.id",
+        "how_postgres_reads_it": "Postgres matches destination warehouse ids, attaching destination names to the results."
+      },
+      {
+        "title": "Order the results by shipment ID",
+        "what_it_does": "Sort the final results according to shipment ID.",
+        "sql_snippet": "ORDER BY s.id",
+        "how_postgres_reads_it": "Postgres arranges the records based on the shipment ID before returning the output."
+      }
+    ],
+    "solution_summary": "A self join using two INNER JOINs to link shipments to their source and destination warehouses.",
+    "solution_final_thought": "When dealing with relationships where multiple joins to the same table are needed, use distinct aliases for clarity.",
+    "explanation": "By joining the warehouses table twice, we can retrieve both the source and destination warehouse names for each shipment. The query ensures the correct mapping of warehouse IDs to their respective names and organizes the results by shipment ID.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-016",
+    "concept": "self_joins",
+    "subconcept": "hierarchical-data",
+    "difficulty": "medium",
+    "prompt": "Given the warehouses and their capacities, find pairs of warehouses where one can store more than the other. Return warehouse1.name, warehouse2.name, and warehouse1.capacity, sorted by warehouse1.name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS warehouses CASCADE;\nCREATE TABLE warehouses (id SERIAL PRIMARY KEY, name TEXT NOT NULL, capacity INTEGER NOT NULL);\nINSERT INTO warehouses (name, capacity) VALUES ('Warehouse A', 1000), ('Warehouse B', 1500), ('Warehouse C', 800), ('Warehouse D', 1200);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "warehouses",
+          "columns": [
+            "id",
+            "name",
+            "capacity"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "warehouse1",
+        "warehouse2",
+        "capacity"
+      ],
+      "rows": [
+        [
+          "Warehouse A",
+          "Warehouse C",
+          1000
+        ],
+        [
+          "Warehouse B",
+          "Warehouse A",
+          1500
+        ],
+        [
+          "Warehouse B",
+          "Warehouse C",
+          1500
+        ],
+        [
+          "Warehouse B",
+          "Warehouse D",
+          1500
+        ],
+        [
+          "Warehouse D",
+          "Warehouse A",
+          1200
+        ],
+        [
+          "Warehouse D",
+          "Warehouse C",
+          1200
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT w1.name AS warehouse1, w2.name AS warehouse2, w1.capacity\nFROM warehouses w1, warehouses w2\nWHERE w1.capacity > w2.capacity\nORDER BY w1.name;",
+    "hints": [
+      {
+        "hint": "You want to find pairs that have a specific relationship based on capacity. How can you compare the same column from two rows?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using a self join with a condition to compare the capacities of the warehouses.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a WHERE clause to filter for the condition w1.capacity > w2.capacity, like this: SELECT w1.name, w2.name, w1.capacity FROM warehouses w1, warehouses w2 WHERE w1.capacity > w2.capacity;",
+        "suggested_sql": "SELECT w1.name AS warehouse1, w2.name AS warehouse2, w1.capacity\nFROM warehouses w1, warehouses w2\nWHERE w1.capacity > w2.capacity\nORDER BY w1.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select the warehouses table twice",
+        "what_it_does": "Use the warehouses table with two aliases to compare capacities.",
+        "sql_snippet": "FROM warehouses w1, warehouses w2",
+        "how_postgres_reads_it": "Postgres generates combinations of warehouses for comparison."
+      },
+      {
+        "title": "Apply the capacity comparison condition",
+        "what_it_does": "Filter pairs where one warehouse's capacity exceeds the other's.",
+        "sql_snippet": "WHERE w1.capacity > w2.capacity",
+        "how_postgres_reads_it": "Postgres retains only those pairs where w1's capacity is greater than w2's."
+      },
+      {
+        "title": "Select the relevant columns",
+        "what_it_does": "Choose the warehouse names and capacity to display in the output.",
+        "sql_snippet": "SELECT w1.name AS warehouse1, w2.name AS warehouse2, w1.capacity",
+        "how_postgres_reads_it": "Postgres prepares the selected columns for the final output."
+      },
+      {
+        "title": "Sort the results",
+        "what_it_does": "Organize the output by the name of the first warehouse.",
+        "sql_snippet": "ORDER BY w1.name",
+        "how_postgres_reads_it": "Postgres arranges the output based on the warehouse1 name."
+      }
+    ],
+    "solution_summary": "Using a self join to find pairs of warehouses, filtering by capacity comparison where one is greater than the other.",
+    "solution_final_thought": "Self joins can effectively reveal hierarchical or comparative relationships within the same dataset.",
+    "explanation": "This query uses a self join to compare the capacities of two warehouses. By filtering for cases where one warehouse's capacity exceeds another's, we can identify and list all such pairs, providing insights into warehouse capacities.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-017",
+    "concept": "self_joins",
+    "subconcept": "recursive-data",
+    "difficulty": "hard",
+    "prompt": "Find all warehouses that can be reached from 'Warehouse A' through a series of shipments. Return warehouse.name and the path taken, sorted by warehouse.name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS shipments CASCADE;\nDROP TABLE IF EXISTS warehouses CASCADE;\nCREATE TABLE warehouses (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE shipments (id SERIAL PRIMARY KEY, source_warehouse_id INTEGER REFERENCES warehouses(id), destination_warehouse_id INTEGER REFERENCES warehouses(id));\nINSERT INTO warehouses (name) VALUES ('Warehouse A'), ('Warehouse B'), ('Warehouse C'), ('Warehouse D');\nINSERT INTO shipments (source_warehouse_id, destination_warehouse_id) VALUES (1, 2), (2, 3), (3, 4);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "warehouses",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "shipments",
+          "columns": [
+            "id",
+            "source_warehouse_id",
+            "destination_warehouse_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "shipments",
+          "from_column": "source_warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        },
+        {
+          "from_table": "shipments",
+          "from_column": "destination_warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "warehouse",
+        "path"
+      ],
+      "rows": [
+        [
+          "Warehouse A",
+          "Warehouse A"
+        ],
+        [
+          "Warehouse B",
+          "Warehouse A -> Warehouse B"
+        ],
+        [
+          "Warehouse C",
+          "Warehouse A -> Warehouse B -> Warehouse C"
+        ],
+        [
+          "Warehouse D",
+          "Warehouse A -> Warehouse B -> Warehouse C -> Warehouse D"
+        ]
+      ]
+    },
+    "reference_solution_sql": "WITH RECURSIVE warehouse_paths AS (\n    SELECT w.id, w.name, w.name AS path\n    FROM warehouses w\n    WHERE w.name = 'Warehouse A'\n    UNION ALL\n    SELECT w.id, w.name, CONCAT(wp.path, ' -> ', w.name)\n    FROM warehouse_paths wp\n    JOIN shipments s ON wp.id = s.source_warehouse_id\n    JOIN warehouses w ON s.destination_warehouse_id = w.id\n)\nSELECT name AS warehouse, path FROM warehouse_paths\nORDER BY name;",
+    "hints": [
+      {
+        "hint": "You need to track paths between warehouses. This requires a recursive approach.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using a CTE (Common Table Expression) to build the path dynamically from a starting warehouse.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use WITH RECURSIVE to form the path starting from 'Warehouse A'. Example: WITH RECURSIVE warehouse_paths AS (...).",
+        "suggested_sql": "WITH RECURSIVE warehouse_paths AS (\n    SELECT w.id, w.name, w.name AS path\n    FROM warehouses w\n    WHERE w.name = 'Warehouse A'\n    UNION ALL\n    SELECT w.id, w.name, CONCAT(wp.path, ' -> ', w.name)\n    FROM warehouse_paths wp\n    JOIN shipments s ON wp.id = s.source_warehouse_id\n    JOIN warehouses w ON s.destination_warehouse_id = w.id\n)\nSELECT name AS warehouse, path FROM warehouse_paths\nORDER BY name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Set up the recursive CTE",
+        "what_it_does": "Define the recursive Common Table Expression to initialize with the starting warehouse.",
+        "sql_snippet": "WITH RECURSIVE warehouse_paths AS (\n    SELECT w.id, w.name, w.name AS path\n    FROM warehouses w\n    WHERE w.name = 'Warehouse A'",
+        "how_postgres_reads_it": "Postgres begins by selecting the starting warehouse and creating the initial row for the recursion."
+      },
+      {
+        "title": "Define the recursive part of the CTE",
+        "what_it_does": "Add the logic to find connected warehouses through shipments.",
+        "sql_snippet": "UNION ALL\n    SELECT w.id, w.name, CONCAT(wp.path, ' -> ', w.name)\n    FROM warehouse_paths wp\n    JOIN shipments s ON wp.id = s.source_warehouse_id\n    JOIN warehouses w ON s.destination_warehouse_id = w.id",
+        "how_postgres_reads_it": "Postgres continues to find and expand paths from the current warehouses, appending them to the existing paths."
+      },
+      {
+        "title": "Select from the recursive CTE",
+        "what_it_does": "Extract the final results from the recursive CTE after it has completed building paths.",
+        "sql_snippet": "SELECT name AS warehouse, path FROM warehouse_paths",
+        "how_postgres_reads_it": "Postgres retrieves the warehouse names and paths built during recursion."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "Sort the results by the warehouse names for final output.",
+        "sql_snippet": "ORDER BY name",
+        "how_postgres_reads_it": "Postgres organizes the retrieved rows based on warehouse names before returning them."
+      }
+    ],
+    "solution_summary": "Using a recursive CTE to find all reachable warehouses from 'Warehouse A' and track the paths taken.",
+    "solution_final_thought": "Recursive CTEs are powerful for exploring hierarchical relationships within data.",
+    "explanation": "The recursive CTE starts with 'Warehouse A' and builds paths to all connected warehouses through shipments. It continually expands the paths by looking for further connections, allowing us to track the entire route from the originating warehouse to all reachable destinations.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-018",
+    "concept": "self_joins",
+    "subconcept": "circular-references",
+    "difficulty": "hard",
+    "prompt": "Identify warehouses that can directly ship to each other. Return warehouse1.name, warehouse2.name, and the route description. Sort by warehouse1.name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS shipments CASCADE;\nDROP TABLE IF EXISTS warehouses CASCADE;\nCREATE TABLE warehouses (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE shipments (id SERIAL PRIMARY KEY, source_warehouse_id INTEGER REFERENCES warehouses(id), destination_warehouse_id INTEGER REFERENCES warehouses(id));\nINSERT INTO warehouses (name) VALUES ('Warehouse A'), ('Warehouse B'), ('Warehouse C');\nINSERT INTO shipments (source_warehouse_id, destination_warehouse_id) VALUES (1, 2), (2, 1), (2, 3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "warehouses",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "shipments",
+          "columns": [
+            "id",
+            "source_warehouse_id",
+            "destination_warehouse_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "shipments",
+          "from_column": "source_warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        },
+        {
+          "from_table": "shipments",
+          "from_column": "destination_warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "warehouse1",
+        "warehouse2",
+        "route"
+      ],
+      "rows": [
+        [
+          "Warehouse A",
+          "Warehouse B",
+          "Warehouse A -> Warehouse B"
+        ],
+        [
+          "Warehouse B",
+          "Warehouse A",
+          "Warehouse B -> Warehouse A"
+        ],
+        [
+          "Warehouse B",
+          "Warehouse C",
+          "Warehouse B -> Warehouse C"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT w1.name AS warehouse1, w2.name AS warehouse2, CONCAT(w1.name, ' -> ', w2.name) AS route\nFROM shipments s\nJOIN warehouses w1 ON s.source_warehouse_id = w1.id\nJOIN warehouses w2 ON s.destination_warehouse_id = w2.id\nWHERE w1.id <> w2.id\nORDER BY w1.name;",
+    "hints": [
+      {
+        "hint": "Look for pairs of warehouses that have a two-way shipping relationship. What kind of join would you use?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Join the shipments table with the warehouses table twice, filtering for each direction of the shipment.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You want to find pairs where one warehouse ships to another and vice versa. Try: SELECT w1.name, w2.name FROM shipments s JOIN warehouses w1 ON s.source_warehouse_id = w1.id JOIN warehouses w2 ON s.destination_warehouse_id = w2.id WHERE w1.id <> w2.id;",
+        "suggested_sql": "SELECT w1.name AS warehouse1, w2.name AS warehouse2, CONCAT(w1.name, ' -> ', w2.name) AS route\nFROM shipments s\nJOIN warehouses w1 ON s.source_warehouse_id = w1.id\nJOIN warehouses w2 ON s.destination_warehouse_id = w2.id\nWHERE w1.id <> w2.id\nORDER BY w1.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join shipments with warehouses for source",
+        "what_it_does": "Link the shipments table to the warehouses table to get the source warehouse's name.",
+        "sql_snippet": "JOIN warehouses w1 ON s.source_warehouse_id = w1.id",
+        "how_postgres_reads_it": "Postgres matches each shipment's source warehouse ID with the warehouses table."
+      },
+      {
+        "title": "Join shipments with warehouses for destination",
+        "what_it_does": "Join again to link the destination warehouse name.",
+        "sql_snippet": "JOIN warehouses w2 ON s.destination_warehouse_id = w2.id",
+        "how_postgres_reads_it": "Postgres now has both the source and destination warehouse names available for each shipment."
+      },
+      {
+        "title": "Filter for distinct warehouses",
+        "what_it_does": "Ensure that the source and destination warehouses are distinct.",
+        "sql_snippet": "WHERE w1.id <> w2.id",
+        "how_postgres_reads_it": "Postgres eliminates any rows where the source and destination warehouses are the same."
+      },
+      {
+        "title": "Construct the route description",
+        "what_it_does": "Create a string to describe the shipping route between warehouses.",
+        "sql_snippet": "CONCAT(w1.name, ' -> ', w2.name) AS route",
+        "how_postgres_reads_it": "Postgres builds a descriptive string based on the warehouse names for easier readability."
+      }
+    ],
+    "solution_summary": "A self join to find and describe direct shipping routes between warehouses that can ship to each other.",
+    "solution_final_thought": "Self joins can effectively identify mutual relationships in data by linking rows of the same table.",
+    "explanation": "This query identifies pairs of warehouses that can ship to each other by checking for both shipping directions. By concatenating warehouse names into a route description, we present a clear view of the shipping relationships between warehouses.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-019",
+    "concept": "self_joins",
+    "subconcept": "conditional-comparisons",
+    "difficulty": "medium",
+    "prompt": "Find warehouses that can store more than a specified capacity threshold (e.g., 1000) and identify which warehouses exceed the capacity of those. Return warehouse1.name, warehouse2.name, and warehouse1.capacity, sorted by warehouse1.name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS warehouses CASCADE;\nCREATE TABLE warehouses (id SERIAL PRIMARY KEY, name TEXT NOT NULL, capacity INTEGER NOT NULL);\nINSERT INTO warehouses (name, capacity) VALUES ('Warehouse A', 1000), ('Warehouse B', 1500), ('Warehouse C', 800), ('Warehouse D', 1200);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "warehouses",
+          "columns": [
+            "id",
+            "name",
+            "capacity"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "warehouse1",
+        "warehouse2",
+        "capacity"
+      ],
+      "rows": [
+        [
+          "Warehouse B",
+          "Warehouse A",
+          1500
+        ],
+        [
+          "Warehouse B",
+          "Warehouse C",
+          1500
+        ],
+        [
+          "Warehouse B",
+          "Warehouse D",
+          1500
+        ],
+        [
+          "Warehouse D",
+          "Warehouse A",
+          1200
+        ],
+        [
+          "Warehouse D",
+          "Warehouse C",
+          1200
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT w1.name AS warehouse1, w2.name AS warehouse2, w1.capacity\nFROM warehouses w1, warehouses w2\nWHERE w1.capacity > w2.capacity AND w1.capacity > 1000\nORDER BY w1.name;",
+    "hints": [
+      {
+        "hint": "You need to find warehouses that exceed a certain capacity and compare them. How can you retrieve this relationship?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a self join to compare capacities between warehouses, applying the capacity condition in the WHERE clause.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Try: SELECT w1.name, w2.name FROM warehouses w1, warehouses w2 WHERE w1.capacity > w2.capacity AND w1.capacity > 1000;",
+        "suggested_sql": "SELECT w1.name AS warehouse1, w2.name AS warehouse2, w1.capacity\nFROM warehouses w1, warehouses w2\nWHERE w1.capacity > w2.capacity AND w1.capacity > 1000\nORDER BY w1.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join warehouses to compare capacities",
+        "what_it_does": "Use the warehouses table twice to create a comparison of capacities between different warehouses.",
+        "sql_snippet": "FROM warehouses w1, warehouses w2",
+        "how_postgres_reads_it": "Postgres generates all combinations of warehouses for comparison."
+      },
+      {
+        "title": "Apply the capacity comparison condition",
+        "what_it_does": "Ensure that one warehouse's capacity exceeds the other's.",
+        "sql_snippet": "WHERE w1.capacity > w2.capacity",
+        "how_postgres_reads_it": "Postgres filters out pairs where the first warehouse does not exceed the capacity of the second."
+      },
+      {
+        "title": "Add capacity threshold condition",
+        "what_it_does": "Filter to include only warehouses that exceed the specified capacity threshold.",
+        "sql_snippet": "AND w1.capacity > 1000",
+        "how_postgres_reads_it": "Postgres keeps only those pairs where the first warehouse's capacity is above the threshold."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "Sort the output by warehouse names for clarity.",
+        "sql_snippet": "ORDER BY w1.name",
+        "how_postgres_reads_it": "Postgres arranges the results based on the names of the first warehouses."
+      }
+    ],
+    "solution_summary": "A self join that identifies warehouses exceeding a set capacity threshold and compares them with others.",
+    "solution_final_thought": "Self joins enable comparative analysis within the same dataset by leveraging multiple instances of the same table.",
+    "explanation": "This query compares warehouses to find those that exceed a certain capacity threshold of 1000 and identifies other warehouses with smaller capacities. The self join allows for direct comparisons within the table to derive meaningful insights about warehouse capacities.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-020",
+    "concept": "self_joins",
+    "subconcept": "multi-condition-join",
+    "difficulty": "medium",
+    "prompt": "Find pairs of warehouses that can ship to each other directly and have a capacity difference of more than 300. Return warehouse1.name, warehouse2.name, and the capacity difference, sorted by warehouse1.name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS shipments CASCADE;\nDROP TABLE IF EXISTS warehouses CASCADE;\nCREATE TABLE warehouses (id SERIAL PRIMARY KEY, name TEXT NOT NULL, capacity INTEGER NOT NULL);\nCREATE TABLE shipments (id SERIAL PRIMARY KEY, source_warehouse_id INTEGER REFERENCES warehouses(id), destination_warehouse_id INTEGER REFERENCES warehouses(id));\nINSERT INTO warehouses (name, capacity) VALUES ('Warehouse A', 1000), ('Warehouse B', 1500), ('Warehouse C', 800); \nINSERT INTO shipments (source_warehouse_id, destination_warehouse_id) VALUES (1, 2), (2, 1), (2, 3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "warehouses",
+          "columns": [
+            "id",
+            "name",
+            "capacity"
+          ]
+        },
+        {
+          "name": "shipments",
+          "columns": [
+            "id",
+            "source_warehouse_id",
+            "destination_warehouse_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "shipments",
+          "from_column": "source_warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        },
+        {
+          "from_table": "shipments",
+          "from_column": "destination_warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "warehouse1",
+        "warehouse2",
+        "capacity_difference"
+      ],
+      "rows": [
+        [
+          "Warehouse A",
+          "Warehouse B",
+          500
+        ],
+        [
+          "Warehouse B",
+          "Warehouse A",
+          500
+        ],
+        [
+          "Warehouse B",
+          "Warehouse C",
+          700
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT w1.name AS warehouse1, w2.name AS warehouse2, ABS(w1.capacity - w2.capacity) AS capacity_difference\nFROM shipments s\nJOIN warehouses w1 ON s.source_warehouse_id = w1.id\nJOIN warehouses w2 ON s.destination_warehouse_id = w2.id\nWHERE w1.id <> w2.id AND ABS(w1.capacity - w2.capacity) > 300\nORDER BY w1.name;",
+    "hints": [
+      {
+        "hint": "You want to find pairs where both can ship to each other and compare their capacities. How do you set up your joins?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use two joins to connect the shipments with warehouses for both source and destination, then filter based on the capacity difference.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Try: SELECT w1.name, w2.name, ABS(w1.capacity - w2.capacity) FROM shipments s JOIN warehouses w1 ON s.source_warehouse_id = w1.id JOIN warehouses w2 ON s.destination_warehouse_id = w2.id WHERE w1.id <> w2.id AND ABS(w1.capacity - w2.capacity) > 300;",
+        "suggested_sql": "SELECT w1.name AS warehouse1, w2.name AS warehouse2, ABS(w1.capacity - w2.capacity) AS capacity_difference\nFROM shipments s\nJOIN warehouses w1 ON s.source_warehouse_id = w1.id\nJOIN warehouses w2 ON s.destination_warehouse_id = w2.id\nWHERE w1.id <> w2.id AND ABS(w1.capacity - w2.capacity) > 300\nORDER BY w1.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join shipments with warehouses for source",
+        "what_it_does": "Link the shipments table to the warehouses table for the source warehouse.",
+        "sql_snippet": "JOIN warehouses w1 ON s.source_warehouse_id = w1.id",
+        "how_postgres_reads_it": "Postgres associates each shipment with its source warehouse."
+      },
+      {
+        "title": "Join shipments with warehouses for destination",
+        "what_it_does": "Link again to get the destination warehouse's details.",
+        "sql_snippet": "JOIN warehouses w2 ON s.destination_warehouse_id = w2.id",
+        "how_postgres_reads_it": "Postgres retrieves the destination warehouse for each shipment."
+      },
+      {
+        "title": "Apply the conditions for distinct warehouses and capacity difference",
+        "what_it_does": "Filter for pairs where the warehouses are distinct and the capacity difference is significant.",
+        "sql_snippet": "WHERE w1.id <> w2.id AND ABS(w1.capacity - w2.capacity) > 300",
+        "how_postgres_reads_it": "Postgres keeps only those pairs that satisfy both criteria."
+      },
+      {
+        "title": "Select the desired columns and order results",
+        "what_it_does": "Retrieve warehouse names and compute the capacity difference, then sort.",
+        "sql_snippet": "SELECT w1.name AS warehouse1, w2.name AS warehouse2, ABS(w1.capacity - w2.capacity) AS capacity_difference\nORDER BY w1.name",
+        "how_postgres_reads_it": "Postgres prepares the final output sorted by warehouse1's name."
+      }
+    ],
+    "solution_summary": "Using a self join to identify pairs of warehouses with shipping routes and a significant capacity difference.",
+    "solution_final_thought": "Self joins can reveal complex relationships by applying multiple conditions across linked data.",
+    "explanation": "This query identifies pairs of warehouses that can ship to each other while also checking for a significant capacity difference. The self join facilitates a comprehensive comparison, allowing us to derive insights on warehouse capabilities and logistics.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-021",
+    "concept": "self_joins",
+    "subconcept": "self-referential-relationships",
+    "difficulty": "hard",
+    "prompt": "Identify warehouses that are connected through a series of shipments, starting from 'Warehouse A'. Return warehouse.name and the total number of hops taken to reach each connected warehouse, sorted by warehouse.name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS shipments CASCADE;\nDROP TABLE IF EXISTS warehouses CASCADE;\nCREATE TABLE warehouses (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE shipments (id SERIAL PRIMARY KEY, source_warehouse_id INTEGER REFERENCES warehouses(id), destination_warehouse_id INTEGER REFERENCES warehouses(id));\nINSERT INTO warehouses (name) VALUES ('Warehouse A'), ('Warehouse B'), ('Warehouse C'), ('Warehouse D');\nINSERT INTO shipments (source_warehouse_id, destination_warehouse_id) VALUES (1, 2), (2, 3), (3, 4);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "warehouses",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "shipments",
+          "columns": [
+            "id",
+            "source_warehouse_id",
+            "destination_warehouse_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "shipments",
+          "from_column": "source_warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        },
+        {
+          "from_table": "shipments",
+          "from_column": "destination_warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "warehouse",
+        "hops"
+      ],
+      "rows": [
+        [
+          "Warehouse A",
+          0
+        ],
+        [
+          "Warehouse B",
+          1
+        ],
+        [
+          "Warehouse C",
+          2
+        ],
+        [
+          "Warehouse D",
+          3
+        ]
+      ]
+    },
+    "reference_solution_sql": "WITH RECURSIVE warehouse_hops AS (\n    SELECT w.id, w.name, 0 AS hops\n    FROM warehouses w\n    WHERE w.name = 'Warehouse A'\n    UNION ALL\n    SELECT w.id, w.name, hops + 1\n    FROM warehouse_hops wh\n    JOIN shipments s ON wh.id = s.source_warehouse_id\n    JOIN warehouses w ON s.destination_warehouse_id = w.id\n)\nSELECT name AS warehouse, hops FROM warehouse_hops\nORDER BY name;",
+    "hints": [
+      {
+        "hint": "You need to track the number of shipments to reach each connected warehouse. This requires a recursive approach.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using a CTE (Common Table Expression) to build the connection paths dynamically, counting hops.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use WITH RECURSIVE to track hops from 'Warehouse A'. Example: WITH RECURSIVE warehouse_hops AS (...).",
+        "suggested_sql": "WITH RECURSIVE warehouse_hops AS (\n    SELECT w.id, w.name, 0 AS hops\n    FROM warehouses w\n    WHERE w.name = 'Warehouse A'\n    UNION ALL\n    SELECT w.id, w.name, hops + 1\n    FROM warehouse_hops wh\n    JOIN shipments s ON wh.id = s.source_warehouse_id\n    JOIN warehouses w ON s.destination_warehouse_id = w.id\n)\nSELECT name AS warehouse, hops FROM warehouse_hops\nORDER BY name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Set up the recursive CTE",
+        "what_it_does": "Define the CTE to start with 'Warehouse A' and initialize hops to 0.",
+        "sql_snippet": "WITH RECURSIVE warehouse_hops AS (\n    SELECT w.id, w.name, 0 AS hops\n    FROM warehouses w\n    WHERE w.name = 'Warehouse A'",
+        "how_postgres_reads_it": "Postgres initializes the recursive process with the starting warehouse."
+      },
+      {
+        "title": "Define the recursive part",
+        "what_it_does": "Add logic to increment hops and find connected warehouses through shipments.",
+        "sql_snippet": "UNION ALL\n    SELECT w.id, w.name, hops + 1\n    FROM warehouse_hops wh\n    JOIN shipments s ON wh.id = s.source_warehouse_id\n    JOIN warehouses w ON s.destination_warehouse_id = w.id",
+        "how_postgres_reads_it": "Postgres recursively finds all reachable warehouses from the starting point, counting each hop."
+      },
+      {
+        "title": "Select from the recursive CTE",
+        "what_it_does": "Extract the final results including warehouse names and hop counts.",
+        "sql_snippet": "SELECT name AS warehouse, hops FROM warehouse_hops",
+        "how_postgres_reads_it": "Postgres retrieves the final list of warehouses and their corresponding hops."
+      },
+      {
+        "title": "Order the results by warehouse name",
+        "what_it_does": "Sort the output by warehouse names for clarity.",
+        "sql_snippet": "ORDER BY name",
+        "how_postgres_reads_it": "Postgres prepares the final output sorted by warehouse names."
+      }
+    ],
+    "solution_summary": "Using a recursive CTE to track the number of hops from 'Warehouse A' to all reachable warehouses.",
+    "solution_final_thought": "Recursive joins can effectively model relationships that span multiple levels of connectivity.",
+    "explanation": "This recursive CTE starts from 'Warehouse A' and counts the number of hops required to reach each connected warehouse through shipments. It tracks the progression dynamically, allowing us to understand the connectivity and depth of relationships within the warehouse network.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-022",
+    "concept": "self_joins",
+    "subconcept": "basic-relationship",
+    "difficulty": "easy",
+    "prompt": "List all artists who have collaborated with themselves on at least one track. Return artist_id and artist_name, sorted by artist_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS tracks CASCADE;\nDROP TABLE IF EXISTS artists CASCADE;\n\nCREATE TABLE artists (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE tracks (id INTEGER PRIMARY KEY, title TEXT NOT NULL, artist_id INTEGER NOT NULL REFERENCES artists(id));\n\nINSERT INTO artists VALUES (1, 'Artist A'), (2, 'Artist B'), (3, 'Artist C');\nINSERT INTO tracks VALUES (1, 'Collab Track 1', 1), (2, 'Solo Track 1', 2), (3, 'Collab Track 2', 1), (4, 'Solo Track 2', 3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "artists",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "tracks",
+          "columns": [
+            "id",
+            "title",
+            "artist_id"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "artist_id",
+        "artist_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Artist A"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT a.id AS artist_id, a.name AS artist_name\nFROM artists a\nJOIN tracks t1 ON a.id = t1.artist_id\nJOIN tracks t2 ON a.id = t2.artist_id AND t1.id <> t2.id\nGROUP BY a.id, a.name\nORDER BY a.id;",
+    "hints": [
+      {
+        "hint": "Think of how an artist can appear in the track table multiple times.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You need to join the tracks table to itself on artist_id.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use self join to match tracks by the same artist and ensure they're different tracks. Try something like: SELECT a.id, a.name ... JOIN tracks t1 ... JOIN tracks t2 ...",
+        "suggested_sql": "SELECT a.id AS artist_id, a.name AS artist_name\nFROM artists a\nJOIN tracks t1 ON a.id = t1.artist_id\nJOIN tracks t2 ON a.id = t2.artist_id AND t1.id <> t2.id\nGROUP BY a.id, a.name\nORDER BY a.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join tracks to artists",
+        "what_it_does": "Join the artists table with the tracks table to match artists to their tracks.",
+        "sql_snippet": "JOIN tracks t1 ON a.id = t1.artist_id",
+        "how_postgres_reads_it": "Postgres matches each artist to their respective tracks based on artist_id, setting up the base for our self join."
+      },
+      {
+        "title": "Self join tracks to find collaborations",
+        "what_it_does": "Join the tracks table to itself to find different tracks by the same artist.",
+        "sql_snippet": "JOIN tracks t2 ON a.id = t2.artist_id AND t1.id <> t2.id",
+        "how_postgres_reads_it": "Postgres looks for tracks by the same artist where the track IDs are different, thus identifying collaborations."
+      },
+      {
+        "title": "Group and order results",
+        "what_it_does": "Group by artist_id and artist_name to eliminate duplicates and sort the output.",
+        "sql_snippet": "GROUP BY a.id, a.name\nORDER BY a.id",
+        "how_postgres_reads_it": "Postgres aggregates results for each artist and orders them by artist_id for a clean output."
+      }
+    ],
+    "solution_summary": "A self join on the tracks table allows us to find artists who have multiple entries, indicating collaborations.",
+    "solution_final_thought": "Self joins are powerful for exploring relationships within the same table, like an artist's collaborations.",
+    "explanation": "By joining the tracks table to itself, we can find instances where an artist has multiple tracks, satisfying the condition of collaboration. The condition t1.id <> t2.id ensures that we are comparing different tracks by the same artist.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-023",
+    "concept": "self_joins",
+    "subconcept": "hierarchical-relationship",
+    "difficulty": "medium",
+    "prompt": "Identify all albums that have been released by artists who have previously released a track. Return album_id, album_title, and artist_name, sorted by album_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS albums CASCADE;\nDROP TABLE IF EXISTS artists CASCADE;\nDROP TABLE IF EXISTS tracks CASCADE;\n\nCREATE TABLE artists (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE tracks (id INTEGER PRIMARY KEY, title TEXT NOT NULL, artist_id INTEGER NOT NULL REFERENCES artists(id));\nCREATE TABLE albums (id INTEGER PRIMARY KEY, title TEXT NOT NULL, artist_id INTEGER NOT NULL REFERENCES artists(id));\n\nINSERT INTO artists VALUES (1, 'Artist A'), (2, 'Artist B'), (3, 'Artist C');\nINSERT INTO tracks VALUES (1, 'Track 1', 1), (2, 'Track 2', 2);\nINSERT INTO albums VALUES (1, 'Album 1', 1), (2, 'Album 2', 3), (3, 'Album 3', 2);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "artists",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "tracks",
+          "columns": [
+            "id",
+            "title",
+            "artist_id"
+          ]
+        },
+        {
+          "name": "albums",
+          "columns": [
+            "id",
+            "title",
+            "artist_id"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "album_id",
+        "album_title",
+        "artist_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Album 1",
+          "Artist A"
+        ],
+        [
+          3,
+          "Album 3",
+          "Artist B"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT al.id AS album_id, al.title AS album_title, ar.name AS artist_name\nFROM albums al\nJOIN artists ar ON al.artist_id = ar.id\nWHERE ar.id IN (SELECT DISTINCT artist_id FROM tracks)\nORDER BY al.id;",
+    "hints": [
+      {
+        "hint": "Consider how an artist can be linked to both tracks and albums.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You'll need a subquery to find artists with tracks.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Look for albums by artists whose IDs are returned by a subquery that selects distinct artist_ids from tracks.",
+        "suggested_sql": "SELECT al.id AS album_id, al.title AS album_title, ar.name AS artist_name\nFROM albums al\nJOIN artists ar ON al.artist_id = ar.id\nWHERE ar.id IN (SELECT DISTINCT artist_id FROM tracks)\nORDER BY al.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select albums and join with artists",
+        "what_it_does": "Join the albums table with the artists to get the artist names.",
+        "sql_snippet": "FROM albums al\nJOIN artists ar ON al.artist_id = ar.id",
+        "how_postgres_reads_it": "Postgres connects album records to their respective artist names, allowing access to artist details."
+      },
+      {
+        "title": "Filter artists with tracks",
+        "what_it_does": "Use a subquery to filter artists who have released tracks.",
+        "sql_snippet": "WHERE ar.id IN (SELECT DISTINCT artist_id FROM tracks)",
+        "how_postgres_reads_it": "Postgres runs the subquery first, determining which artists have tracks before applying the filter on the main result."
+      },
+      {
+        "title": "Sort the results",
+        "what_it_does": "Sort the final result set by album_id.",
+        "sql_snippet": "ORDER BY al.id",
+        "how_postgres_reads_it": "Postgres organizes the output based on album_id for clarity."
+      }
+    ],
+    "solution_summary": "Joining albums with artists and filtering based on a subquery allows us to find albums from artists with previous tracks.",
+    "solution_final_thought": "Self joins and subqueries can work together to effectively filter complex relationships.",
+    "explanation": "By joining the albums and artists tables and filtering with a subquery that identifies artists with tracks, we effectively find all albums released by artists who have previous works. The use of IN with the subquery ensures that only relevant artists are considered.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-024",
+    "concept": "self_joins",
+    "subconcept": "multiple-roles",
+    "difficulty": "medium",
+    "prompt": "Find all pairs of tracks that share the same artist. Return track_id_1, track_title_1, track_id_2, track_title_2, and artist_name, sorted by track_id_1.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS tracks CASCADE;\nDROP TABLE IF EXISTS artists CASCADE;\n\nCREATE TABLE artists (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE tracks (id INTEGER PRIMARY KEY, title TEXT NOT NULL, artist_id INTEGER NOT NULL REFERENCES artists(id));\n\nINSERT INTO artists VALUES (1, 'Artist A'), (2, 'Artist B');\nINSERT INTO tracks VALUES (1, 'Track 1', 1), (2, 'Track 2', 1), (3, 'Track 3', 2), (4, 'Track 4', 1);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "artists",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "tracks",
+          "columns": [
+            "id",
+            "title",
+            "artist_id"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "track_id_1",
+        "track_title_1",
+        "track_id_2",
+        "track_title_2",
+        "artist_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Track 1",
+          2,
+          "Track 2",
+          "Artist A"
+        ],
+        [
+          1,
+          "Track 1",
+          4,
+          "Track 4",
+          "Artist A"
+        ],
+        [
+          2,
+          "Track 2",
+          4,
+          "Track 4",
+          "Artist A"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT t1.id AS track_id_1, t1.title AS track_title_1, t2.id AS track_id_2, t2.title AS track_title_2, ar.name AS artist_name\nFROM tracks t1\nJOIN tracks t2 ON t1.artist_id = t2.artist_id AND t1.id < t2.id\nJOIN artists ar ON t1.artist_id = ar.id\nORDER BY track_id_1;",
+    "hints": [
+      {
+        "hint": "You will need to compare each track to every other track by the same artist.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a self join on the tracks table for this comparison.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Ensure you only compare unique pairs of tracks. Use a condition to avoid duplicates: t1.id < t2.id.",
+        "suggested_sql": "SELECT t1.id AS track_id_1, t1.title AS track_title_1, t2.id AS track_id_2, t2.title AS track_title_2, ar.name AS artist_name\nFROM tracks t1\nJOIN tracks t2 ON t1.artist_id = t2.artist_id AND t1.id < t2.id\nJOIN artists ar ON t1.artist_id = ar.id\nORDER BY track_id_1;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join tracks to find pairs",
+        "what_it_does": "Self join the tracks table to find pairs of tracks by the same artist.",
+        "sql_snippet": "JOIN tracks t2 ON t1.artist_id = t2.artist_id AND t1.id < t2.id",
+        "how_postgres_reads_it": "Postgres creates pairs of tracks based on matching artist_id while ensuring they are distinct tracks through the ID condition."
+      },
+      {
+        "title": "Join with artists for names",
+        "what_it_does": "Join the artists table to get the artist's name for the output.",
+        "sql_snippet": "JOIN artists ar ON t1.artist_id = ar.id",
+        "how_postgres_reads_it": "Postgres matches artist IDs from the joined tracks, enriching the output with artist names."
+      },
+      {
+        "title": "Sort results by track ID",
+        "what_it_does": "Sort the final results by track_id_1 for clarity.",
+        "sql_snippet": "ORDER BY track_id_1",
+        "how_postgres_reads_it": "Postgres arranges the output based on the first track ID, making it easier to read."
+      }
+    ],
+    "solution_summary": "By self joining the tracks table and filtering for unique pairs, we can find track collaborations by artists.",
+    "solution_final_thought": "Self joins are useful for finding relationships between rows in the same table, such as collaborations.",
+    "explanation": "This query identifies pairs of tracks that share the same artist by utilizing a self join on the tracks table. The condition t1.id < t2.id prevents duplicate pairs and ensures the output only includes unique combinations.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-025",
+    "concept": "self_joins",
+    "subconcept": "circular-relationship",
+    "difficulty": "hard",
+    "prompt": "Determine which artists have collaborated on tracks with other artists. Return artist_id_1, artist_name_1, artist_id_2, and artist_name_2, sorted by artist_id_1.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS tracks CASCADE;\nDROP TABLE IF EXISTS artists CASCADE;\n\nCREATE TABLE artists (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE tracks (id INTEGER PRIMARY KEY, title TEXT NOT NULL, artist_id INTEGER NOT NULL REFERENCES artists(id));\n\nINSERT INTO artists VALUES (1, 'Artist A'), (2, 'Artist B'), (3, 'Artist C');\nINSERT INTO tracks VALUES (1, 'Collab 1', 1), (2, 'Collab 1', 2), (3, 'Collab 2', 1), (4, 'Collab 2', 3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "artists",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "tracks",
+          "columns": [
+            "id",
+            "title",
+            "artist_id"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "artist_id_1",
+        "artist_name_1",
+        "artist_id_2",
+        "artist_name_2"
+      ],
+      "rows": [
+        [
+          1,
+          "Artist A",
+          2,
+          "Artist B"
+        ],
+        [
+          1,
+          "Artist A",
+          3,
+          "Artist C"
+        ],
+        [
+          2,
+          "Artist B",
+          1,
+          "Artist A"
+        ],
+        [
+          3,
+          "Artist C",
+          1,
+          "Artist A"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT a1.id AS artist_id_1, a1.name AS artist_name_1, a2.id AS artist_id_2, a2.name AS artist_name_2\nFROM tracks t1\nJOIN artists a1 ON t1.artist_id = a1.id\nJOIN tracks t2 ON t1.title = t2.title AND t1.artist_id <> t2.artist_id\nJOIN artists a2 ON t2.artist_id = a2.id\nORDER BY artist_id_1;",
+    "hints": [
+      {
+        "hint": "You need to find tracks with the same title but different artists.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Self join the tracks table and compare titles, ensuring artists are different.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a self join to connect tracks by title and then join to artists twice for names.",
+        "suggested_sql": "SELECT a1.id AS artist_id_1, a1.name AS artist_name_1, a2.id AS artist_id_2, a2.name AS artist_name_2\nFROM tracks t1\nJOIN artists a1 ON t1.artist_id = a1.id\nJOIN tracks t2 ON t1.title = t2.title AND t1.artist_id <> t2.artist_id\nJOIN artists a2 ON t2.artist_id = a2.id\nORDER BY artist_id_1;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Associate tracks with their artists",
+        "what_it_does": "Join the tracks table with artists to get the first artist's details.",
+        "sql_snippet": "JOIN artists a1 ON t1.artist_id = a1.id",
+        "how_postgres_reads_it": "Postgres connects each track to its corresponding artist, making it easier to track collaborations."
+      },
+      {
+        "title": "Self join tracks for collaborations",
+        "what_it_does": "Join the tracks table to itself to find collaborations on tracks with the same title.",
+        "sql_snippet": "JOIN tracks t2 ON t1.title = t2.title AND t1.artist_id <> t2.artist_id",
+        "how_postgres_reads_it": "Postgres links tracks with the same title but ensures that they are by different artists, capturing collaborative relationships."
+      },
+      {
+        "title": "Join to get the second artist's name",
+        "what_it_does": "Join again to the artists table to retrieve the second artist's name.",
+        "sql_snippet": "JOIN artists a2 ON t2.artist_id = a2.id",
+        "how_postgres_reads_it": "Postgres fetches the second artist's details for each collaboration found in the previous step."
+      }
+    ],
+    "solution_summary": "This self join identifies artists who have collaborated on tracks by matching titles while ensuring distinct artists.",
+    "solution_final_thought": "Self joins are essential for uncovering relationships between records within the same table, such as collaborations.",
+    "explanation": "By joining the tracks table to itself and comparing titles, we can find instances where different artists have collaborated on the same track. The condition ensures that we only get pairs of different artists working together.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-026",
+    "concept": "self_joins",
+    "subconcept": "grouping-collaborations",
+    "difficulty": "hard",
+    "prompt": "List all artists who have collaborated on multiple tracks with the same artist. Return artist_id, artist_name, collaborator_id, collaborator_name, and count of collaborations, sorted by artist_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS tracks CASCADE;\nDROP TABLE IF EXISTS artists CASCADE;\n\nCREATE TABLE artists (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE tracks (id INTEGER PRIMARY KEY, title TEXT NOT NULL, artist_id INTEGER NOT NULL REFERENCES artists(id));\n\nINSERT INTO artists VALUES (1, 'Artist A'), (2, 'Artist B'), (3, 'Artist C');\nINSERT INTO tracks VALUES (1, 'Collab Track 1', 1), (2, 'Collab Track 1', 2), (3, 'Collab Track 2', 1), (4, 'Collab Track 2', 3), (5, 'Collab Track 3', 2);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "artists",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "tracks",
+          "columns": [
+            "id",
+            "title",
+            "artist_id"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "artist_id",
+        "artist_name",
+        "collaborator_id",
+        "collaborator_name",
+        "collaboration_count"
+      ],
+      "rows": [
+        [
+          1,
+          "Artist A",
+          2,
+          "Artist B",
+          1
+        ],
+        [
+          1,
+          "Artist A",
+          3,
+          "Artist C",
+          1
+        ],
+        [
+          2,
+          "Artist B",
+          1,
+          "Artist A",
+          1
+        ],
+        [
+          3,
+          "Artist C",
+          1,
+          "Artist A",
+          1
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT a1.id AS artist_id, a1.name AS artist_name, a2.id AS collaborator_id, a2.name AS collaborator_name, COUNT(*) AS collaboration_count\nFROM tracks t1\nJOIN artists a1 ON t1.artist_id = a1.id\nJOIN tracks t2 ON t1.title = t2.title AND t1.artist_id <> t2.artist_id\nJOIN artists a2 ON t2.artist_id = a2.id\nGROUP BY a1.id, a1.name, a2.id, a2.name\nORDER BY a1.id;",
+    "hints": [
+      {
+        "hint": "You need to find collaborations by matching track titles.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use self join on the tracks table to match artists on the same track title.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Group by artist and collaborator to count collaborations: COUNT(*) will help you get the number.",
+        "suggested_sql": "SELECT a1.id AS artist_id, a1.name AS artist_name, a2.id AS collaborator_id, a2.name AS collaborator_name, COUNT(*) AS collaboration_count\nFROM tracks t1\nJOIN artists a1 ON t1.artist_id = a1.id\nJOIN tracks t2 ON t1.title = t2.title AND t1.artist_id <> t2.artist_id\nJOIN artists a2 ON t2.artist_id = a2.id\nGROUP BY a1.id, a1.name, a2.id, a2.name\nORDER BY a1.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Associate tracks with their artists",
+        "what_it_does": "Join the tracks with the artists to get the primary artist details.",
+        "sql_snippet": "JOIN artists a1 ON t1.artist_id = a1.id",
+        "how_postgres_reads_it": "Postgres connects each track to its corresponding artist, allowing tracking of collaborations."
+      },
+      {
+        "title": "Self join for collaboration checks",
+        "what_it_does": "Self join tracks to find other artists on the same title.",
+        "sql_snippet": "JOIN tracks t2 ON t1.title = t2.title AND t1.artist_id <> t2.artist_id",
+        "how_postgres_reads_it": "Postgres looks for tracks with the same title and ensures different artists are matched."
+      },
+      {
+        "title": "Group the results",
+        "what_it_does": "Group by artist and collaborator to count the number of collaborations.",
+        "sql_snippet": "GROUP BY a1.id, a1.name, a2.id, a2.name",
+        "how_postgres_reads_it": "Postgres aggregates results based on unique pairs of artists and counts the collaborations."
+      }
+    ],
+    "solution_summary": "Using self joins and grouping, we can identify artists who have collaborated multiple times with the same collaborator.",
+    "solution_final_thought": "Self joins are vital in identifying complex relationships and interactions within the same dataset.",
+    "explanation": "By joining the tracks table to itself, we can find instances of multiple collaborations between artists on the same track titles. Grouping the results allows us to count how many times each artist has collaborated with another.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-027",
+    "concept": "self_joins",
+    "subconcept": "track-versions",
+    "difficulty": "medium",
+    "prompt": "Find all versions of tracks that have the same title but different artists. Return original_track_id, original_track_title, cover_track_id, cover_track_title, sorted by original_track_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS tracks CASCADE;\nDROP TABLE IF EXISTS artists CASCADE;\n\nCREATE TABLE artists (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE tracks (id INTEGER PRIMARY KEY, title TEXT NOT NULL, artist_id INTEGER NOT NULL REFERENCES artists(id));\n\nINSERT INTO artists VALUES (1, 'Artist A'), (2, 'Artist B'), (3, 'Artist C');\nINSERT INTO tracks VALUES (1, 'Track A', 1), (2, 'Track A', 2), (3, 'Track B', 1), (4, 'Track A', 3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "artists",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "tracks",
+          "columns": [
+            "id",
+            "title",
+            "artist_id"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "original_track_id",
+        "original_track_title",
+        "cover_track_id",
+        "cover_track_title"
+      ],
+      "rows": [
+        [
+          1,
+          "Track A",
+          2,
+          "Track A"
+        ],
+        [
+          1,
+          "Track A",
+          4,
+          "Track A"
+        ],
+        [
+          2,
+          "Track A",
+          1,
+          "Track A"
+        ],
+        [
+          2,
+          "Track A",
+          4,
+          "Track A"
+        ],
+        [
+          4,
+          "Track A",
+          1,
+          "Track A"
+        ],
+        [
+          4,
+          "Track A",
+          2,
+          "Track A"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT t1.id AS original_track_id, t1.title AS original_track_title, t2.id AS cover_track_id, t2.title AS cover_track_title\nFROM tracks t1\nJOIN tracks t2 ON t1.title = t2.title AND t1.artist_id <> t2.artist_id\nORDER BY original_track_id;",
+    "hints": [
+      {
+        "hint": "You need to find tracks with the same title from different artists.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Join the tracks table to itself using the title as the matching condition.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Ensure you filter out tracks by the same artist: t1.artist_id <> t2.artist_id.",
+        "suggested_sql": "SELECT t1.id AS original_track_id, t1.title AS original_track_title, t2.id AS cover_track_id, t2.title AS cover_track_title\nFROM tracks t1\nJOIN tracks t2 ON t1.title = t2.title AND t1.artist_id <> t2.artist_id\nORDER BY original_track_id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join tracks to find versions",
+        "what_it_does": "Self join the tracks table to find different versions of the same track title.",
+        "sql_snippet": "JOIN tracks t2 ON t1.title = t2.title AND t1.artist_id <> t2.artist_id",
+        "how_postgres_reads_it": "Postgres matches tracks based on the title while ensuring they are performed by different artists."
+      },
+      {
+        "title": "Select relevant columns",
+        "what_it_does": "Choose the original track and cover track details for the output.",
+        "sql_snippet": "SELECT t1.id AS original_track_id, t1.title AS original_track_title, t2.id AS cover_track_id, t2.title AS cover_track_title",
+        "how_postgres_reads_it": "Postgres prepares to output the relevant track IDs and titles based on the joined data."
+      },
+      {
+        "title": "Sort results by original track ID",
+        "what_it_does": "Sort the results for better readability.",
+        "sql_snippet": "ORDER BY original_track_id",
+        "how_postgres_reads_it": "Postgres organizes the results in ascending order based on the original track IDs."
+      }
+    ],
+    "solution_summary": "A self join allows us to find different versions of tracks by different artists sharing the same title.",
+    "solution_final_thought": "Self joins can reveal relationships between records in the same table, such as different versions of a song.",
+    "explanation": "By joining the tracks table to itself using the title as a key, we can identify all versions of a track that have been performed by different artists. The condition ensures that we only get versions from different artists and not the same one.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-028",
+    "concept": "self_joins",
+    "subconcept": "collaborative-albums",
+    "difficulty": "hard",
+    "prompt": "Identify all albums that have been produced collaboratively by multiple artists. Return album_id, album_title, and the names of all collaborating artists, sorted by album_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS albums CASCADE;\nDROP TABLE IF EXISTS artists CASCADE;\nDROP TABLE IF EXISTS tracks CASCADE;\n\nCREATE TABLE artists (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE tracks (id INTEGER PRIMARY KEY, title TEXT NOT NULL, artist_id INTEGER NOT NULL REFERENCES artists(id));\nCREATE TABLE albums (id INTEGER PRIMARY KEY, title TEXT NOT NULL);\n\nINSERT INTO artists VALUES (1, 'Artist A'), (2, 'Artist B'), (3, 'Artist C');\nINSERT INTO tracks VALUES (1, 'Collab Track 1', 1), (2, 'Collab Track 1', 2), (3, 'Collab Track 2', 1), (4, 'Collab Track 2', 3);\nINSERT INTO albums VALUES (1, 'Collaborative Album 1'), (2, 'Collaborative Album 2');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "artists",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "tracks",
+          "columns": [
+            "id",
+            "title",
+            "artist_id"
+          ]
+        },
+        {
+          "name": "albums",
+          "columns": [
+            "id",
+            "title"
+          ]
+        }
+      ],
+      "joins": []
+    },
+    "expected_output": {
+      "columns": [
+        "album_id",
+        "album_title",
+        "collaborating_artists"
+      ],
+      "rows": [
+        [
+          1,
+          "Collaborative Album 1",
+          "Artist A"
+        ],
+        [
+          2,
+          "Collaborative Album 2",
+          "Artist B"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT al.id AS album_id, al.title AS album_title, STRING_AGG(ar.name, ', ') AS collaborating_artists\nFROM albums al\nJOIN tracks t ON al.id = t.id\nJOIN artists ar ON t.artist_id = ar.id\nGROUP BY al.id, al.title\nORDER BY al.id;",
+    "hints": [
+      {
+        "hint": "Determine how tracks relate to albums and artists.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You will need to group tracks by album and aggregate artist names.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Join albums with tracks and artists, then use STRING_AGG to list the collaborating artists.",
+        "suggested_sql": "SELECT al.id AS album_id, al.title AS album_title, STRING_AGG(ar.name, ', ') AS collaborating_artists\nFROM albums al\nJOIN tracks t ON al.id = t.id\nJOIN artists ar ON t.artist_id = ar.id\nGROUP BY al.id, al.title\nORDER BY al.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join albums with tracks",
+        "what_it_does": "Join albums to tracks to link each album with its tracks.",
+        "sql_snippet": "JOIN tracks t ON al.id = t.id",
+        "how_postgres_reads_it": "Postgres connects each album with its corresponding tracks, enabling access to artist details."
+      },
+      {
+        "title": "Join tracks with artists",
+        "what_it_does": "Join the tracks to artists to get the names of the contributing artists.",
+        "sql_snippet": "JOIN artists ar ON t.artist_id = ar.id",
+        "how_postgres_reads_it": "Postgres links each track with the artist who performed it, providing the necessary details for output."
+      },
+      {
+        "title": "Aggregate and group results",
+        "what_it_does": "Group results by album and aggregate artist names into a single field.",
+        "sql_snippet": "GROUP BY al.id, al.title\nORDER BY al.id",
+        "how_postgres_reads_it": "Postgres combines results by album and formats artist names into a single string for concise output."
+      }
+    ],
+    "solution_summary": "Joining albums with tracks and aggregating artist names identifies collaborative albums effectively.",
+    "solution_final_thought": "Self joins and aggregations help in understanding complex relationships within music collaborations.",
+    "explanation": "By joining albums with tracks and artists, we can gather all artists contributing to each album. The STRING_AGG function neatly formats these names into a single string for each album, showcasing the collaborative nature of the music.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-029",
+    "concept": "self_joins",
+    "subconcept": "basic-relationship",
+    "difficulty": "easy",
+    "prompt": "Given a table of students with their ID and advisor ID, find each student and their advisor's name. Return student_id, student_name, advisor_name, sorted by student_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS students CASCADE;\nCREATE TABLE students (id INTEGER PRIMARY KEY, name TEXT NOT NULL, advisor_id INTEGER);\nINSERT INTO students VALUES (1,'Alice',2),(2,'Bob',3),(3,'Charlie',2),(4,'David',1),(5,'Eve',3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "students",
+          "columns": [
+            "id",
+            "name",
+            "advisor_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "students",
+          "from_column": "advisor_id",
+          "to_table": "students",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "student_id",
+        "student_name",
+        "advisor_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          "Bob"
+        ],
+        [
+          2,
+          "Bob",
+          "Charlie"
+        ],
+        [
+          3,
+          "Charlie",
+          "Bob"
+        ],
+        [
+          4,
+          "David",
+          "Alice"
+        ],
+        [
+          5,
+          "Eve",
+          "Charlie"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT s1.id AS student_id, s1.name AS student_name, s2.name AS advisor_name\nFROM students s1\nINNER JOIN students s2 ON s1.advisor_id = s2.id\nORDER BY s1.id;",
+    "hints": [
+      {
+        "hint": "You need to join the students table with itself to find advisor names.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use INNER JOIN to link advisor_id from one instance of students to id in another instance.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Make sure to alias the tables to differentiate between students and advisors in your query.",
+        "suggested_sql": "SELECT s1.id AS student_id, s1.name AS student_name, s2.name AS advisor_name\nFROM students s1\nINNER JOIN students s2 ON s1.advisor_id = s2.id\nORDER BY s1.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join students table with itself",
+        "what_it_does": "Uses INNER JOIN to link each student to their advisor.",
+        "sql_snippet": "FROM students s1 INNER JOIN students s2 ON s1.advisor_id = s2.id",
+        "how_postgres_reads_it": "Postgres matches rows from the first instance of students (s1) with those in the second instance (s2) where advisor_id equals id."
+      },
+      {
+        "title": "Select relevant columns",
+        "what_it_does": "Fetches student and advisor names along with student IDs.",
+        "sql_snippet": "SELECT s1.id AS student_id, s1.name AS student_name, s2.name AS advisor_name",
+        "how_postgres_reads_it": "Postgres prepares the result set with the specified columns, ensuring they are correctly aliased."
+      },
+      {
+        "title": "Order by student_id",
+        "what_it_does": "Sorts the results by student ID for better readability.",
+        "sql_snippet": "ORDER BY s1.id",
+        "how_postgres_reads_it": "Postgres organizes the final output in ascending order based on student_id."
+      }
+    ],
+    "solution_summary": "An INNER JOIN of the students table on itself to link students with their advisors, sorted by student_id.",
+    "solution_final_thought": "Self joins are useful for querying hierarchical relationships within the same table.",
+    "explanation": "Using a self join allows querying relationships where rows in the same table relate to each other, such as students and their advisors. Each student is matched with their corresponding advisor by joining the table on advisor_id and id, yielding a clear pairing of students with their advisors.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-030",
+    "concept": "self_joins",
+    "subconcept": "finding-relation-cycles",
+    "difficulty": "medium",
+    "prompt": "In a table of students where each student can have a list of friends (friend_id), find pairs of friends. Return student_id, friend_id, sorted by student_id and friend_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS students CASCADE;\nCREATE TABLE students (id INTEGER PRIMARY KEY, name TEXT NOT NULL, friend_id INTEGER);\nINSERT INTO students VALUES (1,'Alice',2),(2,'Bob',1),(3,'Charlie',1),(4,'David',3),(5,'Eve',4);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "students",
+          "columns": [
+            "id",
+            "name",
+            "friend_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "students",
+          "from_column": "friend_id",
+          "to_table": "students",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "student_id",
+        "friend_id"
+      ],
+      "rows": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          3,
+          1
+        ],
+        [
+          4,
+          3
+        ],
+        [
+          5,
+          4
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT s1.id AS student_id, s1.friend_id\nFROM students s1\nINNER JOIN students s2 ON s1.friend_id = s2.id\nORDER BY s1.id, s1.friend_id;",
+    "hints": [
+      {
+        "hint": "You need to find friends of friends by joining the students table on itself.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Look for students whose friend_id matches the id of another student.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Remember to order the results first by student_id and then by friend_id.",
+        "suggested_sql": "SELECT s1.id AS student_id, s1.friend_id\nFROM students s1\nINNER JOIN students s2 ON s1.friend_id = s2.id\nORDER BY s1.id, s1.friend_id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join the students table with itself",
+        "what_it_does": "Identifies pairs of friends by matching friend_id with student id.",
+        "sql_snippet": "FROM students s1 INNER JOIN students s2 ON s1.friend_id = s2.id",
+        "how_postgres_reads_it": "Postgres finds rows in s1 where friend_id matches id in s2, creating a set of friend pairs."
+      },
+      {
+        "title": "Select student and friend IDs",
+        "what_it_does": "Retrieves the pair of IDs from the joined tables.",
+        "sql_snippet": "SELECT s1.id AS student_id, s1.friend_id",
+        "how_postgres_reads_it": "Postgres prepares the output columns based on the selected fields from both instances of the table."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "Sorts the output for clarity.",
+        "sql_snippet": "ORDER BY s1.id, s1.friend_id",
+        "how_postgres_reads_it": "Postgres organizes the final result set in ascending order by both student_id and friend_id."
+      }
+    ],
+    "solution_summary": "An INNER JOIN on the students table to find all unique pairs of friends, sorted appropriately.",
+    "solution_final_thought": "Self joins help uncover relationships between rows in the same table, especially in hierarchical or relational structures.",
+    "explanation": "This self join captures friendships by matching a student's friend_id with another student's id. By joining the table on these columns, we can find every instance of friendship, including reciprocal relationships, which is why the results show pairs in both directions.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-031",
+    "concept": "self_joins",
+    "subconcept": "multi-level-friendship",
+    "difficulty": "hard",
+    "prompt": "In a student table with friendships, find students who are friends of friends (two levels deep). Return student_id, name, and their friend's friend's name, sorted by student_id and friend's friend's name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS students CASCADE;\nCREATE TABLE students (id INTEGER PRIMARY KEY, name TEXT NOT NULL, friend_id INTEGER);\nINSERT INTO students VALUES (1,'Alice',2),(2,'Bob',3),(3,'Charlie',1),(4,'David',2),(5,'Eve',4);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "students",
+          "columns": [
+            "id",
+            "name",
+            "friend_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "students",
+          "from_column": "friend_id",
+          "to_table": "students",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "student_id",
+        "name",
+        "friends_friend_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          "Charlie"
+        ],
+        [
+          2,
+          "Bob",
+          "Alice"
+        ],
+        [
+          3,
+          "Charlie",
+          "Bob"
+        ],
+        [
+          4,
+          "David",
+          "Charlie"
+        ],
+        [
+          5,
+          "Eve",
+          "Bob"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT s1.id AS student_id, s1.name, s3.name AS friends_friend_name\nFROM students s1\nINNER JOIN students s2 ON s1.friend_id = s2.id\nINNER JOIN students s3 ON s2.friend_id = s3.id\nORDER BY s1.id, s3.name;",
+    "hints": [
+      {
+        "hint": "You need to join the students table multiple times to access friends of friends.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Make sure to join the second instance on friend_id to capture the two levels of friendship.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You will need to use two INNER JOINs to achieve this and order the results accordingly.",
+        "suggested_sql": "SELECT s1.id AS student_id, s1.name, s3.name AS friends_friend_name\nFROM students s1\nINNER JOIN students s2 ON s1.friend_id = s2.id\nINNER JOIN students s3 ON s2.friend_id = s3.id\nORDER BY s1.id, s3.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join to find first level friends",
+        "what_it_does": "The first INNER JOIN connects students to their immediate friends.",
+        "sql_snippet": "INNER JOIN students s2 ON s1.friend_id = s2.id",
+        "how_postgres_reads_it": "Postgres matches rows in s1 to those in s2 where a student\u2019s friend_id corresponds to another student\u2019s id."
+      },
+      {
+        "title": "Join to find friends of friends",
+        "what_it_does": "The second INNER JOIN connects those friends to their friends.",
+        "sql_snippet": "INNER JOIN students s3 ON s2.friend_id = s3.id",
+        "how_postgres_reads_it": "Postgres now links the friends from s2 to their friends by matching friend_id with id."
+      },
+      {
+        "title": "Select and order the final output",
+        "what_it_does": "Selects the relevant columns and sorts them.",
+        "sql_snippet": "SELECT s1.id AS student_id, s1.name, s3.name AS friends_friend_name\nORDER BY s1.id, s3.name",
+        "how_postgres_reads_it": "Postgres prepares the final result set and sorts it based on student_id and friends' friends' names."
+      }
+    ],
+    "solution_summary": "Using multiple INNER JOINs to find friends of friends in the student table, sorted clearly.",
+    "solution_final_thought": "Self joins can be layered to explore complex relationships like multi-level friendships.",
+    "explanation": "This query uses two self joins to explore the friendship network two levels deep. It first finds a student's friends, and then it finds those friends' friends, enabling a deeper exploration of relationships within the same table.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-032",
+    "concept": "self_joins",
+    "subconcept": "finding-duplicate-relationships",
+    "difficulty": "medium",
+    "prompt": "In a student table with friendships, identify students who have the same friend. Return student_id, name, and their shared friend's name, sorted by student_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS students CASCADE;\nCREATE TABLE students (id INTEGER PRIMARY KEY, name TEXT NOT NULL, friend_id INTEGER);\nINSERT INTO students VALUES (1,'Alice',2),(2,'Bob',1),(3,'Charlie',2),(4,'David',3),(5,'Eve',1);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "students",
+          "columns": [
+            "id",
+            "name",
+            "friend_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "students",
+          "from_column": "friend_id",
+          "to_table": "students",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "student_id",
+        "name",
+        "shared_friend_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          "Charlie"
+        ],
+        [
+          2,
+          "Bob",
+          "Eve"
+        ],
+        [
+          3,
+          "Charlie",
+          "Alice"
+        ],
+        [
+          5,
+          "Eve",
+          "Bob"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT s1.id AS student_id, s1.name, s2.name AS shared_friend_name\nFROM students s1\nINNER JOIN students s2 ON s1.friend_id = s2.friend_id AND s1.id <> s2.id\nORDER BY s1.id, shared_friend_name;",
+    "hints": [
+      {
+        "hint": "You need to join the table on friend_id to find the shared friends.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Remember to exclude self-pairs by ensuring student_id is not equal to friend_id.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use INNER JOIN with an additional condition to filter out duplicates.",
+        "suggested_sql": "SELECT s1.id AS student_id, s1.name, s2.name AS shared_friend_name\nFROM students s1\nINNER JOIN students s2 ON s1.friend_id = s2.friend_id AND s1.id <> s2.id\nORDER BY s1.id, shared_friend_name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join on friend_id",
+        "what_it_does": "Finds students who have the same friend by joining on friend_id.",
+        "sql_snippet": "INNER JOIN students s2 ON s1.friend_id = s2.friend_id",
+        "how_postgres_reads_it": "Postgres matches rows where the friend_id in s1 equals the friend_id in s2, creating potential pairs of students."
+      },
+      {
+        "title": "Exclude self-pairs",
+        "what_it_does": "Ensures that a student does not pair with themselves as a shared friend.",
+        "sql_snippet": "AND s1.id <> s2.id",
+        "how_postgres_reads_it": "Postgres filters out any matches where the student ID is the same in both joined tables."
+      },
+      {
+        "title": "Select and order results",
+        "what_it_does": "Prepares and sorts the relevant output columns.",
+        "sql_snippet": "SELECT s1.id AS student_id, s1.name, s2.name AS shared_friend_name ORDER BY s1.id, shared_friend_name",
+        "how_postgres_reads_it": "Postgres organizes the final output based on the specified sort criteria."
+      }
+    ],
+    "solution_summary": "An INNER JOIN that identifies students sharing friends, sorted clearly.",
+    "solution_final_thought": "Self joins can efficiently reveal duplicated relationships such as shared friends between students.",
+    "explanation": "This self join allows us to find students with common friends by linking on the friend_id column. The additional condition prevents a student from being paired with themselves, providing a clean list of shared friendships.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-033",
+    "concept": "self_joins",
+    "subconcept": "grouped-friendship-count",
+    "difficulty": "hard",
+    "prompt": "In a student table, count how many students share the same friend. Return friend_id and the count of students, sorted by friend_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS students CASCADE;\nCREATE TABLE students (id INTEGER PRIMARY KEY, name TEXT NOT NULL, friend_id INTEGER);\nINSERT INTO students VALUES (1,'Alice',2),(2,'Bob',2),(3,'Charlie',3),(4,'David',2),(5,'Eve',3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "students",
+          "columns": [
+            "id",
+            "name",
+            "friend_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "students",
+          "from_column": "friend_id",
+          "to_table": "students",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "friend_id",
+        "student_count"
+      ],
+      "rows": [
+        [
+          2,
+          9
+        ],
+        [
+          3,
+          4
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT s1.friend_id, COUNT(s2.id) AS student_count\nFROM students s1\nINNER JOIN students s2 ON s1.friend_id = s2.friend_id\nGROUP BY s1.friend_id\nORDER BY s1.friend_id;",
+    "hints": [
+      {
+        "hint": "You will need to join the table on friend_id to count shared friendships.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use GROUP BY to aggregate counts of students sharing the same friend.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Don't forget to count distinct student IDs in your selection.",
+        "suggested_sql": "SELECT s1.friend_id, COUNT(s2.id) AS student_count\nFROM students s1\nINNER JOIN students s2 ON s1.friend_id = s2.friend_id\nGROUP BY s1.friend_id\nORDER BY s1.friend_id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join on friend_id",
+        "what_it_does": "Links students to find how many share the same friend.",
+        "sql_snippet": "INNER JOIN students s2 ON s1.friend_id = s2.friend_id",
+        "how_postgres_reads_it": "Postgres matches rows from both instances of the students table based on their friend_id."
+      },
+      {
+        "title": "Group by friend_id",
+        "what_it_does": "Aggregates results to count the number of students sharing each friend.",
+        "sql_snippet": "GROUP BY s1.friend_id",
+        "how_postgres_reads_it": "Postgres groups the results by friend_id, preparing for counting."
+      },
+      {
+        "title": "Count students and order results",
+        "what_it_does": "Counts the number of students per friend and sorts them.",
+        "sql_snippet": "SELECT s1.friend_id, COUNT(s2.id) AS student_count ORDER BY s1.friend_id",
+        "how_postgres_reads_it": "Postgres counts each group and organizes the results based on friend_id."
+      }
+    ],
+    "solution_summary": "An INNER JOIN with aggregation to count students sharing friendships, providing a clear summary by friend.",
+    "solution_final_thought": "Self joins combined with aggregation can yield insightful metrics on relationships within the same table.",
+    "explanation": "By joining the students table on friend_id and then grouping by that field, we can count how many students share each friend. This method provides a concise summary of friendship distribution among students.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-034",
+    "concept": "self_joins",
+    "subconcept": "friendship-depth",
+    "difficulty": "medium",
+    "prompt": "In a student table with friendships, find students who have friends that are also friends with each other (3 way friendship). Return student_id, name, and their mutual friend's name, sorted by student_id and mutual_friend_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS students CASCADE;\nCREATE TABLE students (id INTEGER PRIMARY KEY, name TEXT NOT NULL, friend_id INTEGER);\nINSERT INTO students VALUES (1,'Alice',2),(2,'Bob',3),(3,'Charlie',1),(4,'David',2),(5,'Eve',3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "students",
+          "columns": [
+            "id",
+            "name",
+            "friend_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "students",
+          "from_column": "friend_id",
+          "to_table": "students",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "student_id",
+        "student_name",
+        "mutual_friend_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          "David"
+        ],
+        [
+          2,
+          "Bob",
+          "Eve"
+        ],
+        [
+          4,
+          "David",
+          "Alice"
+        ],
+        [
+          5,
+          "Eve",
+          "Bob"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT s1.id AS student_id, s1.name AS student_name, s2.name AS mutual_friend_name\nFROM students s1\nINNER JOIN students s2 ON s1.friend_id = s2.friend_id\nWHERE s1.id <> s2.id\nORDER BY s1.id, mutual_friend_name;",
+    "hints": [
+      {
+        "hint": "You need to join the table on friend_id to find mutual friendships.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Make sure to filter out cases where students are paired with themselves.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use INNER JOIN and ensure to order your results properly.",
+        "suggested_sql": "SELECT s1.id AS student_id, s1.name AS student_name, s2.name AS mutual_friend_name\nFROM students s1\nINNER JOIN students s2 ON s1.friend_id = s2.friend_id\nWHERE s1.id <> s2.id\nORDER BY s1.id, mutual_friend_name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join to find mutual friends",
+        "what_it_does": "Links students that have the same friend by joining on friend_id.",
+        "sql_snippet": "INNER JOIN students s2 ON s1.friend_id = s2.friend_id",
+        "how_postgres_reads_it": "Postgres matches rows where the friend_id is the same, indicating mutual friendships."
+      },
+      {
+        "title": "Exclude self-pairs",
+        "what_it_does": "Ensures students do not pair with themselves as mutual friends.",
+        "sql_snippet": "WHERE s1.id <> s2.id",
+        "how_postgres_reads_it": "Postgres filters out any matches where a student is being compared to themselves."
+      },
+      {
+        "title": "Select and sort results",
+        "what_it_does": "Prepares the output and organizes it by student ID and mutual friend's name.",
+        "sql_snippet": "SELECT s1.id AS student_id, s1.name AS student_name, s2.name AS mutual_friend_name ORDER BY s1.id, mutual_friend_name",
+        "how_postgres_reads_it": "Postgres organizes the final output based on the selected sort criteria."
+      }
+    ],
+    "solution_summary": "A self join that identifies mutual friendships among students, sorted for clarity.",
+    "solution_final_thought": "Self joins can explore deeper connections like mutual friendships, revealing complex relationships.",
+    "explanation": "This query identifies mutual friendships by connecting students through their shared friend_id. By excluding self-pairs, we can list students who have friends that are also friends with each other, shedding light on their interconnected relationships.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-035",
+    "concept": "self_joins",
+    "subconcept": "nested-friendship-relationships",
+    "difficulty": "hard",
+    "prompt": "In a student table, find students who are friends with students that are friends with the same student. Return student_id, name, and the mutual friend\u2019s name, sorted by student_id and mutual_friend_name, including only those who share a friend with at least one other student.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS students CASCADE;\nCREATE TABLE students (id INTEGER PRIMARY KEY, name TEXT NOT NULL, friend_id INTEGER);\nINSERT INTO students VALUES (1,'Alice',2),(2,'Bob',3),(3,'Charlie',1),(4,'David',2),(5,'Eve',3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "students",
+          "columns": [
+            "id",
+            "name",
+            "friend_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "students",
+          "from_column": "friend_id",
+          "to_table": "students",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "student_id",
+        "student_name",
+        "mutual_friend_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          "David"
+        ],
+        [
+          2,
+          "Bob",
+          "Eve"
+        ],
+        [
+          4,
+          "David",
+          "Alice"
+        ],
+        [
+          5,
+          "Eve",
+          "Bob"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT s1.id AS student_id, s1.name AS student_name, s2.name AS mutual_friend_name\nFROM students s1\nINNER JOIN students s2 ON s1.friend_id = s2.friend_id\nWHERE s1.id <> s2.id AND s2.friend_id IN (SELECT friend_id FROM students WHERE id != s1.id)\nORDER BY s1.id, mutual_friend_name;",
+    "hints": [
+      {
+        "hint": "You need to identify students connected through mutual friends.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a nested SELECT to filter those who share friends with other students.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Ensure to exclude self-pairs and include the mutual friend\u2019s name in your output.",
+        "suggested_sql": "SELECT s1.id AS student_id, s1.name AS student_name, s2.name AS mutual_friend_name\nFROM students s1\nINNER JOIN students s2 ON s1.friend_id = s2.friend_id\nWHERE s1.id <> s2.id AND s2.friend_id IN (SELECT friend_id FROM students WHERE id != s1.id)\nORDER BY s1.id, mutual_friend_name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join to find mutual friends",
+        "what_it_does": "Finds students connected through mutual friendships by joining on friend_id.",
+        "sql_snippet": "INNER JOIN students s2 ON s1.friend_id = s2.friend_id",
+        "how_postgres_reads_it": "Postgres links students whose friend_id matches."
+      },
+      {
+        "title": "Exclude self-pairs",
+        "what_it_does": "Ensures students do not pair with themselves as mutual friends.",
+        "sql_snippet": "WHERE s1.id <> s2.id",
+        "how_postgres_reads_it": "Postgres filters out any matches where the student is being compared to themselves."
+      },
+      {
+        "title": "Use nested SELECT for filtering",
+        "what_it_does": "Filters mutual friends to ensure they have other connections.",
+        "sql_snippet": "AND s2.friend_id IN (SELECT friend_id FROM students WHERE id != s1.id)",
+        "how_postgres_reads_it": "Postgres checks that the mutual friend also has friends outside of the original student."
+      }
+    ],
+    "solution_summary": "A complex self join identifying students with mutual friends while filtering for deeper connections.",
+    "solution_final_thought": "Self joins can reveal intricate friendship networks, highlighting shared connections.",
+    "explanation": "This query uses a self join to find students who share friends with other students, ensuring that the mutual friend is also connected to someone else. The nested SELECT helps confirm that the mutual friend is not solely connected to the original student, revealing a richer network of relationships.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "self_joins-036",
+    "concept": "self_joins",
+    "subconcept": "uncovering-friendship-patterns",
+    "difficulty": "medium",
+    "prompt": "In a table of students, identify all pairs of students who have friends in common. Return student_id, name, common_friend_name, sorted by student_id and common_friend_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS students CASCADE;\nCREATE TABLE students (id INTEGER PRIMARY KEY, name TEXT NOT NULL, friend_id INTEGER);\nINSERT INTO students VALUES (1,'Alice',2),(2,'Bob',3),(3,'Charlie',1),(4,'David',2),(5,'Eve',3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "students",
+          "columns": [
+            "id",
+            "name",
+            "friend_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "students",
+          "from_column": "friend_id",
+          "to_table": "students",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "student_id",
+        "name",
+        "common_friend_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          "David"
+        ],
+        [
+          2,
+          "Bob",
+          "Eve"
+        ],
+        [
+          4,
+          "David",
+          "Alice"
+        ],
+        [
+          5,
+          "Eve",
+          "Bob"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT s1.id AS student_id, s1.name, s2.name AS common_friend_name\nFROM students s1\nINNER JOIN students s2 ON s1.friend_id = s2.friend_id\nWHERE s1.id <> s2.id\nORDER BY s1.id, common_friend_name;",
+    "hints": [
+      {
+        "hint": "You need to join the table on friend_id to identify common friendships.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Ensure to exclude self-pairings to focus on distinct pairs of students.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Sort your results by student_id and common_friend_name for clarity.",
+        "suggested_sql": "SELECT s1.id AS student_id, s1.name, s2.name AS common_friend_name\nFROM students s1\nINNER JOIN students s2 ON s1.friend_id = s2.friend_id\nWHERE s1.id <> s2.id\nORDER BY s1.id, common_friend_name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Join on friend_id",
+        "what_it_does": "Links students who share common friends through friend_id.",
+        "sql_snippet": "INNER JOIN students s2 ON s1.friend_id = s2.friend_id",
+        "how_postgres_reads_it": "Postgres finds matches between two student records based on their shared friend."
+      },
+      {
+        "title": "Exclude self-pairing",
+        "what_it_does": "Filters out pairs where a student is compared to themselves.",
+        "sql_snippet": "WHERE s1.id <> s2.id",
+        "how_postgres_reads_it": "Postgres ensures that each pairing is distinct, avoiding any duplicates where a student is matched with themselves."
+      },
+      {
+        "title": "Select and sort results",
+        "what_it_does": "Prepares the final output and organizes it for readability.",
+        "sql_snippet": "SELECT s1.id AS student_id, s1.name, s2.name AS common_friend_name ORDER BY s1.id, common_friend_name",
+        "how_postgres_reads_it": "Postgres organizes the final output based on the specified sort criteria."
+      }
+    ],
+    "solution_summary": "A self join that identifies pairs of students with common friends, providing a clear insight into shared relationships.",
+    "solution_final_thought": "Self joins are powerful for revealing shared connections in social networks.",
+    "explanation": "This query leverages a self join to find students who share friends, ensuring that each student is not compared to themselves. The result is a clear and organized list of pairs sharing common friendships, reflecting the interconnectedness of social relationships among students.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  }
+]

@@ -25,6 +25,7 @@ from .schemas import (
     GradeResult,
     HintRequest,
     HintResponse,
+    LoadCuratedQuestionRequest,
     NewQuestionRequest,
     PerformanceRequest,
     PerformanceResponse,
@@ -354,6 +355,60 @@ async def select_question(
             _remember_question(state, q)
             return _question_response_from_state(q)
     raise HTTPException(status_code=404, detail="Question not found in history.")
+
+
+_DROP_ALL_PUBLIC = sql_text(
+    """
+DO $$
+DECLARE r RECORD;
+BEGIN
+    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
+        EXECUTE 'DROP TABLE IF EXISTS public.' || quote_ident(r.tablename) || ' CASCADE';
+    END LOOP;
+END $$;
+"""
+)
+
+
+@app.post("/api/curated/load", response_model=QuestionResponse)
+async def load_curated_question(
+    req: LoadCuratedQuestionRequest,
+    state: SessionDep,
+) -> QuestionResponse:
+    """Apply a curated question's schema to Postgres and register it as the
+    session's active question for grading. Hints and solutions stay client-side
+    in curated mode, so this endpoint doesn't touch the LLM."""
+    async with engine.begin() as conn:
+        await conn.execute(_DROP_ALL_PUBLIC)
+        # Execute the curated setup SQL. Split on semicolons because exec_driver_sql
+        # only handles a single statement; the curated payload is multi-statement.
+        for stmt in [s.strip() for s in req.schema_setup_sql.split(";") if s.strip()]:
+            await conn.exec_driver_sql(stmt)
+        # Recreate _scenario_meta so data_gen.get_schema_info() doesn't trip
+        # over a missing-relation error (which would poison the txn and trigger
+        # an auto-regeneration of a random AI scenario on the next /api/schema).
+        await conn.exec_driver_sql(
+            "CREATE TABLE _scenario_meta (id TEXT PRIMARY KEY, label TEXT NOT NULL)"
+        )
+        await conn.exec_driver_sql(
+            "INSERT INTO _scenario_meta (id, label) VALUES ('curated', 'Curated bank')"
+        )
+
+    q = CurrentQuestion(
+        id=req.id,
+        question=req.prompt,
+        reference_sql=req.reference_solution_sql,
+        ordered_results=req.ordered_results,
+        concepts=[req.concept],
+        difficulty=req.difficulty,
+        expected_output=req.expected_output.model_dump(),
+        schema_context=req.schema_context.model_dump(),
+        shape_id=None,
+    )
+    state.current_question = q
+    state.last_grade = None
+    _remember_question(state, q)
+    return _question_response_from_state(q)
 
 
 @app.post("/api/run_query", response_model=RunQueryResponse)

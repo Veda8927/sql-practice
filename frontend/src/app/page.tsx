@@ -31,7 +31,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { SchemaModal } from "@/components/schema-modal";
-import { QuestionBar } from "@/components/question-bar";
+import { QuestionBar, type QuestionSource } from "@/components/question-bar";
 import { SqlEditor, PLACEHOLDER } from "@/components/sql-editor";
 import { ResultsPanel } from "@/components/results-panel";
 import { ShortcutsModal } from "@/components/shortcuts-modal";
@@ -42,9 +42,17 @@ import {
   resetStreak,
 } from "@/components/streak-badge";
 import { api } from "@/lib/api";
+import {
+  curatedGiveUp,
+  curatedHintAt,
+  loadConceptBank,
+  pickCuratedQuestion,
+} from "@/lib/curated";
 import { collectSchemaIdentifiers } from "@/lib/sql-lint";
 import { cn } from "@/lib/utils";
 import type {
+  CuratedQuestion,
+  Difficulty,
   ExplainResponse,
   ErrorHelpResponse,
   GiveUpResponse,
@@ -56,6 +64,17 @@ import type {
   RunQueryResponse,
   SchemaInfo,
 } from "@/lib/types";
+
+const SOURCE_STORAGE_KEY = "sql-practice:source";
+
+function loadSource(): QuestionSource {
+  try {
+    const v = window.localStorage.getItem(SOURCE_STORAGE_KEY);
+    return v === "curated" ? "curated" : "ai";
+  } catch {
+    return "ai";
+  }
+}
 
 function useSplitDirection(): "horizontal" | "vertical" {
   const [horizontal, setHorizontal] = React.useState(true);
@@ -237,6 +256,10 @@ export default function Page() {
   const [tourOpen, setTourOpen] = React.useState(false);
   const [tourStep, setTourStep] = React.useState(0);
   const [hint, setHint] = React.useState<HintResponse | null>(null);
+  const [source, setSourceState] = React.useState<QuestionSource>("ai");
+  const [curatedQuestion, setCuratedQuestion] =
+    React.useState<CuratedQuestion | null>(null);
+  const [curatedHintIndex, setCuratedHintIndex] = React.useState(0);
   const [mode, setMode] = React.useState<"practice" | "learn">("practice");
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const [lastRunMs, setLastRunMs] = React.useState<number | null>(null);
@@ -260,6 +283,7 @@ export default function Page() {
     setExplanation(null);
     setSolution(null);
     setHint(null);
+    setCuratedHintIndex(0);
     setLastRunMs(null);
     setErrorHelp(null);
     setPerformanceReview(null);
@@ -275,7 +299,43 @@ export default function Page() {
     mutationFn: (opts: { concept?: string; difficulty?: string } | undefined) =>
       api.newQuestion(opts),
     onSuccess: (q) => {
+      setCuratedQuestion(null);
       activateQuestion(q);
+      queryClient.invalidateQueries({ queryKey: ["question-history"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const curatedLoadMutation = useMutation({
+    mutationFn: async (opts: {
+      concept?: string;
+      difficulty?: string;
+    } | undefined): Promise<{ q: Question; cq: CuratedQuestion }> => {
+      const conceptSlug = opts?.concept ?? "joins";
+      const bank = await loadConceptBank(conceptSlug);
+      if (bank.length === 0) {
+        throw new Error(
+          `No curated questions yet for "${conceptSlug}". Try "joins" or switch to AI mode.`,
+        );
+      }
+      const diff = opts?.difficulty as Difficulty | undefined;
+      const cq = pickCuratedQuestion(bank, {
+        difficulty: diff,
+        excludeId: curatedQuestion?.id ?? null,
+      });
+      if (!cq) {
+        throw new Error(
+          `No curated questions at difficulty "${diff}" for "${conceptSlug}".`,
+        );
+      }
+      const q = await api.loadCurated(cq);
+      return { q, cq };
+    },
+    onSuccess: ({ q, cq }) => {
+      setCuratedQuestion(cq);
+      activateQuestion(q);
+      // Refresh the schema panel so the new curated tables appear.
+      queryClient.invalidateQueries({ queryKey: ["schema"] });
       queryClient.invalidateQueries({ queryKey: ["question-history"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -475,10 +535,48 @@ export default function Page() {
   }, [question, sql, submitMutation]);
 
   const onNewQuestion = React.useCallback(
-    (opts?: { concept?: string; difficulty?: string }) =>
-      newQuestionMutation.mutate(opts),
-    [newQuestionMutation],
+    (opts?: { concept?: string; difficulty?: string }) => {
+      if (source === "curated") {
+        curatedLoadMutation.mutate(opts);
+      } else {
+        newQuestionMutation.mutate(opts);
+      }
+    },
+    [source, curatedLoadMutation, newQuestionMutation],
   );
+
+  const onSourceChange = React.useCallback((next: QuestionSource) => {
+    setSourceState(next);
+    try {
+      window.localStorage.setItem(SOURCE_STORAGE_KEY, next);
+    } catch {
+      // Ignore storage failures.
+    }
+    // Switching source invalidates the active question — its schema is
+    // about to be replaced by the other side. Clear so the empty state
+    // re-appears and the user starts fresh.
+    setQuestion(null);
+    setCuratedQuestion(null);
+    setSql(PLACEHOLDER);
+    setResult(null);
+    setRunResult(null);
+    setExplanation(null);
+    setSolution(null);
+    setHint(null);
+  }, []);
+
+  // Restore the saved source choice on mount.
+  React.useEffect(() => {
+    setSourceState(loadSource());
+  }, []);
+
+  const onCuratedHint = React.useCallback(() => {
+    if (!curatedQuestion) return;
+    setHint(curatedHintAt(curatedQuestion, curatedHintIndex));
+    setCuratedHintIndex((i) =>
+      Math.min(i + 1, curatedQuestion.hints.length - 1),
+    );
+  }, [curatedQuestion, curatedHintIndex]);
 
   const onReset = React.useCallback(() => {
     if (!window.confirm("Regenerate the database with a new scenario?")) return;
@@ -505,8 +603,13 @@ export default function Page() {
     if (solutionFetchedRef.current === question.id) return;
     if (solution) return;
     solutionFetchedRef.current = question.id;
+    // Curated questions pre-bake their solution — skip the LLM call.
+    if (curatedQuestion && curatedQuestion.id === question.id) {
+      setSolution(curatedGiveUp(curatedQuestion));
+      return;
+    }
     giveUpMutation.mutate();
-  }, [question, solution, giveUpMutation]);
+  }, [question, solution, giveUpMutation, curatedQuestion]);
 
   // Keyboard shortcuts. Capture phase so we beat the browser AND Monaco
   // defaults (⌘F find, ⌘R reload, ⌘S save) before they can fire.
@@ -719,17 +822,27 @@ export default function Page() {
                 <div className="w-full">
           <QuestionBar
             question={question}
-            loading={newQuestionMutation.isPending}
+            loading={
+              source === "curated"
+                ? curatedLoadMutation.isPending
+                : newQuestionMutation.isPending
+            }
             onNewQuestion={onNewQuestion}
-            onHint={() => hintMutation.mutate()}
+            onHint={
+              source === "curated"
+                ? onCuratedHint
+                : () => hintMutation.mutate()
+            }
             hint={hint}
-            hintLoading={hintMutation.isPending}
+            hintLoading={source === "curated" ? false : hintMutation.isPending}
             onDismissHint={() => setHint(null)}
             onApplyHintSql={(suggested) => {
               setSql(suggested);
               setHint(null);
             }}
             difficultySuggestion={difficultySuggestion}
+            source={source}
+            onSourceChange={onSourceChange}
           />
                 </div>
               </div>

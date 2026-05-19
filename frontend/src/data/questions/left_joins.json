@@ -1,0 +1,2734 @@
+[
+  {
+    "id": "left_joins-001",
+    "concept": "left_joins",
+    "subconcept": "basic-left-join",
+    "difficulty": "easy",
+    "prompt": "Retrieve a list of all flights and their corresponding ticket information. Ensure that flights without tickets are also included in the result. The output should display flight_id, flight_number, and ticket_id, ordered by flight_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS tickets CASCADE;\nDROP TABLE IF EXISTS flights CASCADE;\n\nCREATE TABLE flights (id SERIAL PRIMARY KEY, flight_number TEXT NOT NULL);\nCREATE TABLE tickets (id SERIAL PRIMARY KEY, flight_id INTEGER REFERENCES flights(id), passenger_name TEXT NOT NULL);\n\nINSERT INTO flights (flight_number) VALUES ('AA100'), ('BA200'), ('CA300');\nINSERT INTO tickets (flight_id, passenger_name) VALUES (1, 'John Doe'), (1, 'Jane Roe'), (2, 'Alice Smith');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "flights",
+          "columns": [
+            "id",
+            "flight_number"
+          ]
+        },
+        {
+          "name": "tickets",
+          "columns": [
+            "id",
+            "flight_id",
+            "passenger_name"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "tickets",
+          "from_column": "flight_id",
+          "to_table": "flights",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "flight_id",
+        "flight_number",
+        "ticket_id"
+      ],
+      "rows": [
+        [
+          1,
+          "AA100",
+          1
+        ],
+        [
+          1,
+          "AA100",
+          2
+        ],
+        [
+          2,
+          "BA200",
+          3
+        ],
+        [
+          3,
+          "CA300",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT f.id AS flight_id, f.flight_number, t.id AS ticket_id\nFROM flights f\nLEFT JOIN tickets t ON f.id = t.flight_id\nORDER BY f.id;",
+    "hints": [
+      {
+        "hint": "You want to show all flights regardless of ticket status. What type of join allows this?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using a LEFT JOIN to include all rows from the flights table.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Make sure to order the results by flight_id after performing the LEFT JOIN.",
+        "suggested_sql": "SELECT f.id AS flight_id, f.flight_number, t.id AS ticket_id\nFROM flights f\nLEFT JOIN tickets t ON f.id = t.flight_id\nORDER BY f.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select the main table",
+        "what_it_does": "Start by selecting from the flights table, since you want to include all flights.",
+        "sql_snippet": "FROM flights f",
+        "how_postgres_reads_it": "Postgres reads the flights table first and treats each flight as a potential result."
+      },
+      {
+        "title": "Join with the tickets table",
+        "what_it_does": "Use LEFT JOIN to include ticket information associated with each flight.",
+        "sql_snippet": "LEFT JOIN tickets t ON f.id = t.flight_id",
+        "how_postgres_reads_it": "Postgres matches each flight with its tickets, keeping all flights in the result even if no tickets exist."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "Sort the final output by flight_id for clarity.",
+        "sql_snippet": "ORDER BY f.id",
+        "how_postgres_reads_it": "Postgres organizes the result set by the flight_id, ensuring that the output is in ascending order."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN between flights and tickets ensures all flights are displayed, even those without tickets, ordered by flight_id.",
+    "solution_final_thought": "LEFT JOIN is essential for including all records from one table while associating data from another.",
+    "explanation": "The LEFT JOIN keeps all records from the flights table and matches ticket records wherever available. If there are no tickets for a flight, ticket_id will be NULL, ensuring all flights are reported, even those without tickets.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-002",
+    "concept": "left_joins",
+    "subconcept": "left-join-with-aggregate",
+    "difficulty": "medium",
+    "prompt": "Find the total number of tickets for each flight, including those flights that have no tickets sold. Display flight_number and ticket_count, ordered by ticket_count in descending order.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS tickets CASCADE;\nDROP TABLE IF EXISTS flights CASCADE;\n\nCREATE TABLE flights (id SERIAL PRIMARY KEY, flight_number TEXT NOT NULL);\nCREATE TABLE tickets (id SERIAL PRIMARY KEY, flight_id INTEGER REFERENCES flights(id));\n\nINSERT INTO flights (flight_number) VALUES ('AA100'), ('BA200'), ('CA300');\nINSERT INTO tickets (flight_id) VALUES (1), (1), (2);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "flights",
+          "columns": [
+            "id",
+            "flight_number"
+          ]
+        },
+        {
+          "name": "tickets",
+          "columns": [
+            "id",
+            "flight_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "tickets",
+          "from_column": "flight_id",
+          "to_table": "flights",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "flight_number",
+        "ticket_count"
+      ],
+      "rows": [
+        [
+          "AA100",
+          2
+        ],
+        [
+          "BA200",
+          1
+        ],
+        [
+          "CA300",
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT f.flight_number, COUNT(t.id) AS ticket_count\nFROM flights f\nLEFT JOIN tickets t ON f.id = t.flight_id\nGROUP BY f.flight_number\nORDER BY ticket_count DESC;",
+    "hints": [
+      {
+        "hint": "You want to count tickets per flight, including those with none. What type of join should you use?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use COUNT to aggregate ticket counts while ensuring flights without tickets are included.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Remember to group by flight_number to get the total ticket counts per flight.",
+        "suggested_sql": "SELECT f.flight_number, COUNT(t.id) AS ticket_count\nFROM flights f\nLEFT JOIN tickets t ON f.id = t.flight_id\nGROUP BY f.flight_number\nORDER BY ticket_count DESC;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from flights for all records",
+        "what_it_does": "Start with the flights table to ensure every flight is included.",
+        "sql_snippet": "FROM flights f",
+        "how_postgres_reads_it": "Postgres scans the flights table and considers each flight for the result."
+      },
+      {
+        "title": "Join with tickets to pull ticket data",
+        "what_it_does": "Use LEFT JOIN to associate ticket data to flights, ensuring all flights are counted.",
+        "sql_snippet": "LEFT JOIN tickets t ON f.id = t.flight_id",
+        "how_postgres_reads_it": "Postgres matches ticket records to flights, retaining flights with no tickets sold."
+      },
+      {
+        "title": "Count the tickets per flight",
+        "what_it_does": "Aggregate the results with COUNT to find the total tickets for each flight.",
+        "sql_snippet": "COUNT(t.id) AS ticket_count",
+        "how_postgres_reads_it": "Postgres counts the non-null ticket IDs for each flight, returning zero for flights without tickets."
+      },
+      {
+        "title": "Group and order the results appropriately",
+        "what_it_does": "Group by flight_number to get total counts per flight and order by ticket_count.",
+        "sql_snippet": "GROUP BY f.flight_number ORDER BY ticket_count DESC",
+        "how_postgres_reads_it": "Postgres groups the rows by flight_number and sorts the result set based on ticket counts in descending order."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN with aggregation allows for counting tickets sold per flight, ensuring all flights are listed regardless of sales, sorted by ticket count.",
+    "solution_final_thought": "LEFT JOIN combined with aggregation functions like COUNT can provide comprehensive insights across related data.",
+    "explanation": "The LEFT JOIN ensures that every flight appears in the result set, even if it has no associated tickets. The COUNT function aggregates the number of tickets, yielding zero for flights without tickets. This comprehensive approach allows for insightful reporting on overall flight sales.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-003",
+    "concept": "left_joins",
+    "subconcept": "basic-left-join",
+    "difficulty": "easy",
+    "prompt": "List all menu items along with their associated restaurant names. Ensure that even if a menu item does not belong to a restaurant, it still appears in the results. Return item_id, item_name, and restaurant_name, sorted by item_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS menu_items CASCADE;\nDROP TABLE IF EXISTS restaurants CASCADE;\n\nCREATE TABLE restaurants (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE menu_items (id INTEGER PRIMARY KEY, name TEXT NOT NULL, restaurant_id INTEGER REFERENCES restaurants(id));\n\nINSERT INTO restaurants VALUES (1, 'Pasta Palace'), (2, 'Burger Barn'), (3, 'Sushi Spot');\nINSERT INTO menu_items VALUES (1, 'Spaghetti', 1), (2, 'Burger', 2), (3, 'California Roll', NULL);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "restaurants",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "menu_items",
+          "columns": [
+            "id",
+            "name",
+            "restaurant_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "menu_items",
+          "from_column": "restaurant_id",
+          "to_table": "restaurants",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "item_id",
+        "item_name",
+        "restaurant_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Spaghetti",
+          "Pasta Palace"
+        ],
+        [
+          2,
+          "Burger",
+          "Burger Barn"
+        ],
+        [
+          3,
+          "California Roll",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT mi.id AS item_id, mi.name AS item_name, r.name AS restaurant_name \nFROM menu_items mi \nLEFT JOIN restaurants r ON mi.restaurant_id = r.id \nORDER BY mi.id;",
+    "hints": [
+      {
+        "hint": "You want to include all menu items, even those without a restaurant. What type of join allows you to do that?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using LEFT JOIN to connect menu_items to restaurants. Remember to alias your tables to simplify references.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use LEFT JOIN to include all rows from menu_items and matching rows from restaurants. Don't forget ordering by item_id.",
+        "suggested_sql": "SELECT mi.id AS item_id, mi.name AS item_name, r.name AS restaurant_name \nFROM menu_items mi \nLEFT JOIN restaurants r ON mi.restaurant_id = r.id \nORDER BY mi.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select menu items",
+        "what_it_does": "Start with the menu_items table to ensure all menu items are included in the result.",
+        "sql_snippet": "FROM menu_items mi",
+        "how_postgres_reads_it": "Postgres starts with each row in the menu_items table as candidates for the output."
+      },
+      {
+        "title": "Join with restaurants",
+        "what_it_does": "LEFT JOIN restaurants to bring in restaurant names while keeping all menu items.",
+        "sql_snippet": "LEFT JOIN restaurants r ON mi.restaurant_id = r.id",
+        "how_postgres_reads_it": "For each menu item, Postgres tries to find a matching restaurant by id. If none is found, it still returns the menu item with a NULL restaurant name."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "ORDER BY item_id to sort the final output.",
+        "sql_snippet": "ORDER BY mi.id",
+        "how_postgres_reads_it": "Postgres sorts the results based on item_id before delivering them."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN that ensures all menu items are listed with their restaurant names, even if they have none.",
+    "solution_final_thought": "LEFT JOIN is perfect for retaining all records from one table regardless of matches in the other.",
+    "explanation": "The LEFT JOIN allows for all rows from the 'menu_items' table to be included in the result, regardless of whether they have a corresponding entry in the 'restaurants' table. This is essential for identifying menu items that may not belong to any restaurant.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-004",
+    "concept": "left_joins",
+    "subconcept": "left-join-with-conditions",
+    "difficulty": "medium",
+    "prompt": "Retrieve all reservations along with customer names. If a reservation does not have a corresponding customer, still include that reservation in the output. Return reservation_id, customer_name, and reservation_date, sorted by reservation_date.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS reservations CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE reservations (id INTEGER PRIMARY KEY, customer_id INTEGER REFERENCES customers(id), reservation_date DATE NOT NULL);\n\nINSERT INTO customers VALUES (1, 'John Doe'), (2, 'Jane Smith');\nINSERT INTO reservations VALUES (1, 1, '2024-01-10'), (2, NULL, '2024-01-15'), (3, 2, '2024-01-20');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "reservations",
+          "columns": [
+            "id",
+            "customer_id",
+            "reservation_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "reservations",
+          "from_column": "customer_id",
+          "to_table": "customers",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "reservation_id",
+        "customer_name",
+        "reservation_date"
+      ],
+      "rows": [
+        [
+          1,
+          "John Doe",
+          "2024-01-10"
+        ],
+        [
+          2,
+          null,
+          "2024-01-15"
+        ],
+        [
+          3,
+          "Jane Smith",
+          "2024-01-20"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT r.id AS reservation_id, c.name AS customer_name, r.reservation_date \nFROM reservations r \nLEFT JOIN customers c ON r.customer_id = c.id \nORDER BY r.reservation_date;",
+    "hints": [
+      {
+        "hint": "You want all reservations regardless of whether a customer exists for them. Which join type achieves this?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use LEFT JOIN to connect reservations with customers based on customer_id. Ensure to account for NULLs in customer names.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Perform a LEFT JOIN and sort by reservation_date for the final output.",
+        "suggested_sql": "SELECT r.id AS reservation_id, c.name AS customer_name, r.reservation_date \nFROM reservations r \nLEFT JOIN customers c ON r.customer_id = c.id \nORDER BY r.reservation_date;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from reservations",
+        "what_it_does": "Begin with the reservations table to ensure all reservations are included in the result.",
+        "sql_snippet": "FROM reservations r",
+        "how_postgres_reads_it": "Postgres starts with all rows in the reservations table as candidates for the output."
+      },
+      {
+        "title": "Join with customers",
+        "what_it_does": "LEFT JOIN customers to bring in customer names while maintaining all reservations.",
+        "sql_snippet": "LEFT JOIN customers c ON r.customer_id = c.id",
+        "how_postgres_reads_it": "For each reservation, Postgres looks for a matching customer by id. If no match is found, a NULL is returned for the customer name."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "ORDER BY reservation_date to sort the final output by date.",
+        "sql_snippet": "ORDER BY r.reservation_date",
+        "how_postgres_reads_it": "Postgres sorts the results based on reservation_date before presenting them."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN that includes all reservations with customer names, even if some reservations lack corresponding customers.",
+    "solution_final_thought": "LEFT JOIN is beneficial for including all records from the left table, particularly when dealing with optional relationships.",
+    "explanation": "Using a LEFT JOIN allows for all reservations to be included in the output, even when there are no corresponding customers. This ensures that no reservation data is lost, providing a complete view of the reservations.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-005",
+    "concept": "left_joins",
+    "subconcept": "multiple-left-joins",
+    "difficulty": "medium",
+    "prompt": "List all menu items with their prices and the restaurant names. If a menu item does not belong to any restaurant, it should still appear with a NULL restaurant name. Return item_id, item_name, price, and restaurant_name, sorted by item_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS menu_items CASCADE;\nDROP TABLE IF EXISTS restaurants CASCADE;\n\nCREATE TABLE restaurants (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE menu_items (id INTEGER PRIMARY KEY, name TEXT NOT NULL, price NUMERIC(10,2) NOT NULL, restaurant_id INTEGER REFERENCES restaurants(id));\n\nINSERT INTO restaurants VALUES (1, 'Italian Bistro'), (2, 'Steak House');\nINSERT INTO menu_items VALUES (1, 'Pasta', 12.50, 1), (2, 'Steak', 25.00, 2), (3, 'Salad', 8.00, NULL);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "restaurants",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "menu_items",
+          "columns": [
+            "id",
+            "name",
+            "price",
+            "restaurant_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "menu_items",
+          "from_column": "restaurant_id",
+          "to_table": "restaurants",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "item_id",
+        "item_name",
+        "price",
+        "restaurant_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Pasta",
+          "12.50",
+          "Italian Bistro"
+        ],
+        [
+          2,
+          "Steak",
+          "25.00",
+          "Steak House"
+        ],
+        [
+          3,
+          "Salad",
+          "8.00",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT mi.id AS item_id, mi.name AS item_name, mi.price, r.name AS restaurant_name \nFROM menu_items mi \nLEFT JOIN restaurants r ON mi.restaurant_id = r.id \nORDER BY mi.id;",
+    "hints": [
+      {
+        "hint": "You need to show all menu items, regardless of their restaurant association. What join type should you use?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Think about using LEFT JOIN to include all menu items, even those that don't belong to any restaurant.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Select the relevant columns and include LEFT JOIN with ordering by item_id.",
+        "suggested_sql": "SELECT mi.id AS item_id, mi.name AS item_name, mi.price, r.name AS restaurant_name \nFROM menu_items mi \nLEFT JOIN restaurants r ON mi.restaurant_id = r.id \nORDER BY mi.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from menu_items",
+        "what_it_does": "Start with the menu_items table to ensure all items are included in the output.",
+        "sql_snippet": "FROM menu_items mi",
+        "how_postgres_reads_it": "Postgres begins with each row in the menu_items table."
+      },
+      {
+        "title": "Join with restaurants",
+        "what_it_does": "LEFT JOIN restaurants to include restaurant names while keeping all menu items.",
+        "sql_snippet": "LEFT JOIN restaurants r ON mi.restaurant_id = r.id",
+        "how_postgres_reads_it": "For each menu item, Postgres checks for a matching restaurant and returns NULL if none is found."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "ORDER BY item_id to sort the final output.",
+        "sql_snippet": "ORDER BY mi.id",
+        "how_postgres_reads_it": "Postgres sorts the results based on item_id before returning them."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN that includes all menu items and their associated restaurant names, even if some items lack a restaurant.",
+    "solution_final_thought": "Using LEFT JOIN ensures that all records from the left table are returned, even when there are no matches.",
+    "explanation": "The LEFT JOIN allows all menu items to be displayed, regardless of whether they are linked to a restaurant, ensuring a comprehensive view of the menu.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-006",
+    "concept": "left_joins",
+    "subconcept": "left-join-with-multiple-tables",
+    "difficulty": "hard",
+    "prompt": "Retrieve all orders along with the associated customer names and the menu items they ordered. Include orders even if they have no corresponding customer or menu items. Return order_id, customer_name, item_name, sorted by order_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\nDROP TABLE IF EXISTS menu_items CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE menu_items (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER REFERENCES customers(id));\nCREATE TABLE order_items (order_id INTEGER REFERENCES orders(id), item_id INTEGER REFERENCES menu_items(id));\n\nINSERT INTO customers VALUES (1, 'Alice'), (2, 'Bob');\nINSERT INTO menu_items VALUES (1, 'Pizza'), (2, 'Pasta');\nINSERT INTO orders VALUES (1, 1), (2, NULL);\nINSERT INTO order_items VALUES (1, 1), (1, 2);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "menu_items",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "orders",
+          "columns": [
+            "id",
+            "customer_id"
+          ]
+        },
+        {
+          "name": "order_items",
+          "columns": [
+            "order_id",
+            "item_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "orders",
+          "from_column": "customer_id",
+          "to_table": "customers",
+          "to_column": "id"
+        },
+        {
+          "from_table": "order_items",
+          "from_column": "order_id",
+          "to_table": "orders",
+          "to_column": "id"
+        },
+        {
+          "from_table": "order_items",
+          "from_column": "item_id",
+          "to_table": "menu_items",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "order_id",
+        "customer_name",
+        "item_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          "Pizza"
+        ],
+        [
+          1,
+          "Alice",
+          "Pasta"
+        ],
+        [
+          2,
+          null,
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT o.id AS order_id, c.name AS customer_name, mi.name AS item_name \nFROM orders o \nLEFT JOIN customers c ON o.customer_id = c.id \nLEFT JOIN order_items oi ON o.id = oi.order_id \nLEFT JOIN menu_items mi ON oi.item_id = mi.id \nORDER BY o.id;",
+    "hints": [
+      {
+        "hint": "You need to include all orders, even those without customers or items. Which join type can help?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider chaining multiple LEFT JOINs to connect orders to customers and then order_items to menu_items.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Perform a series of LEFT JOINs to include all necessary tables, ensuring to account for NULLs where there are no matches.",
+        "suggested_sql": "SELECT o.id AS order_id, c.name AS customer_name, mi.name AS item_name \nFROM orders o \nLEFT JOIN customers c ON o.customer_id = c.id \nLEFT JOIN order_items oi ON o.id = oi.order_id \nLEFT JOIN menu_items mi ON oi.item_id = mi.id \nORDER BY o.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from orders",
+        "what_it_does": "Start with the orders table to ensure all orders are included in the output.",
+        "sql_snippet": "FROM orders o",
+        "how_postgres_reads_it": "Postgres begins with all rows in the orders table."
+      },
+      {
+        "title": "Join with customers",
+        "what_it_does": "LEFT JOIN customers to include customer names while maintaining all orders.",
+        "sql_snippet": "LEFT JOIN customers c ON o.customer_id = c.id",
+        "how_postgres_reads_it": "Postgres matches orders with customers, returning NULL for orders without customers."
+      },
+      {
+        "title": "Join with order_items",
+        "what_it_does": "LEFT JOIN order_items to connect orders with their items.",
+        "sql_snippet": "LEFT JOIN order_items oi ON o.id = oi.order_id",
+        "how_postgres_reads_it": "Postgres links each order to its items, returning NULL for orders without items."
+      },
+      {
+        "title": "Join with menu_items",
+        "what_it_does": "LEFT JOIN menu_items to bring in item names for the ordered items.",
+        "sql_snippet": "LEFT JOIN menu_items mi ON oi.item_id = mi.id",
+        "how_postgres_reads_it": "Postgres adds menu item names to the results, returning NULL if no item is associated."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "ORDER BY order_id to sort the final output by order number.",
+        "sql_snippet": "ORDER BY o.id",
+        "how_postgres_reads_it": "Postgres sorts the final output based on order_id before returning it."
+      }
+    ],
+    "solution_summary": "A series of LEFT JOINs that ensures all orders are displayed, with customer names and menu items included where available.",
+    "solution_final_thought": "Using multiple LEFT JOINs is effective for building complex queries while ensuring no data is lost from the primary table.",
+    "explanation": "This query includes all orders, utilizing multiple LEFT JOINs to connect customers and menu items, preserving orders even when associated data is missing. This is essential for maintaining a complete view of the orders.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-007",
+    "concept": "left_joins",
+    "subconcept": "left-join-with-filter",
+    "difficulty": "medium",
+    "prompt": "List all reservations along with customer names, but only include those that have a reservation date in January 2024. If a reservation does not have a corresponding customer, still include it. Return reservation_id, customer_name, and reservation_date, sorted by reservation_date.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS reservations CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE reservations (id INTEGER PRIMARY KEY, customer_id INTEGER REFERENCES customers(id), reservation_date DATE NOT NULL);\n\nINSERT INTO customers VALUES (1, 'Charlie'), (2, 'Diana');\nINSERT INTO reservations VALUES (1, 1, '2024-01-10'), (2, NULL, '2024-01-20'), (3, 2, '2024-02-15');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "reservations",
+          "columns": [
+            "id",
+            "customer_id",
+            "reservation_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "reservations",
+          "from_column": "customer_id",
+          "to_table": "customers",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "reservation_id",
+        "customer_name",
+        "reservation_date"
+      ],
+      "rows": [
+        [
+          1,
+          "Charlie",
+          "2024-01-10"
+        ],
+        [
+          2,
+          null,
+          "2024-01-20"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT r.id AS reservation_id, c.name AS customer_name, r.reservation_date \nFROM reservations r \nLEFT JOIN customers c ON r.customer_id = c.id \nWHERE r.reservation_date >= '2024-01-01' AND r.reservation_date < '2024-02-01' \nORDER BY r.reservation_date;",
+    "hints": [
+      {
+        "hint": "You want to filter results by reservation date while including all reservations. Which clause will help?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using the WHERE clause after the LEFT JOIN to filter the results based on reservation_date.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a LEFT JOIN and filter with WHERE to get reservations only from January 2024, maintaining NULLs for customers.",
+        "suggested_sql": "SELECT r.id AS reservation_id, c.name AS customer_name, r.reservation_date \nFROM reservations r \nLEFT JOIN customers c ON r.customer_id = c.id \nWHERE r.reservation_date >= '2024-01-01' AND r.reservation_date < '2024-02-01' \nORDER BY r.reservation_date;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from reservations",
+        "what_it_does": "Start with the reservations table to ensure all reservations are included in the output.",
+        "sql_snippet": "FROM reservations r",
+        "how_postgres_reads_it": "Postgres begins with all rows in the reservations table."
+      },
+      {
+        "title": "Join with customers",
+        "what_it_does": "LEFT JOIN customers to include customer names while keeping all reservations.",
+        "sql_snippet": "LEFT JOIN customers c ON r.customer_id = c.id",
+        "how_postgres_reads_it": "Postgres links reservations to customers, returning NULL where no customer exists."
+      },
+      {
+        "title": "Filter by reservation date",
+        "what_it_does": "Use WHERE to filter reservations to only those in January 2024.",
+        "sql_snippet": "WHERE r.reservation_date >= '2024-01-01' AND r.reservation_date < '2024-02-01'",
+        "how_postgres_reads_it": "Postgres evaluates each row against the conditions, including only those that meet the date criteria."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "ORDER BY reservation_date to sort the final output.",
+        "sql_snippet": "ORDER BY r.reservation_date",
+        "how_postgres_reads_it": "Postgres sorts the final output based on reservation_date before returning it."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN that includes all January 2024 reservations and their customer names, maintaining NULLs for customers where applicable.",
+    "solution_final_thought": "Using a LEFT JOIN with filtering allows you to retain all relevant data while applying specific conditions.",
+    "explanation": "This query uses a LEFT JOIN to include all reservations in January 2024, filtering the results to ensure customers without reservations are still shown. It effectively combines filtering and preserving data relationships.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-008",
+    "concept": "left_joins",
+    "subconcept": "left-join-with-aggregate",
+    "difficulty": "hard",
+    "prompt": "List all restaurants along with the count of menu items they offer. If a restaurant has no menu items, it should still be included with a count of 0. Return restaurant_id, restaurant_name, and item_count, sorted by restaurant_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS menu_items CASCADE;\nDROP TABLE IF EXISTS restaurants CASCADE;\n\nCREATE TABLE restaurants (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE menu_items (id INTEGER PRIMARY KEY, name TEXT NOT NULL, restaurant_id INTEGER REFERENCES restaurants(id));\n\nINSERT INTO restaurants VALUES (1, 'Cafe Good Food'), (2, 'Diner Delight');\nINSERT INTO menu_items VALUES (1, 'Omelette', 1), (2, 'Pancakes', 1);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "restaurants",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "menu_items",
+          "columns": [
+            "id",
+            "name",
+            "restaurant_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "menu_items",
+          "from_column": "restaurant_id",
+          "to_table": "restaurants",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "restaurant_id",
+        "restaurant_name",
+        "item_count"
+      ],
+      "rows": [
+        [
+          1,
+          "Cafe Good Food",
+          2
+        ],
+        [
+          2,
+          "Diner Delight",
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT r.id AS restaurant_id, r.name AS restaurant_name, COUNT(mi.id) AS item_count \nFROM restaurants r \nLEFT JOIN menu_items mi ON r.id = mi.restaurant_id \nGROUP BY r.id \nORDER BY r.id;",
+    "hints": [
+      {
+        "hint": "You want to include all restaurants, even those without menu items. What join type should you consider?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Think about using LEFT JOIN to connect restaurants with their menu items and then aggregate the results.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Perform a LEFT JOIN and use COUNT with GROUP BY to count menu items per restaurant, maintaining those without items.",
+        "suggested_sql": "SELECT r.id AS restaurant_id, r.name AS restaurant_name, COUNT(mi.id) AS item_count \nFROM restaurants r \nLEFT JOIN menu_items mi ON r.id = mi.restaurant_id \nGROUP BY r.id \nORDER BY r.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from restaurants",
+        "what_it_does": "Begin with the restaurants table to ensure all restaurants are included in the output.",
+        "sql_snippet": "FROM restaurants r",
+        "how_postgres_reads_it": "Postgres starts with each row in the restaurants table."
+      },
+      {
+        "title": "Join with menu_items",
+        "what_it_does": "LEFT JOIN menu_items to bring in the corresponding menu items for each restaurant.",
+        "sql_snippet": "LEFT JOIN menu_items mi ON r.id = mi.restaurant_id",
+        "how_postgres_reads_it": "For each restaurant, Postgres tries to find matching menu items, returning NULLs where none exist."
+      },
+      {
+        "title": "Count menu items",
+        "what_it_does": "Use COUNT to aggregate the number of menu items per restaurant.",
+        "sql_snippet": "COUNT(mi.id) AS item_count",
+        "how_postgres_reads_it": "Postgres counts the number of non-null menu item IDs, meaning it counts items only where they exist."
+      },
+      {
+        "title": "Group and order results",
+        "what_it_does": "GROUP BY restaurant id to ensure each restaurant appears once with its count and ORDER BY to sort results.",
+        "sql_snippet": "GROUP BY r.id ORDER BY r.id",
+        "how_postgres_reads_it": "Postgres groups the results by restaurant id and sorts them before presenting the output."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN that counts menu items per restaurant, ensuring restaurants without items are still included in the results.",
+    "solution_final_thought": "Using aggregates with LEFT JOINs is powerful for summarizing data while ensuring completeness of the primary dataset.",
+    "explanation": "This query employs a LEFT JOIN to count the number of menu items for each restaurant, ensuring that restaurants without any items are still included with a count of zero. It allows for comprehensive reporting on restaurant offerings.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-009",
+    "concept": "left_joins",
+    "subconcept": "left-join-with-date-filter",
+    "difficulty": "medium",
+    "prompt": "List all reservations along with customer names, but only include reservations made in the year 2023. If a reservation does not have a corresponding customer, still include it. Return reservation_id, customer_name, and reservation_date, sorted by reservation_date.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS reservations CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE reservations (id INTEGER PRIMARY KEY, customer_id INTEGER REFERENCES customers(id), reservation_date DATE NOT NULL);\n\nINSERT INTO customers VALUES (1, 'Eve'), (2, 'Frank');\nINSERT INTO reservations VALUES (1, 1, '2023-05-10'), (2, NULL, '2023-06-15'), (3, 2, '2022-07-20');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "reservations",
+          "columns": [
+            "id",
+            "customer_id",
+            "reservation_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "reservations",
+          "from_column": "customer_id",
+          "to_table": "customers",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "reservation_id",
+        "customer_name",
+        "reservation_date"
+      ],
+      "rows": [
+        [
+          1,
+          "Eve",
+          "2023-05-10"
+        ],
+        [
+          2,
+          null,
+          "2023-06-15"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT r.id AS reservation_id, c.name AS customer_name, r.reservation_date \nFROM reservations r \nLEFT JOIN customers c ON r.customer_id = c.id \nWHERE r.reservation_date >= '2023-01-01' AND r.reservation_date < '2024-01-01' \nORDER BY r.reservation_date;",
+    "hints": [
+      {
+        "hint": "You want to filter for reservations made in 2023 while including all reservations. Which clause will help?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using the WHERE clause after the LEFT JOIN to filter the results based on reservation_date.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a LEFT JOIN and filter with WHERE to get reservations only from 2023, maintaining NULLs for customers.",
+        "suggested_sql": "SELECT r.id AS reservation_id, c.name AS customer_name, r.reservation_date \nFROM reservations r \nLEFT JOIN customers c ON r.customer_id = c.id \nWHERE r.reservation_date >= '2023-01-01' AND r.reservation_date < '2024-01-01' \nORDER BY r.reservation_date;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from reservations",
+        "what_it_does": "Start with the reservations table to ensure all relevant reservations are included in the output.",
+        "sql_snippet": "FROM reservations r",
+        "how_postgres_reads_it": "Postgres begins with each row in the reservations table."
+      },
+      {
+        "title": "Join with customers",
+        "what_it_does": "LEFT JOIN customers to include customer names while keeping all reservations.",
+        "sql_snippet": "LEFT JOIN customers c ON r.customer_id = c.id",
+        "how_postgres_reads_it": "Postgres links reservations to customers, returning NULL for those without customers."
+      },
+      {
+        "title": "Filter by year",
+        "what_it_does": "Use WHERE to filter reservations made in 2023.",
+        "sql_snippet": "WHERE r.reservation_date >= '2023-01-01' AND r.reservation_date < '2024-01-01'",
+        "how_postgres_reads_it": "Postgres evaluates each reservation date against the conditions, including only those in 2023."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "ORDER BY reservation_date to sort the final output.",
+        "sql_snippet": "ORDER BY r.reservation_date",
+        "how_postgres_reads_it": "Postgres sorts the results based on reservation_date before returning them."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN that includes all 2023 reservations and their customer names, maintaining NULLs for customers where applicable.",
+    "solution_final_thought": "Using a LEFT JOIN with date filtering allows for a complete view of reservations while applying specific conditions.",
+    "explanation": "This query uses a LEFT JOIN to include all reservations made in 2023, filtering the results to show customer names where available while keeping NULLs for customers without reservations. It effectively combines filtering and data relationships for comprehensive output.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-010",
+    "concept": "left_joins",
+    "subconcept": "left-join-with-aggregate-and-filter",
+    "difficulty": "hard",
+    "prompt": "List all restaurants along with the average price of menu items they offer. If a restaurant has no menu items, it should still be included with an average price of NULL. Return restaurant_id, restaurant_name, and average_price, sorted by restaurant_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS menu_items CASCADE;\nDROP TABLE IF EXISTS restaurants CASCADE;\n\nCREATE TABLE restaurants (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE menu_items (id INTEGER PRIMARY KEY, name TEXT NOT NULL, price NUMERIC(10,2) NOT NULL, restaurant_id INTEGER REFERENCES restaurants(id));\n\nINSERT INTO restaurants VALUES (1, 'Gourmet Bistro'), (2, 'Healthy Eats');\nINSERT INTO menu_items VALUES (1, 'Salad', 10.00, 1), (2, 'Soup', 5.00, 1);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "restaurants",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "menu_items",
+          "columns": [
+            "id",
+            "name",
+            "price",
+            "restaurant_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "menu_items",
+          "from_column": "restaurant_id",
+          "to_table": "restaurants",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "restaurant_id",
+        "restaurant_name",
+        "average_price"
+      ],
+      "rows": [
+        [
+          1,
+          "Gourmet Bistro",
+          "7.5000000000000000"
+        ],
+        [
+          2,
+          "Healthy Eats",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT r.id AS restaurant_id, r.name AS restaurant_name, AVG(mi.price) AS average_price \nFROM restaurants r \nLEFT JOIN menu_items mi ON r.id = mi.restaurant_id \nGROUP BY r.id \nORDER BY r.id;",
+    "hints": [
+      {
+        "hint": "You want to include all restaurants, even those without menu items. What join type should you consider?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Think about using LEFT JOIN to connect restaurants with their menu items and then aggregate the results by average.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Perform a LEFT JOIN and use AVG with GROUP BY to calculate average prices per restaurant, maintaining those without items.",
+        "suggested_sql": "SELECT r.id AS restaurant_id, r.name AS restaurant_name, AVG(mi.price) AS average_price \nFROM restaurants r \nLEFT JOIN menu_items mi ON r.id = mi.restaurant_id \nGROUP BY r.id \nORDER BY r.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from restaurants",
+        "what_it_does": "Begin with the restaurants table to ensure all restaurants are included in the output.",
+        "sql_snippet": "FROM restaurants r",
+        "how_postgres_reads_it": "Postgres starts with each row in the restaurants table."
+      },
+      {
+        "title": "Join with menu_items",
+        "what_it_does": "LEFT JOIN menu_items to relate menu items to their restaurants.",
+        "sql_snippet": "LEFT JOIN menu_items mi ON r.id = mi.restaurant_id",
+        "how_postgres_reads_it": "For every restaurant, Postgres checks for associated menu items, returning NULL for restaurants with no items."
+      },
+      {
+        "title": "Calculate average price",
+        "what_it_does": "Use AVG to compute the average price of menu items per restaurant.",
+        "sql_snippet": "AVG(mi.price) AS average_price",
+        "how_postgres_reads_it": "Postgres calculates the average price of menu items, resulting in NULL for restaurants without any items."
+      },
+      {
+        "title": "Group and order results",
+        "what_it_does": "GROUP BY restaurant id to ensure each restaurant appears once with its average price and ORDER BY to sort results.",
+        "sql_snippet": "GROUP BY r.id ORDER BY r.id",
+        "how_postgres_reads_it": "Postgres groups the results by restaurant id and sorts them before presenting the output."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN that calculates average menu item prices per restaurant, ensuring inclusion of restaurants without items with an average price of NULL.",
+    "solution_final_thought": "Using aggregates with LEFT JOINs allows for detailed insights into restaurant offerings while ensuring completeness of data.",
+    "explanation": "This query employs a LEFT JOIN to calculate the average price of menu items for each restaurant, ensuring that restaurants without items are still included with a NULL average. It addresses both the need for aggregation and completeness in reporting.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-011",
+    "concept": "left_joins",
+    "subconcept": "basic-left-join",
+    "difficulty": "easy",
+    "prompt": "Retrieve a list of all customers along with their orders. Include the customer's name, order ID, and order date. If a customer has no orders, the order ID and order date should be NULL.",
+    "ordered_results": false,
+    "schema_setup_sql": "DROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE orders (id SERIAL PRIMARY KEY, customer_id INTEGER REFERENCES customers(id), order_date DATE NOT NULL);\n\nINSERT INTO customers (name) VALUES ('Ada Lovelace'), ('Alan Turing'), ('Grace Hopper'), ('Linus Torvalds');\nINSERT INTO orders (customer_id, order_date) VALUES (1, '2024-01-10'), (1, '2024-01-15'), (3, '2024-02-01');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "orders",
+          "columns": [
+            "id",
+            "customer_id",
+            "order_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "customers",
+          "from_column": "id",
+          "to_table": "orders",
+          "to_column": "customer_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "customer_name",
+        "order_id",
+        "order_date"
+      ],
+      "rows": [
+        [
+          "Ada Lovelace",
+          1,
+          "2024-01-10"
+        ],
+        [
+          "Ada Lovelace",
+          2,
+          "2024-01-15"
+        ],
+        [
+          "Grace Hopper",
+          3,
+          "2024-02-01"
+        ],
+        [
+          "Alan Turing",
+          null,
+          null
+        ],
+        [
+          "Linus Torvalds",
+          null,
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT c.name AS customer_name, o.id AS order_id, o.order_date\nFROM customers c\nLEFT JOIN orders o ON c.id = o.customer_id;",
+    "hints": [
+      {
+        "hint": "You want to include all customers regardless of whether they have orders. What type of join does that?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use LEFT JOIN to connect customers with orders based on customer_id.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Make sure to select the customer's name and include order_id and order_date with appropriate aliases.",
+        "suggested_sql": "SELECT c.name AS customer_name, o.id AS order_id, o.order_date\nFROM customers c\nLEFT JOIN orders o ON c.id = o.customer_id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select all customers",
+        "what_it_does": "Begin with the customers table to ensure all customers are included.",
+        "sql_snippet": "FROM customers c",
+        "how_postgres_reads_it": "Postgres starts with the customers table and treats each row as a candidate for the result."
+      },
+      {
+        "title": "Join orders table",
+        "what_it_does": "Use LEFT JOIN to include orders where applicable, retaining all customers.",
+        "sql_snippet": "LEFT JOIN orders o ON c.id = o.customer_id",
+        "how_postgres_reads_it": "Postgres matches each customer with their orders, but if no match exists, it retains the customer row with NULLs for order fields."
+      },
+      {
+        "title": "Select required columns",
+        "what_it_does": "Retrieve the customer's name, order ID, and order date.",
+        "sql_snippet": "SELECT c.name AS customer_name, o.id AS order_id, o.order_date",
+        "how_postgres_reads_it": "Postgres collects the specified columns from the joined result."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN between customers and orders ensures all customers are listed alongside their orders, if any.",
+    "solution_final_thought": "LEFT JOIN is essential when you want to retain rows from the left table regardless of matches in the right table.",
+    "explanation": "The LEFT JOIN allows us to see all customers, even those without orders. When a customer does not have associated orders, the order fields return NULL, ensuring that we still see the customer in the result set.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-012",
+    "concept": "left_joins",
+    "subconcept": "left-join-with-aggregate",
+    "difficulty": "medium",
+    "prompt": "Show each customer's name along with the total number of orders they have placed. If a customer has not placed any orders, the total should be 0.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE orders (id SERIAL PRIMARY KEY, customer_id INTEGER REFERENCES customers(id), order_date DATE NOT NULL);\n\nINSERT INTO customers (name) VALUES ('Ada Lovelace'), ('Alan Turing'), ('Grace Hopper'), ('Linus Torvalds');\nINSERT INTO orders (customer_id, order_date) VALUES (1, '2024-01-10'), (1, '2024-01-15'), (3, '2024-02-01');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "orders",
+          "columns": [
+            "id",
+            "customer_id",
+            "order_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "customers",
+          "from_column": "id",
+          "to_table": "orders",
+          "to_column": "customer_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "customer_name",
+        "total_orders"
+      ],
+      "rows": [
+        [
+          "Ada Lovelace",
+          2
+        ],
+        [
+          "Alan Turing",
+          0
+        ],
+        [
+          "Grace Hopper",
+          1
+        ],
+        [
+          "Linus Torvalds",
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT c.name AS customer_name, COUNT(o.id) AS total_orders\nFROM customers c\nLEFT JOIN orders o ON c.id = o.customer_id\nGROUP BY c.id, c.name\nORDER BY c.name;",
+    "hints": [
+      {
+        "hint": "You need to count the orders grouped by customer. What SQL function helps you with counting?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Remember to use GROUP BY to aggregate the results by customer.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use COUNT() on the order IDs and ensure to include a LEFT JOIN.",
+        "suggested_sql": "SELECT c.name AS customer_name, COUNT(o.id) AS total_orders\nFROM customers c\nLEFT JOIN orders o ON c.id = o.customer_id\nGROUP BY c.id, c.name\nORDER BY c.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select customer names",
+        "what_it_does": "Start with the customers table to get all customer names.",
+        "sql_snippet": "FROM customers c",
+        "how_postgres_reads_it": "Postgres reads all rows from the customers table as potential output."
+      },
+      {
+        "title": "Join with orders",
+        "what_it_does": "LEFT JOIN orders to include order counts, even for customers with no orders.",
+        "sql_snippet": "LEFT JOIN orders o ON c.id = o.customer_id",
+        "how_postgres_reads_it": "Postgres matches customers with orders, allowing for NULLs where orders do not exist."
+      },
+      {
+        "title": "Count orders per customer",
+        "what_it_does": "Use COUNT() to aggregate the number of orders for each customer.",
+        "sql_snippet": "COUNT(o.id) AS total_orders",
+        "how_postgres_reads_it": "Postgres counts the order IDs, returning 0 for customers with no orders."
+      },
+      {
+        "title": "Group and sort results",
+        "what_it_does": "GROUP BY customer details and ORDER BY customer name.",
+        "sql_snippet": "GROUP BY c.id, c.name ORDER BY c.name",
+        "how_postgres_reads_it": "Postgres groups the results by each unique customer, ordering the output as specified."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN and COUNT() function together provide the total number of orders per customer, including those with zero orders.",
+    "solution_final_thought": "When aggregating with LEFT JOIN, always group by the left table's key to ensure accuracy.",
+    "explanation": "The LEFT JOIN allows us to count orders for all customers, ensuring those without orders are included with a total of 0. The aggregation function COUNT() effectively summarizes the order data for each customer.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-013",
+    "concept": "left_joins",
+    "subconcept": "left-join-with-filter",
+    "difficulty": "medium",
+    "prompt": "List all customers and their most recent order date. If a customer has no orders, show their name with a NULL order date.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE orders (id SERIAL PRIMARY KEY, customer_id INTEGER REFERENCES customers(id), order_date DATE NOT NULL);\n\nINSERT INTO customers (name) VALUES ('Ada Lovelace'), ('Alan Turing'), ('Grace Hopper'), ('Linus Torvalds');\nINSERT INTO orders (customer_id, order_date) VALUES (1, '2024-01-10'), (1, '2024-01-15'), (3, '2024-02-01');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "orders",
+          "columns": [
+            "id",
+            "customer_id",
+            "order_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "customers",
+          "from_column": "id",
+          "to_table": "orders",
+          "to_column": "customer_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "customer_name",
+        "most_recent_order_date"
+      ],
+      "rows": [
+        [
+          "Ada Lovelace",
+          "2024-01-15"
+        ],
+        [
+          "Alan Turing",
+          null
+        ],
+        [
+          "Grace Hopper",
+          "2024-02-01"
+        ],
+        [
+          "Linus Torvalds",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT c.name AS customer_name, MAX(o.order_date) AS most_recent_order_date\nFROM customers c\nLEFT JOIN orders o ON c.id = o.customer_id\nGROUP BY c.id, c.name\nORDER BY c.name;",
+    "hints": [
+      {
+        "hint": "You want the latest order date for each customer. Which SQL function helps find the maximum?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Remember to group by customer to get one row per customer.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use MAX() on order_date and ensure to include a LEFT JOIN.",
+        "suggested_sql": "SELECT c.name AS customer_name, MAX(o.order_date) AS most_recent_order_date\nFROM customers c\nLEFT JOIN orders o ON c.id = o.customer_id\nGROUP BY c.id, c.name\nORDER BY c.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select customer names",
+        "what_it_does": "Start with the customers table to gather all customer names.",
+        "sql_snippet": "FROM customers c",
+        "how_postgres_reads_it": "Postgres retrieves all rows from the customers table for potential results."
+      },
+      {
+        "title": "Join orders table",
+        "what_it_does": "LEFT JOIN orders to connect customers with their order dates.",
+        "sql_snippet": "LEFT JOIN orders o ON c.id = o.customer_id",
+        "how_postgres_reads_it": "Postgres matches each customer with their orders, allowing for NULLs where none exist."
+      },
+      {
+        "title": "Find the most recent order date",
+        "what_it_does": "Use MAX() to find the latest order date per customer.",
+        "sql_snippet": "MAX(o.order_date) AS most_recent_order_date",
+        "how_postgres_reads_it": "Postgres evaluates the maximum order date for each customer group."
+      },
+      {
+        "title": "Group and sort results",
+        "what_it_does": "GROUP BY customer details and ORDER BY to organize the output.",
+        "sql_snippet": "GROUP BY c.id, c.name ORDER BY c.name",
+        "how_postgres_reads_it": "Postgres groups results by each unique customer and sorts them alphabetically."
+      }
+    ],
+    "solution_summary": "Using LEFT JOIN and MAX() allows retrieval of the most recent order date for each customer, including those with no orders.",
+    "solution_final_thought": "When finding aggregate values with LEFT JOIN, always group by the left table's keys to ensure all rows are represented.",
+    "explanation": "The LEFT JOIN ensures that all customers are visible in the results, even if they have never placed an order. The MAX() function retrieves the latest date from the order records while returning NULL for customers without orders.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-014",
+    "concept": "left_joins",
+    "subconcept": "left-join-advanced-filter",
+    "difficulty": "hard",
+    "prompt": "Get the names of customers who have placed orders, and the total amount spent by each customer. If a customer has no orders, do not include them in the result.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\nDROP TABLE IF EXISTS order_items CASCADE;\n\nCREATE TABLE customers (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE orders (id SERIAL PRIMARY KEY, customer_id INTEGER REFERENCES customers(id));\nCREATE TABLE order_items (order_id INTEGER REFERENCES orders(id), product_id INTEGER, quantity INTEGER, price NUMERIC);\n\nINSERT INTO customers (name) VALUES ('Ada Lovelace'), ('Alan Turing'), ('Grace Hopper'), ('Linus Torvalds');\nINSERT INTO orders (customer_id) VALUES (1), (1), (3);\nINSERT INTO order_items (order_id, product_id, quantity, price) VALUES (1, 1, 1, 100.00), (1, 2, 2, 50.00), (2, 1, 1, 100.00), (3, 2, 3, 30.00);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "orders",
+          "columns": [
+            "id",
+            "customer_id"
+          ]
+        },
+        {
+          "name": "order_items",
+          "columns": [
+            "order_id",
+            "product_id",
+            "quantity",
+            "price"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "customers",
+          "from_column": "id",
+          "to_table": "orders",
+          "to_column": "customer_id"
+        },
+        {
+          "from_table": "orders",
+          "from_column": "id",
+          "to_table": "order_items",
+          "to_column": "order_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "customer_name",
+        "total_spent"
+      ],
+      "rows": [
+        [
+          "Ada Lovelace",
+          "300.00"
+        ],
+        [
+          "Grace Hopper",
+          "90.00"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT c.name AS customer_name, SUM(oi.quantity * oi.price) AS total_spent\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nJOIN order_items oi ON o.id = oi.order_id\nGROUP BY c.id, c.name\nORDER BY c.name;",
+    "hints": [
+      {
+        "hint": "You need to calculate total spending per customer. What function will help you do that?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You will need to join all three tables together to access order item details.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use JOIN instead of LEFT JOIN to eliminate customers with no orders from the result.",
+        "suggested_sql": "SELECT c.name AS customer_name, SUM(oi.quantity * oi.price) AS total_spent\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nJOIN order_items oi ON o.id = oi.order_id\nGROUP BY c.id, c.name\nORDER BY c.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select customer names",
+        "what_it_does": "Begin with the customers table to gather customer names.",
+        "sql_snippet": "FROM customers c",
+        "how_postgres_reads_it": "Postgres retrieves all rows from the customers table as potential output."
+      },
+      {
+        "title": "Join with orders",
+        "what_it_does": "Join orders to link customers with their orders.",
+        "sql_snippet": "JOIN orders o ON c.id = o.customer_id",
+        "how_postgres_reads_it": "Postgres matches customers with their respective orders."
+      },
+      {
+        "title": "Join order_items",
+        "what_it_does": "Join order_items to access details about each order's items.",
+        "sql_snippet": "JOIN order_items oi ON o.id = oi.order_id",
+        "how_postgres_reads_it": "Postgres links each order to its items, allowing access to price and quantity."
+      },
+      {
+        "title": "Calculate total spending",
+        "what_it_does": "Use SUM() to calculate total spending per customer.",
+        "sql_snippet": "SUM(oi.quantity * oi.price) AS total_spent",
+        "how_postgres_reads_it": "Postgres computes the total for each customer by multiplying quantity and price."
+      },
+      {
+        "title": "Group and sort results",
+        "what_it_does": "GROUP BY customer details and ORDER BY to organize the output.",
+        "sql_snippet": "GROUP BY c.id, c.name ORDER BY c.name",
+        "how_postgres_reads_it": "Postgres groups results by each unique customer and sorts them alphabetically."
+      }
+    ],
+    "solution_summary": "Using JOINs across three tables allows for calculating total spending for customers with orders.",
+    "solution_final_thought": "JOIN is crucial for filtering out customers without orders when calculating totals.",
+    "explanation": "By using JOINs, we ensure that only customers who have placed orders are included in the results. The SUM() function calculates the total amount spent based on the order items linked to each customer through their orders.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-015",
+    "concept": "left_joins",
+    "subconcept": "left-join-with-conditional-aggregation",
+    "difficulty": "hard",
+    "prompt": "List all products along with the total quantity sold. If a product hasn't been sold, show the quantity as 0.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS products CASCADE;\nDROP TABLE IF EXISTS order_items CASCADE;\n\nCREATE TABLE products (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE orders (id SERIAL PRIMARY KEY);\nCREATE TABLE order_items (order_id INTEGER REFERENCES orders(id), product_id INTEGER REFERENCES products(id), quantity INTEGER);\n\nINSERT INTO products (name) VALUES ('Laptop'), ('Mouse'), ('Notebook'), ('Pen Set');\nINSERT INTO orders VALUES (1), (2);\nINSERT INTO order_items (order_id, product_id, quantity) VALUES (1, 1, 2), (1, 2, 1), (2, 1, 3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "products",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "orders",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "order_items",
+          "columns": [
+            "order_id",
+            "product_id",
+            "quantity"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "products",
+          "from_column": "id",
+          "to_table": "order_items",
+          "to_column": "product_id"
+        },
+        {
+          "from_table": "orders",
+          "from_column": "id",
+          "to_table": "order_items",
+          "to_column": "order_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "product_name",
+        "total_quantity_sold"
+      ],
+      "rows": [
+        [
+          "Laptop",
+          5
+        ],
+        [
+          "Mouse",
+          1
+        ],
+        [
+          "Notebook",
+          0
+        ],
+        [
+          "Pen Set",
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.name AS product_name, COALESCE(SUM(oi.quantity), 0) AS total_quantity_sold\nFROM products p\nLEFT JOIN order_items oi ON p.id = oi.product_id\nLEFT JOIN orders o ON oi.order_id = o.id\nGROUP BY p.id, p.name\nORDER BY p.name;",
+    "hints": [
+      {
+        "hint": "You want to sum the quantity sold for each product. What function does that?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use COALESCE to handle products that have no sales.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Join products with order_items and orders to access all necessary data.",
+        "suggested_sql": "SELECT p.name AS product_name, COALESCE(SUM(oi.quantity), 0) AS total_quantity_sold\nFROM products p\nLEFT JOIN order_items oi ON p.id = oi.product_id\nLEFT JOIN orders o ON oi.order_id = o.id\nGROUP BY p.id, p.name\nORDER BY p.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select product names",
+        "what_it_does": "Start with the products table to gather all product names.",
+        "sql_snippet": "FROM products p",
+        "how_postgres_reads_it": "Postgres retrieves all rows from the products table as potential output."
+      },
+      {
+        "title": "Join order_items",
+        "what_it_does": "LEFT JOIN order_items to include quantity sold for each product.",
+        "sql_snippet": "LEFT JOIN order_items oi ON p.id = oi.product_id",
+        "how_postgres_reads_it": "Postgres matches products with order items, allowing for NULLs where no sales exist."
+      },
+      {
+        "title": "Join orders",
+        "what_it_does": "LEFT JOIN orders to ensure we account for products linked to orders.",
+        "sql_snippet": "LEFT JOIN orders o ON oi.order_id = o.id",
+        "how_postgres_reads_it": "Postgres links each order item to its order, maintaining the NULLs for unsold products."
+      },
+      {
+        "title": "Calculate total quantity sold",
+        "what_it_does": "Use COALESCE with SUM() to handle unsold products.",
+        "sql_snippet": "COALESCE(SUM(oi.quantity), 0) AS total_quantity_sold",
+        "how_postgres_reads_it": "Postgres sums the quantities for sold products, returning 0 for those with no sales."
+      },
+      {
+        "title": "Group and sort results",
+        "what_it_does": "GROUP BY product details and ORDER BY to organize the output.",
+        "sql_snippet": "GROUP BY p.id, p.name ORDER BY p.name",
+        "how_postgres_reads_it": "Postgres groups results by each unique product and sorts them alphabetically."
+      }
+    ],
+    "solution_summary": "Using LEFT JOINs allows for calculating total quantities sold for all products, including those with no sales.",
+    "solution_final_thought": "COALESCE is a powerful tool when dealing with potential NULL values in aggregations.",
+    "explanation": "The LEFT JOIN ensures that all products are included in the results, even if they have not been sold. The COALESCE function replaces NULL quantities with 0, allowing us to present a complete view of product sales.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-016",
+    "concept": "left_joins",
+    "subconcept": "left-join-with-date-filter",
+    "difficulty": "medium",
+    "prompt": "List all customers and their first order date. If a customer has no orders, show their name with a NULL first order date.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\n\nCREATE TABLE customers (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE orders (id SERIAL PRIMARY KEY, customer_id INTEGER REFERENCES customers(id), order_date DATE NOT NULL);\n\nINSERT INTO customers (name) VALUES ('Ada Lovelace'), ('Alan Turing'), ('Grace Hopper'), ('Linus Torvalds');\nINSERT INTO orders (customer_id, order_date) VALUES (1, '2024-01-10'), (1, '2024-01-15'), (3, '2024-02-01');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "orders",
+          "columns": [
+            "id",
+            "customer_id",
+            "order_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "customers",
+          "from_column": "id",
+          "to_table": "orders",
+          "to_column": "customer_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "customer_name",
+        "first_order_date"
+      ],
+      "rows": [
+        [
+          "Ada Lovelace",
+          "2024-01-10"
+        ],
+        [
+          "Alan Turing",
+          null
+        ],
+        [
+          "Grace Hopper",
+          "2024-02-01"
+        ],
+        [
+          "Linus Torvalds",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT c.name AS customer_name, MIN(o.order_date) AS first_order_date\nFROM customers c\nLEFT JOIN orders o ON c.id = o.customer_id\nGROUP BY c.id, c.name\nORDER BY c.name;",
+    "hints": [
+      {
+        "hint": "You want to find the earliest order date for each customer. What function helps with that?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use MIN() to find the first order date and group by customer.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Make sure to include a LEFT JOIN to keep customers without orders.",
+        "suggested_sql": "SELECT c.name AS customer_name, MIN(o.order_date) AS first_order_date\nFROM customers c\nLEFT JOIN orders o ON c.id = o.customer_id\nGROUP BY c.id, c.name\nORDER BY c.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select customer names",
+        "what_it_does": "Start with the customers table to get all customer names.",
+        "sql_snippet": "FROM customers c",
+        "how_postgres_reads_it": "Postgres retrieves all rows from the customers table as potential output."
+      },
+      {
+        "title": "Join with orders",
+        "what_it_does": "LEFT JOIN orders to include order dates for customers.",
+        "sql_snippet": "LEFT JOIN orders o ON c.id = o.customer_id",
+        "how_postgres_reads_it": "Postgres matches each customer with their orders, allowing NULLs where no orders exist."
+      },
+      {
+        "title": "Find the first order date",
+        "what_it_does": "Use MIN() to find the earliest order date per customer.",
+        "sql_snippet": "MIN(o.order_date) AS first_order_date",
+        "how_postgres_reads_it": "Postgres evaluates the minimum order date for each customer group."
+      },
+      {
+        "title": "Group and sort results",
+        "what_it_does": "GROUP BY customer details and ORDER BY to organize results.",
+        "sql_snippet": "GROUP BY c.id, c.name ORDER BY c.name",
+        "how_postgres_reads_it": "Postgres groups results by each unique customer and sorts them alphabetically."
+      }
+    ],
+    "solution_summary": "Using a LEFT JOIN with MIN() allows retrieval of the first order date for each customer, including those without orders.",
+    "solution_final_thought": "When aggregating with LEFT JOIN, always group by the left table's keys to ensure all rows are represented.",
+    "explanation": "The LEFT JOIN ensures that all customers are visible in the results, even if they have never placed an order. The MIN() function retrieves the earliest date from the order records while returning NULL for customers without orders.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-017",
+    "concept": "left_joins",
+    "subconcept": "complex-left-join",
+    "difficulty": "hard",
+    "prompt": "List all products with their total sales quantity and the total revenue generated. If a product has not been sold, show the quantity as 0 and revenue as 0.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS products CASCADE;\nDROP TABLE IF EXISTS order_items CASCADE;\n\nCREATE TABLE products (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE orders (id SERIAL PRIMARY KEY);\nCREATE TABLE order_items (order_id INTEGER REFERENCES orders(id), product_id INTEGER REFERENCES products(id), quantity INTEGER, price NUMERIC);\n\nINSERT INTO products (name) VALUES ('Laptop'), ('Mouse'), ('Notebook'), ('Pen Set');\nINSERT INTO orders VALUES (1), (2);\nINSERT INTO order_items (order_id, product_id, quantity, price) VALUES (1, 1, 2, 100.00), (1, 2, 1, 50.00), (2, 1, 3, 100.00);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "products",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "orders",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "order_items",
+          "columns": [
+            "order_id",
+            "product_id",
+            "quantity",
+            "price"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "products",
+          "from_column": "id",
+          "to_table": "order_items",
+          "to_column": "product_id"
+        },
+        {
+          "from_table": "orders",
+          "from_column": "id",
+          "to_table": "order_items",
+          "to_column": "order_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "product_name",
+        "total_quantity_sold",
+        "total_revenue"
+      ],
+      "rows": [
+        [
+          "Laptop",
+          5,
+          "500.00"
+        ],
+        [
+          "Mouse",
+          1,
+          "50.00"
+        ],
+        [
+          "Notebook",
+          0,
+          "0"
+        ],
+        [
+          "Pen Set",
+          0,
+          "0"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.name AS product_name, COALESCE(SUM(oi.quantity), 0) AS total_quantity_sold, COALESCE(SUM(oi.quantity * oi.price), 0) AS total_revenue\nFROM products p\nLEFT JOIN order_items oi ON p.id = oi.product_id\nLEFT JOIN orders o ON oi.order_id = o.id\nGROUP BY p.id, p.name\nORDER BY p.name;",
+    "hints": [
+      {
+        "hint": "To calculate total revenue, you will need to multiply quantity by price. Which function helps with that?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use COALESCE to handle products that have no sales.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Join products with order_items and orders to access all necessary data.",
+        "suggested_sql": "SELECT p.name AS product_name, COALESCE(SUM(oi.quantity), 0) AS total_quantity_sold, COALESCE(SUM(oi.quantity * oi.price), 0) AS total_revenue\nFROM products p\nLEFT JOIN order_items oi ON p.id = oi.product_id\nLEFT JOIN orders o ON oi.order_id = o.id\nGROUP BY p.id, p.name\nORDER BY p.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select product names",
+        "what_it_does": "Start with the products table to gather all product names.",
+        "sql_snippet": "FROM products p",
+        "how_postgres_reads_it": "Postgres retrieves all rows from the products table as potential output."
+      },
+      {
+        "title": "Join order_items",
+        "what_it_does": "LEFT JOIN order_items to include quantity sold for each product.",
+        "sql_snippet": "LEFT JOIN order_items oi ON p.id = oi.product_id",
+        "how_postgres_reads_it": "Postgres matches products with order items, allowing for NULLs where no sales exist."
+      },
+      {
+        "title": "Join orders",
+        "what_it_does": "LEFT JOIN orders to ensure we account for products linked to orders.",
+        "sql_snippet": "LEFT JOIN orders o ON oi.order_id = o.id",
+        "how_postgres_reads_it": "Postgres links each order item to its order, maintaining the NULLs for unsold products."
+      },
+      {
+        "title": "Calculate total quantity sold and revenue",
+        "what_it_does": "Use COALESCE with SUM() to handle unsold products for both quantity and revenue.",
+        "sql_snippet": "COALESCE(SUM(oi.quantity), 0) AS total_quantity_sold, COALESCE(SUM(oi.quantity * oi.price), 0) AS total_revenue",
+        "how_postgres_reads_it": "Postgres computes the totals for each product by summing quantities and revenues, returning 0 for those with no sales."
+      },
+      {
+        "title": "Group and sort results",
+        "what_it_does": "GROUP BY product details and ORDER BY to organize the output.",
+        "sql_snippet": "GROUP BY p.id, p.name ORDER BY p.name",
+        "how_postgres_reads_it": "Postgres groups results by each unique product and sorts them alphabetically."
+      }
+    ],
+    "solution_summary": "Using LEFT JOINs allows for calculating total quantities sold and revenue for all products, including those with no sales.",
+    "solution_final_thought": "COALESCE is essential when dealing with potential NULL values in aggregations.",
+    "explanation": "The LEFT JOIN ensures that all products are included in the results, even if they have not been sold. The COALESCE function replaces NULL quantities and revenues with 0, presenting a complete view of product sales.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-018",
+    "concept": "left_joins",
+    "subconcept": "nested-left-join",
+    "difficulty": "hard",
+    "prompt": "List all customers along with their total number of orders and the total revenue from those orders. If a customer has no orders, show their order count as 0 and revenue as 0.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS orders CASCADE;\nDROP TABLE IF EXISTS customers CASCADE;\nDROP TABLE IF EXISTS order_items CASCADE;\n\nCREATE TABLE customers (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE orders (id SERIAL PRIMARY KEY, customer_id INTEGER REFERENCES customers(id));\nCREATE TABLE order_items (order_id INTEGER REFERENCES orders(id), product_id INTEGER, quantity INTEGER, price NUMERIC);\n\nINSERT INTO customers (name) VALUES ('Ada Lovelace'), ('Alan Turing'), ('Grace Hopper'), ('Linus Torvalds');\nINSERT INTO orders (customer_id) VALUES (1), (1), (3);\nINSERT INTO order_items (order_id, product_id, quantity, price) VALUES (1, 1, 1, 100.00), (1, 2, 2, 50.00), (2, 1, 1, 100.00), (3, 2, 3, 30.00);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "orders",
+          "columns": [
+            "id",
+            "customer_id"
+          ]
+        },
+        {
+          "name": "order_items",
+          "columns": [
+            "order_id",
+            "product_id",
+            "quantity",
+            "price"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "customers",
+          "from_column": "id",
+          "to_table": "orders",
+          "to_column": "customer_id"
+        },
+        {
+          "from_table": "orders",
+          "from_column": "id",
+          "to_table": "order_items",
+          "to_column": "order_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "customer_name",
+        "total_orders",
+        "total_revenue"
+      ],
+      "rows": [
+        [
+          "Ada Lovelace",
+          3,
+          "300.00"
+        ],
+        [
+          "Alan Turing",
+          0,
+          "0"
+        ],
+        [
+          "Grace Hopper",
+          1,
+          "90.00"
+        ],
+        [
+          "Linus Torvalds",
+          0,
+          "0"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT c.name AS customer_name, COUNT(o.id) AS total_orders, COALESCE(SUM(oi.quantity * oi.price), 0) AS total_revenue\nFROM customers c\nLEFT JOIN orders o ON c.id = o.customer_id\nLEFT JOIN order_items oi ON o.id = oi.order_id\nGROUP BY c.id, c.name\nORDER BY c.name;",
+    "hints": [
+      {
+        "hint": "You need to count the orders and calculate the total revenue. What functions help with that?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Make sure to use LEFT JOIN to keep customers without orders in the results.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Combine COUNT() for orders and COALESCE(SUM()) for revenue in your query.",
+        "suggested_sql": "SELECT c.name AS customer_name, COUNT(o.id) AS total_orders, COALESCE(SUM(oi.quantity * oi.price), 0) AS total_revenue\nFROM customers c\nLEFT JOIN orders o ON c.id = o.customer_id\nLEFT JOIN order_items oi ON o.id = oi.order_id\nGROUP BY c.id, c.name\nORDER BY c.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select customer names",
+        "what_it_does": "Start with the customers table to gather all customer names.",
+        "sql_snippet": "FROM customers c",
+        "how_postgres_reads_it": "Postgres retrieves all rows from the customers table as potential output."
+      },
+      {
+        "title": "Join with orders",
+        "what_it_does": "LEFT JOIN orders to include order details for each customer.",
+        "sql_snippet": "LEFT JOIN orders o ON c.id = o.customer_id",
+        "how_postgres_reads_it": "Postgres matches each customer with their orders, allowing NULLs where no orders exist."
+      },
+      {
+        "title": "Join order_items",
+        "what_it_does": "LEFT JOIN order_items to access details about each order's items.",
+        "sql_snippet": "LEFT JOIN order_items oi ON o.id = oi.order_id",
+        "how_postgres_reads_it": "Postgres links each order to its items, preserving NULLs for customers without orders."
+      },
+      {
+        "title": "Count total orders and calculate total revenue",
+        "what_it_does": "Use COUNT() for total orders and COALESCE(SUM()) for revenue.",
+        "sql_snippet": "COUNT(o.id) AS total_orders, COALESCE(SUM(oi.quantity * oi.price), 0) AS total_revenue",
+        "how_postgres_reads_it": "Postgres counts the orders and sums the revenue, using COALESCE to handle NULLs."
+      },
+      {
+        "title": "Group and sort results",
+        "what_it_does": "GROUP BY customer details and ORDER BY to organize the output.",
+        "sql_snippet": "GROUP BY c.id, c.name ORDER BY c.name",
+        "how_postgres_reads_it": "Postgres groups results by each unique customer and sorts them alphabetically."
+      }
+    ],
+    "solution_summary": "Using LEFT JOINs allows for counting total orders and calculating revenue for each customer, including those without orders.",
+    "solution_final_thought": "COALESCE is crucial for handling NULL values in revenue calculations.",
+    "explanation": "The LEFT JOIN ensures that all customers are included in the results, even if they have not placed any orders. COUNT() provides the order count, while COALESCE ensures that NULL revenue values are represented as 0.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-019",
+    "concept": "left_joins",
+    "subconcept": "basic-left-join",
+    "difficulty": "easy",
+    "prompt": "Retrieve all shipments along with the warehouse name. Include warehouses even if they have no shipments. Return shipment_id, warehouse_name, ordered by shipment_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS shipments CASCADE;\nDROP TABLE IF EXISTS warehouses CASCADE;\n\nCREATE TABLE warehouses (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE shipments (id INTEGER PRIMARY KEY, warehouse_id INTEGER NOT NULL REFERENCES warehouses(id), shipment_date DATE NOT NULL);\n\nINSERT INTO warehouses VALUES (1,'Warehouse A'),(2,'Warehouse B'),(3,'Warehouse C');\nINSERT INTO shipments VALUES (1,1,'2024-01-01'),(2,1,'2024-01-02'),(3,2,'2024-01-03');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "warehouses",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "shipments",
+          "columns": [
+            "id",
+            "warehouse_id",
+            "shipment_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "shipments",
+          "from_column": "warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "shipment_id",
+        "warehouse_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Warehouse A"
+        ],
+        [
+          2,
+          "Warehouse A"
+        ],
+        [
+          3,
+          "Warehouse B"
+        ],
+        [
+          null,
+          "Warehouse C"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT s.id AS shipment_id, w.name AS warehouse_name\nFROM warehouses w\nLEFT JOIN shipments s ON s.warehouse_id = w.id\nORDER BY s.id;",
+    "hints": [
+      {
+        "hint": "Which join type includes all records from one table regardless of matches?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You need to join shipments to warehouses, but you want to keep all warehouses, even those without shipments.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use LEFT JOIN on the warehouses table and sort by shipment.id.",
+        "suggested_sql": "SELECT s.id AS shipment_id, w.name AS warehouse_name\nFROM warehouses w\nLEFT JOIN shipments s ON s.warehouse_id = w.id\nORDER BY s.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from warehouses",
+        "what_it_does": "Start from the warehouses table to ensure all warehouse records are included.",
+        "sql_snippet": "FROM warehouses w",
+        "how_postgres_reads_it": "Postgres begins with the warehouses table and treats each row as a candidate for the result."
+      },
+      {
+        "title": "Join on shipments",
+        "what_it_does": "LEFT JOIN shipments to include all rows from warehouses, matching where possible.",
+        "sql_snippet": "LEFT JOIN shipments s ON s.warehouse_id = w.id",
+        "how_postgres_reads_it": "For each warehouse row, Postgres retrieves matching shipments if they exist, and fills with NULLs where no match is found."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "ORDER BY ensures results are sorted by shipment_id.",
+        "sql_snippet": "ORDER BY s.id",
+        "how_postgres_reads_it": "Postgres sorts the combined rows based on the shipment_id before returning them."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN from warehouses to shipments ensures all warehouses are included, even those without associated shipments.",
+    "solution_final_thought": "LEFT JOIN is ideal for scenarios where you want to keep all records from one table while including associated data from another.",
+    "explanation": "LEFT JOIN allows for all records from the left table (warehouses) to be returned, even if there are no matching records in the right table (shipments). As a result, we see 'Warehouse C' included in the results with a NULL shipment_id when there are no shipments.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-020",
+    "concept": "left_joins",
+    "subconcept": "left-join-with-aggregate",
+    "difficulty": "medium",
+    "prompt": "List all warehouses and the total number of shipments for each. Include warehouses with zero shipments. Return warehouse_name, total_shipments ordered by warehouse_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS shipments CASCADE;\nDROP TABLE IF EXISTS warehouses CASCADE;\n\nCREATE TABLE warehouses (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE shipments (id INTEGER PRIMARY KEY, warehouse_id INTEGER NOT NULL REFERENCES warehouses(id), shipment_date DATE NOT NULL);\n\nINSERT INTO warehouses VALUES (1,'Warehouse A'),(2,'Warehouse B'),(3,'Warehouse C');\nINSERT INTO shipments VALUES (1,1,'2024-01-01'),(2,1,'2024-01-02'),(3,2,'2024-01-03');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "warehouses",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "shipments",
+          "columns": [
+            "id",
+            "warehouse_id",
+            "shipment_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "shipments",
+          "from_column": "warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "warehouse_name",
+        "total_shipments"
+      ],
+      "rows": [
+        [
+          "Warehouse A",
+          2
+        ],
+        [
+          "Warehouse B",
+          1
+        ],
+        [
+          "Warehouse C",
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT w.name AS warehouse_name, COUNT(s.id) AS total_shipments\nFROM warehouses w\nLEFT JOIN shipments s ON s.warehouse_id = w.id\nGROUP BY w.id\nORDER BY w.name;",
+    "hints": [
+      {
+        "hint": "You need to count shipments, but remember to include warehouses with zero shipments.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a LEFT JOIN to ensure all warehouses are included, and group by warehouse id.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use COUNT(s.id) to count shipments, and GROUP BY warehouse id for aggregation.",
+        "suggested_sql": "SELECT w.name AS warehouse_name, COUNT(s.id) AS total_shipments\nFROM warehouses w\nLEFT JOIN shipments s ON s.warehouse_id = w.id\nGROUP BY w.id\nORDER BY w.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from warehouses",
+        "what_it_does": "Begin with the warehouses table to retain all records.",
+        "sql_snippet": "FROM warehouses w",
+        "how_postgres_reads_it": "Postgres starts scanning the warehouses table to gather base rows."
+      },
+      {
+        "title": "Join with shipments",
+        "what_it_does": "LEFT JOIN shipments to attach data about shipments.",
+        "sql_snippet": "LEFT JOIN shipments s ON s.warehouse_id = w.id",
+        "how_postgres_reads_it": "Postgres looks for matching shipments for each warehouse, allowing NULLs for those without shipments."
+      },
+      {
+        "title": "Count shipments and group results",
+        "what_it_does": "Use COUNT to aggregate shipment records and GROUP BY to maintain warehouse uniqueness.",
+        "sql_snippet": "COUNT(s.id) AS total_shipments\nGROUP BY w.id",
+        "how_postgres_reads_it": "Postgres tallies the number of shipments per warehouse, grouping results by warehouse ID."
+      },
+      {
+        "title": "Order the output",
+        "what_it_does": "ORDER BY sorts the results by warehouse name.",
+        "sql_snippet": "ORDER BY w.name",
+        "how_postgres_reads_it": "Postgres arranges the final result set in alphabetical order by warehouse name."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN with COUNT aggregation provides a complete list of warehouses and their respective shipment totals.",
+    "solution_final_thought": "Using LEFT JOIN with aggregation functions allows for comprehensive reporting that includes records without matches.",
+    "explanation": "The LEFT JOIN ensures all warehouses are listed, and the COUNT function aggregates the number of shipments. Warehouses with no shipments return a count of zero, which is essential for complete reporting.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-021",
+    "concept": "left_joins",
+    "subconcept": "left-join-filtered-results",
+    "difficulty": "medium",
+    "prompt": "Get all warehouses with their last shipment date. Include warehouses even if they have no shipments. Return warehouse_name and last_shipment_date, ordered by warehouse_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS shipments CASCADE;\nDROP TABLE IF EXISTS warehouses CASCADE;\n\nCREATE TABLE warehouses (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE shipments (id INTEGER PRIMARY KEY, warehouse_id INTEGER NOT NULL REFERENCES warehouses(id), shipment_date DATE NOT NULL);\n\nINSERT INTO warehouses VALUES (1,'Warehouse A'),(2,'Warehouse B'),(3,'Warehouse C');\nINSERT INTO shipments VALUES (1,1,'2024-01-01'),(2,1,'2024-01-02'),(3,2,'2024-01-03');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "warehouses",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "shipments",
+          "columns": [
+            "id",
+            "warehouse_id",
+            "shipment_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "shipments",
+          "from_column": "warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "warehouse_name",
+        "last_shipment_date"
+      ],
+      "rows": [
+        [
+          "Warehouse A",
+          "2024-01-02"
+        ],
+        [
+          "Warehouse B",
+          "2024-01-03"
+        ],
+        [
+          "Warehouse C",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT w.name AS warehouse_name, MAX(s.shipment_date) AS last_shipment_date\nFROM warehouses w\nLEFT JOIN shipments s ON s.warehouse_id = w.id\nGROUP BY w.id\nORDER BY w.name;",
+    "hints": [
+      {
+        "hint": "You want to find the latest shipment date for each warehouse, including those with no shipments.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use LEFT JOIN to include all warehouses and MAX to find the latest date.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use MAX(s.shipment_date) and GROUP BY warehouse id to aggregate results.",
+        "suggested_sql": "SELECT w.name AS warehouse_name, MAX(s.shipment_date) AS last_shipment_date\nFROM warehouses w\nLEFT JOIN shipments s ON s.warehouse_id = w.id\nGROUP BY w.id\nORDER BY w.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from warehouses",
+        "what_it_does": "Begin with the warehouses to include all records.",
+        "sql_snippet": "FROM warehouses w",
+        "how_postgres_reads_it": "Postgres scans the warehouses table, retaining every row as a candidate."
+      },
+      {
+        "title": "Join with shipments",
+        "what_it_does": "LEFT JOIN shipments so that all warehouses are included in the results.",
+        "sql_snippet": "LEFT JOIN shipments s ON s.warehouse_id = w.id",
+        "how_postgres_reads_it": "Postgres tries to match shipments to warehouses, retaining NULLs for those without shipments."
+      },
+      {
+        "title": "Find the latest shipment date",
+        "what_it_does": "MAX aggregates the shipment dates to find the most recent one per warehouse.",
+        "sql_snippet": "MAX(s.shipment_date) AS last_shipment_date\nGROUP BY w.id",
+        "how_postgres_reads_it": "Postgres evaluates the maximum shipment_date for each warehouse, grouping results accordingly."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "ORDER BY organizes the output by warehouse name.",
+        "sql_snippet": "ORDER BY w.name",
+        "how_postgres_reads_it": "Postgres sorts the final output based on warehouse names in ascending order."
+      }
+    ],
+    "solution_summary": "Using LEFT JOIN with MAX aggregates the latest shipment dates for all warehouses, including those without shipments.",
+    "solution_final_thought": "LEFT JOIN is essential for including non-matching records while performing aggregations.",
+    "explanation": "The LEFT JOIN allows for all warehouses to be displayed, while the MAX function retrieves the latest shipment date for those that have shipments. Warehouses without shipments display as NULL for the last shipment date.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-022",
+    "concept": "left_joins",
+    "subconcept": "multi-table-left-join",
+    "difficulty": "hard",
+    "prompt": "List all routes and the associated last shipment date for each route. Include routes with no shipments. Return route_name, last_shipment_date ordered by route_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS shipments CASCADE;\nDROP TABLE IF EXISTS routes CASCADE;\nDROP TABLE IF EXISTS warehouses CASCADE;\n\nCREATE TABLE warehouses (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE routes (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE shipments (id INTEGER PRIMARY KEY, warehouse_id INTEGER NOT NULL REFERENCES warehouses(id), route_id INTEGER NOT NULL REFERENCES routes(id), shipment_date DATE NOT NULL);\n\nINSERT INTO warehouses VALUES (1,'Warehouse A'),(2,'Warehouse B');\nINSERT INTO routes VALUES (1,'Route 1'),(2,'Route 2'),(3,'Route 3');\nINSERT INTO shipments VALUES (1,1,1,'2024-01-01'),(2,1,1,'2024-01-02'),(3,2,2,'2024-01-03');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "warehouses",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "routes",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "shipments",
+          "columns": [
+            "id",
+            "warehouse_id",
+            "route_id",
+            "shipment_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "shipments",
+          "from_column": "route_id",
+          "to_table": "routes",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "route_name",
+        "last_shipment_date"
+      ],
+      "rows": [
+        [
+          "Route 1",
+          "2024-01-02"
+        ],
+        [
+          "Route 2",
+          "2024-01-03"
+        ],
+        [
+          "Route 3",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT r.name AS route_name, MAX(s.shipment_date) AS last_shipment_date\nFROM routes r\nLEFT JOIN shipments s ON s.route_id = r.id\nGROUP BY r.id\nORDER BY r.name;",
+    "hints": [
+      {
+        "hint": "You need to include routes with no associated shipments.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use LEFT JOIN to attach shipment information to routes.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Utilize MAX(s.shipment_date) for the last shipment date and GROUP BY route id.",
+        "suggested_sql": "SELECT r.name AS route_name, MAX(s.shipment_date) AS last_shipment_date\nFROM routes r\nLEFT JOIN shipments s ON s.route_id = r.id\nGROUP BY r.id\nORDER BY r.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from routes",
+        "what_it_does": "Begin with the routes table to ensure all records are included.",
+        "sql_snippet": "FROM routes r",
+        "how_postgres_reads_it": "Postgres starts with the routes table, treating each row as a candidate."
+      },
+      {
+        "title": "Join with shipments",
+        "what_it_does": "LEFT JOIN shipments to connect routes with any shipments.",
+        "sql_snippet": "LEFT JOIN shipments s ON s.route_id = r.id",
+        "how_postgres_reads_it": "Postgres matches shipments to routes, filling in NULLs where no shipments exist."
+      },
+      {
+        "title": "Find the latest shipment date",
+        "what_it_does": "Use MAX to aggregate shipment dates and find the last one for each route.",
+        "sql_snippet": "MAX(s.shipment_date) AS last_shipment_date\nGROUP BY r.id",
+        "how_postgres_reads_it": "Postgres calculates the maximum shipment date for each route, grouping by route ID."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "ORDER BY sorts the output by route name.",
+        "sql_snippet": "ORDER BY r.name",
+        "how_postgres_reads_it": "Postgres arranges the final output in ascending order by route name."
+      }
+    ],
+    "solution_summary": "Using LEFT JOIN with MAX effectively retrieves the last shipment date for each route, ensuring all routes are included.",
+    "solution_final_thought": "Incorporating LEFT JOINs with aggregations is crucial for maintaining data completeness in reporting.",
+    "explanation": "The LEFT JOIN ensures all routes are included, while the MAX function retrieves the latest shipment date for those that have shipments. Routes without shipments display NULL for the last shipment date, providing a complete view.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-023",
+    "concept": "left_joins",
+    "subconcept": "left-join-with-conditions",
+    "difficulty": "hard",
+    "prompt": "List all warehouses and their number of shipments that occurred after '2024-01-01'. Include warehouses with zero shipments. Return warehouse_name, count_of_shipments ordered by warehouse_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS shipments CASCADE;\nDROP TABLE IF EXISTS warehouses CASCADE;\n\nCREATE TABLE warehouses (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE shipments (id INTEGER PRIMARY KEY, warehouse_id INTEGER NOT NULL REFERENCES warehouses(id), shipment_date DATE NOT NULL);\n\nINSERT INTO warehouses VALUES (1,'Warehouse A'),(2,'Warehouse B'),(3,'Warehouse C');\nINSERT INTO shipments VALUES (1,1,'2024-01-01'),(2,1,'2024-01-02'),(3,2,'2024-01-03');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "warehouses",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "shipments",
+          "columns": [
+            "id",
+            "warehouse_id",
+            "shipment_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "shipments",
+          "from_column": "warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "warehouse_name",
+        "count_of_shipments"
+      ],
+      "rows": [
+        [
+          "Warehouse A",
+          1
+        ],
+        [
+          "Warehouse B",
+          1
+        ],
+        [
+          "Warehouse C",
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT w.name AS warehouse_name, COUNT(s.id) AS count_of_shipments\nFROM warehouses w\nLEFT JOIN shipments s ON s.warehouse_id = w.id AND s.shipment_date > '2024-01-01'\nGROUP BY w.id\nORDER BY w.name;",
+    "hints": [
+      {
+        "hint": "You need to count shipments only after a certain date while including all warehouses.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use LEFT JOIN with a condition on shipment_date to filter shipments.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Include the condition in the LEFT JOIN itself and count the shipments accordingly.",
+        "suggested_sql": "SELECT w.name AS warehouse_name, COUNT(s.id) AS count_of_shipments\nFROM warehouses w\nLEFT JOIN shipments s ON s.warehouse_id = w.id AND s.shipment_date > '2024-01-01'\nGROUP BY w.id\nORDER BY w.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from warehouses",
+        "what_it_does": "Start with the warehouses table to include all records.",
+        "sql_snippet": "FROM warehouses w",
+        "how_postgres_reads_it": "Postgres scans the warehouses table to gather base rows."
+      },
+      {
+        "title": "Left join with conditions",
+        "what_it_does": "LEFT JOIN shipments while applying a condition on shipment_date.",
+        "sql_snippet": "LEFT JOIN shipments s ON s.warehouse_id = w.id AND s.shipment_date > '2024-01-01'",
+        "how_postgres_reads_it": "Postgres matches shipments to warehouses, applying the condition to filter the joined records."
+      },
+      {
+        "title": "Count filtered shipments",
+        "what_it_does": "COUNT aggregates the number of shipments for each warehouse after the date filter.",
+        "sql_snippet": "COUNT(s.id) AS count_of_shipments\nGROUP BY w.id",
+        "how_postgres_reads_it": "Postgres counts the number of valid shipment records per warehouse based on the JOIN condition."
+      },
+      {
+        "title": "Order the output",
+        "what_it_does": "ORDER BY organizes the results by warehouse name.",
+        "sql_snippet": "ORDER BY w.name",
+        "how_postgres_reads_it": "Postgres sorts the final result set in ascending order by warehouse name."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN with a condition allows for counting shipments after a certain date while including all warehouses.",
+    "solution_final_thought": "Incorporating conditions in LEFT JOINs provides flexibility in counting and filtering related records.",
+    "explanation": "The LEFT JOIN with a condition on shipment_date allows for counting only those shipments that occurred after '2024-01-01'. Warehouses without relevant shipments still appear with a count of zero, ensuring comprehensive results.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-024",
+    "concept": "left_joins",
+    "subconcept": "complex-left-join-conditions",
+    "difficulty": "hard",
+    "prompt": "List all warehouses with the number of shipments made in January 2024. Include warehouses with zero shipments. Return warehouse_name, january_shipments ordered by warehouse_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS shipments CASCADE;\nDROP TABLE IF EXISTS warehouses CASCADE;\n\nCREATE TABLE warehouses (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE shipments (id INTEGER PRIMARY KEY, warehouse_id INTEGER NOT NULL REFERENCES warehouses(id), shipment_date DATE NOT NULL);\n\nINSERT INTO warehouses VALUES (1,'Warehouse A'),(2,'Warehouse B'),(3,'Warehouse C');\nINSERT INTO shipments VALUES (1,1,'2024-01-01'),(2,1,'2024-01-02'),(3,2,'2024-01-03');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "warehouses",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "shipments",
+          "columns": [
+            "id",
+            "warehouse_id",
+            "shipment_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "shipments",
+          "from_column": "warehouse_id",
+          "to_table": "warehouses",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "warehouse_name",
+        "january_shipments"
+      ],
+      "rows": [
+        [
+          "Warehouse A",
+          2
+        ],
+        [
+          "Warehouse B",
+          1
+        ],
+        [
+          "Warehouse C",
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT w.name AS warehouse_name, COUNT(s.id) AS january_shipments\nFROM warehouses w\nLEFT JOIN shipments s ON s.warehouse_id = w.id AND s.shipment_date >= '2024-01-01' AND s.shipment_date < '2024-02-01'\nGROUP BY w.id\nORDER BY w.name;",
+    "hints": [
+      {
+        "hint": "You want to count shipments specifically for January 2024.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a LEFT JOIN with a condition for the date range to include all warehouses.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Include the date conditions in the LEFT JOIN and count the shipments per warehouse.",
+        "suggested_sql": "SELECT w.name AS warehouse_name, COUNT(s.id) AS january_shipments\nFROM warehouses w\nLEFT JOIN shipments s ON s.warehouse_id = w.id AND s.shipment_date >= '2024-01-01' AND s.shipment_date < '2024-02-01'\nGROUP BY w.id\nORDER BY w.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from warehouses",
+        "what_it_does": "Start with the warehouses to ensure all records are considered.",
+        "sql_snippet": "FROM warehouses w",
+        "how_postgres_reads_it": "Postgres scans the warehouses table for all rows."
+      },
+      {
+        "title": "Left join with date conditions",
+        "what_it_does": "LEFT JOIN shipments with a condition for January 2024 shipments.",
+        "sql_snippet": "LEFT JOIN shipments s ON s.warehouse_id = w.id AND s.shipment_date >= '2024-01-01' AND s.shipment_date < '2024-02-01'",
+        "how_postgres_reads_it": "Postgres matches shipments to warehouses while filtering based on the specified date range."
+      },
+      {
+        "title": "Count January shipments",
+        "what_it_does": "COUNT aggregates the number of shipments made in January 2024 for each warehouse.",
+        "sql_snippet": "COUNT(s.id) AS january_shipments\nGROUP BY w.id",
+        "how_postgres_reads_it": "Postgres counts valid shipment records for each warehouse and groups them accordingly."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "ORDER BY organizes results by warehouse name.",
+        "sql_snippet": "ORDER BY w.name",
+        "how_postgres_reads_it": "Postgres sorts the final output based on warehouse names in ascending order."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN with specific date conditions allows counting of shipments made in January while ensuring all warehouses are included.",
+    "solution_final_thought": "Using LEFT JOINs with date filters enables precise counting while preserving data completeness.",
+    "explanation": "The LEFT JOIN ensures all warehouses are included, while the COUNT function aggregates the number of shipments within the specified date range. Warehouses without shipments in January return a count of zero, ensuring a complete list.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "left_joins-025",
+    "concept": "left_joins",
+    "subconcept": "basic-left-join",
+    "difficulty": "easy",
+    "prompt": "Retrieve a list of all artists along with their albums. Include artists that do not have any albums, returning artist_id, artist_name, and album_name (use NULL for albums without a name).",
+    "ordered_results": false,
+    "schema_setup_sql": "DROP TABLE IF EXISTS tracks CASCADE;\nDROP TABLE IF EXISTS albums CASCADE;\nDROP TABLE IF EXISTS artists CASCADE;\n\nCREATE TABLE artists (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE albums (id SERIAL PRIMARY KEY, artist_id INTEGER REFERENCES artists(id), title TEXT NOT NULL);\nCREATE TABLE tracks (id SERIAL PRIMARY KEY, album_id INTEGER REFERENCES albums(id), title TEXT NOT NULL);\n\nINSERT INTO artists (name) VALUES ('Artist A'), ('Artist B'), ('Artist C');\nINSERT INTO albums (artist_id, title) VALUES (1, 'Album 1'), (1, 'Album 2'), (2, 'Album 3');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "artists",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "albums",
+          "columns": [
+            "id",
+            "artist_id",
+            "title"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "albums",
+          "from_column": "artist_id",
+          "to_table": "artists",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "artist_id",
+        "artist_name",
+        "album_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Artist A",
+          "Album 1"
+        ],
+        [
+          1,
+          "Artist A",
+          "Album 2"
+        ],
+        [
+          2,
+          "Artist B",
+          "Album 3"
+        ],
+        [
+          3,
+          "Artist C",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT a.id AS artist_id, a.name AS artist_name, al.title AS album_name\nFROM artists a\nLEFT JOIN albums al ON a.id = al.artist_id;",
+    "hints": [
+      {
+        "hint": "You want to include all artists, even those without albums. What join type will help?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Think about how to join the artists table with the albums table. Use LEFT JOIN to include all records from artists.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use LEFT JOIN on artists to albums, selecting artist details and album titles. Don't forget to alias your columns!",
+        "suggested_sql": "SELECT a.id AS artist_id, a.name AS artist_name, al.title AS album_name\nFROM artists a\nLEFT JOIN albums al ON a.id = al.artist_id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from artists",
+        "what_it_does": "Begin the query from the artists table to ensure all artists are included in the result.",
+        "sql_snippet": "FROM artists a",
+        "how_postgres_reads_it": "Postgres starts with the artists table and selects each artist as a candidate for the result."
+      },
+      {
+        "title": "Join albums with LEFT JOIN",
+        "what_it_does": "Perform a LEFT JOIN to include albums that correspond to each artist while retaining those without albums.",
+        "sql_snippet": "LEFT JOIN albums al ON a.id = al.artist_id",
+        "how_postgres_reads_it": "For each artist, Postgres looks for matching album records. If no match exists, it still includes the artist with NULL for album details."
+      },
+      {
+        "title": "Select desired columns",
+        "what_it_does": "Select the specific columns needed for the output, including aliases for clarity.",
+        "sql_snippet": "SELECT a.id AS artist_id, a.name AS artist_name, al.title AS album_name",
+        "how_postgres_reads_it": "Postgres retrieves the specified columns from the joined tables, using the aliases for the final output."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN between artists and albums to ensure all artists are listed, regardless of whether they have albums.",
+    "solution_final_thought": "LEFT JOIN allows you to include all records from the left table, even those without matches in the right table.",
+    "explanation": "The LEFT JOIN ensures that all artists are included in the result set, even if they have no corresponding albums, which are represented as NULL in the output. This is crucial for reporting scenarios where you want to show all entities, regardless of their relationships.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  }
+]
