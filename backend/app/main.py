@@ -7,8 +7,9 @@ import re
 import uuid
 from contextlib import asynccontextmanager
 from time import perf_counter
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text as sql_text
 
@@ -42,7 +43,30 @@ from .schemas import (
     TableResult,
     TypoCorrection,
 )
-from .state import CurrentQuestion, LastGrade, session_state
+from .state import CurrentQuestion, LastGrade, SessionState, get_session_state
+
+SESSION_COOKIE = "sql_session_id"
+
+
+def _session_dep(request: Request, response: Response) -> SessionState:
+    """FastAPI dependency: returns the SessionState for this browser. Reads
+    a UUID from the `sql_session_id` cookie, sets one if missing."""
+    sid = request.cookies.get(SESSION_COOKIE)
+    if not sid:
+        sid = str(uuid.uuid4())
+        response.set_cookie(
+            SESSION_COOKIE,
+            sid,
+            max_age=60 * 60 * 24 * 30,  # 30 days
+            samesite="lax",
+            httponly=False,  # frontend may need to read; not a security cookie
+            path="/",
+        )
+    return get_session_state(sid)
+
+
+# Alias used in every endpoint signature. Avoids B008 (Depends() in defaults).
+SessionDep = Annotated[SessionState, Depends(_session_dep)]
 
 READONLY_PATTERN = re.compile(r"^\s*(WITH|SELECT)\b", re.IGNORECASE)
 WRITE_PATTERN = re.compile(
@@ -120,23 +144,24 @@ def _build_question_schema_context(
 
 
 async def _precompute_solution(
+    state: SessionState,
     question_id: str,
     question_text: str,
     reference_sql: str,
     schema: dict,
 ) -> None:
     """Background task: generate the give-up solution and attach it to the live
-    question, but only if that question is still current. Failures are swallowed —
-    the on-demand path in /api/give_up will retry."""
+    question on this session, only if that question is still current. Failures
+    are swallowed — the on-demand path in /api/give_up will retry."""
     try:
         data = await llm.explain_solution(question_text, reference_sql, schema)
     except Exception:
         return
-    q = session_state.current_question
+    q = state.current_question
     if q is not None and q.id == question_id:
         q.solution = data
     # Also patch the history entry if the same question is still there.
-    for hist_q in session_state.question_history:
+    for hist_q in state.question_history:
         if hist_q.id == question_id and hist_q.solution is None:
             hist_q.solution = data
             break
@@ -158,12 +183,12 @@ def _question_response_from_state(q: CurrentQuestion) -> QuestionResponse:
     )
 
 
-def _remember_question(q: CurrentQuestion) -> None:
-    session_state.question_history = [
-        item for item in session_state.question_history if item.id != q.id
+def _remember_question(state: SessionState, q: CurrentQuestion) -> None:
+    state.question_history = [
+        item for item in state.question_history if item.id != q.id
     ]
-    session_state.question_history.insert(0, q)
-    session_state.question_history = session_state.question_history[:10]
+    state.question_history.insert(0, q)
+    state.question_history = state.question_history[:10]
 
 
 async def _explain_analyze(sql: str) -> tuple[object, float]:
@@ -221,7 +246,10 @@ async def _build_schema_info(seed: int) -> SchemaInfo:
 
 
 @app.post("/api/reset_data", response_model=SchemaInfo)
-async def reset_data(req: ResetDataRequest) -> SchemaInfo:
+async def reset_data(
+    req: ResetDataRequest,
+    state: SessionDep,
+) -> SchemaInfo:
     seed = req.seed if req.seed is not None else random.randint(1, 1_000_000)
     try:
         if req.mode == "ai_fresh":
@@ -230,30 +258,35 @@ async def reset_data(req: ResetDataRequest) -> SchemaInfo:
             await data_gen.reset_data(seed, scenario=req.scenario, mode=req.mode)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"reset_data failed: {e}") from e
-    session_state.seed = seed
-    session_state.current_question = None
-    session_state.last_grade = None
-    session_state.question_history = []
+    state.seed = seed
+    state.current_question = None
+    state.last_grade = None
+    state.question_history = []
     return await _build_schema_info(seed)
 
 
 @app.get("/api/schema", response_model=SchemaInfo)
-async def get_schema() -> SchemaInfo:
+async def get_schema(
+    state: SessionDep,
+) -> SchemaInfo:
     # Auto-seed if the tables don't exist yet so the first page load isn't empty.
     try:
-        return await _build_schema_info(session_state.seed)
+        return await _build_schema_info(state.seed)
     except Exception:
         seed = random.randint(1, 1_000_000)
         await data_gen.reset_data(seed)
-        session_state.seed = seed
+        state.seed = seed
         return await _build_schema_info(seed)
 
 
 @app.post("/api/new_question", response_model=QuestionResponse)
-async def new_question(req: NewQuestionRequest) -> QuestionResponse:
+async def new_question(
+    req: NewQuestionRequest,
+    state: SessionDep,
+) -> QuestionResponse:
     schema = await data_gen.get_schema_info()
-    recent = [q.question for q in session_state.question_history[:8]]
-    recent_shapes = [q.shape_id for q in session_state.question_history[:8] if q.shape_id]
+    recent = [q.question for q in state.question_history[:8]]
+    recent_shapes = [q.shape_id for q in state.question_history[:8] if q.shape_id]
     try:
         data = await llm.generate_question(
             schema,
@@ -265,7 +298,7 @@ async def new_question(req: NewQuestionRequest) -> QuestionResponse:
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
 
-    session_state.last_grade = None
+    state.last_grade = None
 
     # Run the reference SQL once so the frontend can offer "peek expected" up front.
     expected = await _run_reference(data["reference_sql"])
@@ -282,20 +315,22 @@ async def new_question(req: NewQuestionRequest) -> QuestionResponse:
         schema_context=schema_context.model_dump(),
         shape_id=data.get("_shape_id"),
     )
-    session_state.current_question = q
-    _remember_question(q)
+    state.current_question = q
+    _remember_question(state, q)
 
     # Pre-generate the solution in the background so "Show answer" is instant
     # when the user finally clicks it. Fire-and-forget; failures are silent.
     asyncio.create_task(
-        _precompute_solution(q.id, q.question, q.reference_sql, schema),
+        _precompute_solution(state, q.id, q.question, q.reference_sql, schema),
     )
 
     return _question_response_from_state(q)
 
 
 @app.get("/api/question_history", response_model=list[QuestionHistoryItem])
-async def question_history() -> list[QuestionHistoryItem]:
+async def question_history(
+    state: SessionDep,
+) -> list[QuestionHistoryItem]:
     return [
         QuestionHistoryItem(
             id=q.id,
@@ -303,17 +338,20 @@ async def question_history() -> list[QuestionHistoryItem]:
             concepts=q.concepts,
             difficulty=q.difficulty,
         )
-        for q in session_state.question_history
+        for q in state.question_history
     ]
 
 
 @app.post("/api/select_question", response_model=QuestionResponse)
-async def select_question(req: SelectQuestionRequest) -> QuestionResponse:
-    for q in session_state.question_history:
+async def select_question(
+    req: SelectQuestionRequest,
+    state: SessionDep,
+) -> QuestionResponse:
+    for q in state.question_history:
         if q.id == req.question_id:
-            session_state.current_question = q
-            session_state.last_grade = None
-            _remember_question(q)
+            state.current_question = q
+            state.last_grade = None
+            _remember_question(state, q)
             return _question_response_from_state(q)
     raise HTTPException(status_code=404, detail="Question not found in history.")
 
@@ -355,13 +393,16 @@ async def run_query(req: RunQueryRequest) -> RunQueryResponse:
 
 
 @app.post("/api/submit", response_model=GradeResult)
-async def submit(req: SubmitRequest) -> GradeResult:
-    q = session_state.current_question
+async def submit(
+    req: SubmitRequest,
+    state: SessionDep,
+) -> GradeResult:
+    q = state.current_question
     if q is None:
         raise HTTPException(status_code=400, detail="No active question. Request a new one first.")
 
     result = await grade(req.sql, q.reference_sql, q.ordered_results)
-    session_state.last_grade = LastGrade(
+    state.last_grade = LastGrade(
         user_sql=req.sql,
         user_output=result.user_output.model_dump() if result.user_output else None,
         expected_output=result.expected_output.model_dump() if result.expected_output else None,
@@ -372,9 +413,12 @@ async def submit(req: SubmitRequest) -> GradeResult:
 
 
 @app.post("/api/explain", response_model=ExplainResponse)
-async def explain(req: ExplainRequest) -> ExplainResponse:
-    q = session_state.current_question
-    g = session_state.last_grade
+async def explain(
+    req: ExplainRequest,
+    state: SessionDep,
+) -> ExplainResponse:
+    q = state.current_question
+    g = state.last_grade
     if q is None or g is None:
         raise HTTPException(status_code=400, detail="No graded submission to explain.")
 
@@ -397,9 +441,11 @@ async def explain(req: ExplainRequest) -> ExplainResponse:
 
 
 @app.post("/api/error_help", response_model=ErrorHelpResponse)
-async def error_help() -> ErrorHelpResponse:
-    q = session_state.current_question
-    g = session_state.last_grade
+async def error_help(
+    state: SessionDep,
+) -> ErrorHelpResponse:
+    q = state.current_question
+    g = state.last_grade
     if q is None or g is None or g.status != "error" or not g.error_message:
         raise HTTPException(status_code=400, detail="No SQL error to explain.")
 
@@ -422,18 +468,37 @@ async def error_help() -> ErrorHelpResponse:
 
 
 @app.post("/api/performance", response_model=PerformanceResponse)
-async def performance(req: PerformanceRequest) -> PerformanceResponse:
-    q = session_state.current_question
-    if q is None:
-        raise HTTPException(status_code=400, detail="No active question.")
+async def performance(
+    req: PerformanceRequest,
+    state: SessionDep,
+) -> PerformanceResponse:
+    """EXPLAIN ANALYZE the user's SQL. If there's an active question, also
+    benchmark the reference SQL alongside and feed both plans to the LLM for
+    a coached review. If there's no active question (free-form Run flow),
+    return just the plan + timing — no LLM call, no comparison."""
+    q = state.current_question
 
     try:
         user_plan, user_time_ms = await _explain_analyze(req.sql)
-        _, reference_time_ms = await _explain_analyze(q.reference_sql)
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+    if q is None:
+        return PerformanceResponse(
+            user_time_ms=user_time_ms,
+            reference_time_ms=None,
+            raw_plan=user_plan,
+            summary=f"Query ran in {user_time_ms} ms.",
+            suggestions=[],
+            optimized_sql=None,
+        )
+
+    try:
+        _, reference_time_ms = await _explain_analyze(q.reference_sql)
+    except Exception:
+        reference_time_ms = None
 
     schema = await data_gen.get_schema_info()
     try:
@@ -460,8 +525,11 @@ async def performance(req: PerformanceRequest) -> PerformanceResponse:
 
 
 @app.post("/api/hint", response_model=HintResponse)
-async def hint(req: HintRequest) -> HintResponse:
-    q = session_state.current_question
+async def hint(
+    req: HintRequest,
+    state: SessionDep,
+) -> HintResponse:
+    q = state.current_question
     if q is None:
         raise HTTPException(status_code=400, detail="No active question.")
 
@@ -483,8 +551,10 @@ async def hint(req: HintRequest) -> HintResponse:
 
 
 @app.post("/api/give_up", response_model=GiveUpResponse)
-async def give_up() -> GiveUpResponse:
-    q = session_state.current_question
+async def give_up(
+    state: SessionDep,
+) -> GiveUpResponse:
+    q = state.current_question
     if q is None:
         raise HTTPException(status_code=400, detail="No active question.")
 

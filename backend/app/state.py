@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from threading import Lock
 from typing import Any
 
 
@@ -34,4 +35,17 @@ class SessionState:
     schema_cache: dict[str, Any] = field(default_factory=dict)
 
 
-session_state = SessionState()
+# Per-session-id state map. Two different browsers (different cookies) get
+# isolated practice state. Keyed by a UUID stored in the `sql_session_id`
+# cookie; created lazily on first request.
+_SESSIONS: dict[str, SessionState] = {}
+_SESSIONS_LOCK = Lock()
+
+
+def get_session_state(session_id: str) -> SessionState:
+    with _SESSIONS_LOCK:
+        s = _SESSIONS.get(session_id)
+        if s is None:
+            s = SessionState()
+            _SESSIONS[session_id] = s
+        return s

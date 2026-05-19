@@ -179,7 +179,7 @@ export function ResultsPanel({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {yoursTable && (
+          {(yoursTable || runResult?.output) && (
             <button
               type="button"
               onClick={onPerformance}

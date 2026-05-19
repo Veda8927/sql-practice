@@ -763,6 +763,7 @@ export default function Page() {
                 submitting={submitMutation.isPending}
                 running={runQueryMutation.isPending}
                 schemaIdentifiers={schemaIdentifiers}
+                schemaTables={schemaQuery.data?.tables}
                 expectedTables={question?.schema_context?.tables.map(
                   (t) => t.name,
                 )}

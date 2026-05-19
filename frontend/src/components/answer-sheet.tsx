@@ -2,7 +2,19 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Copy, Check } from "lucide-react";
+import {
+  ChevronRight,
+  Copy,
+  Check,
+  Database,
+  Filter as FilterIcon,
+  GitBranch,
+  Layers,
+  ListOrdered,
+  Scissors,
+  SquareStack,
+  Table as TableIcon,
+} from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { useTheme } from "next-themes";
 import { format as formatSql } from "sql-formatter";
@@ -14,6 +26,122 @@ type Props = {
   solution: GiveUpResponse;
   onApplyToEditor?: (sql: string) => void;
 };
+
+type PipelineStep = {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+};
+
+function pipelineStepsFromSql(sql: string): PipelineStep[] {
+  const s = sql.replace(/--[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  const steps: PipelineStep[] = [];
+
+  // Always start with the source.
+  steps.push({
+    key: "from",
+    label: "Read tables",
+    icon: <Database className="h-3.5 w-3.5" />,
+  });
+
+  if (/\bWITH\s+\w+\s+AS\s*\(/i.test(s)) {
+    steps.unshift({
+      key: "cte",
+      label: "Build CTE",
+      icon: <Layers className="h-3.5 w-3.5" />,
+    });
+  }
+  if (/\bJOIN\b/i.test(s)) {
+    steps.push({
+      key: "join",
+      label: "Join tables",
+      icon: <GitBranch className="h-3.5 w-3.5" />,
+    });
+  }
+  if (/\bWHERE\b/i.test(s)) {
+    steps.push({
+      key: "where",
+      label: "Filter rows",
+      icon: <FilterIcon className="h-3.5 w-3.5" />,
+    });
+  }
+  if (/\bGROUP\s+BY\b/i.test(s)) {
+    steps.push({
+      key: "group",
+      label: "Group",
+      icon: <SquareStack className="h-3.5 w-3.5" />,
+    });
+  }
+  if (/\bHAVING\b/i.test(s)) {
+    steps.push({
+      key: "having",
+      label: "Filter groups",
+      icon: <FilterIcon className="h-3.5 w-3.5" />,
+    });
+  }
+  if (/\bOVER\s*\(/i.test(s)) {
+    steps.push({
+      key: "window",
+      label: "Window math",
+      icon: <Layers className="h-3.5 w-3.5" />,
+    });
+  }
+  steps.push({
+    key: "select",
+    label: "Pick columns",
+    icon: <TableIcon className="h-3.5 w-3.5" />,
+  });
+  if (/\bORDER\s+BY\b/i.test(s)) {
+    steps.push({
+      key: "order",
+      label: "Sort",
+      icon: <ListOrdered className="h-3.5 w-3.5" />,
+    });
+  }
+  if (/\bLIMIT\b/i.test(s)) {
+    steps.push({
+      key: "limit",
+      label: "Take top N",
+      icon: <Scissors className="h-3.5 w-3.5" />,
+    });
+  }
+
+  return steps;
+}
+
+function SqlPipeline({ sql }: { sql: string }) {
+  const steps = React.useMemo(() => pipelineStepsFromSql(sql), [sql]);
+  if (steps.length <= 1) return null;
+  return (
+    <section>
+      <div className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        How the SQL flows
+      </div>
+      <div className="-mx-1 overflow-x-auto px-1 pb-1">
+        <div className="flex w-max items-center gap-1.5">
+          {steps.map((step, i) => (
+            <React.Fragment key={step.key}>
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.03 * i, duration: 0.22 }}
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5"
+              >
+                <span className="text-muted-foreground">{step.icon}</span>
+                <span className="text-[11px] font-medium text-foreground">
+                  {step.label}
+                </span>
+              </motion.div>
+              {i < steps.length - 1 && (
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export function SolutionView({ solution, onApplyToEditor }: Props) {
   const { resolvedTheme } = useTheme();
@@ -85,6 +213,8 @@ export function SolutionView({ solution, onApplyToEditor }: Props) {
           </p>
         </section>
       )}
+
+      <SqlPipeline sql={solution.reference_sql} />
 
       <section>
         <div className="mb-2 flex items-baseline justify-between">

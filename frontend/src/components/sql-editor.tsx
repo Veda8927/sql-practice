@@ -24,6 +24,11 @@ function preFixDates(sql: string): string {
   );
 }
 
+type SchemaTable = {
+  name: string;
+  columns: { name: string; type: string }[];
+};
+
 type Props = {
   value: string;
   onChange: (v: string) => void;
@@ -32,6 +37,7 @@ type Props = {
   running: boolean;
   submitting: boolean;
   schemaIdentifiers: Set<string>;
+  schemaTables?: SchemaTable[];
   expectedTables?: string[];
 };
 
@@ -47,6 +53,7 @@ export function SqlEditor({
   running,
   submitting,
   schemaIdentifiers,
+  schemaTables,
   expectedTables,
 }: Props) {
   const editorRef = React.useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
@@ -62,6 +69,11 @@ export function SqlEditor({
 
   const schemaIdsRef = React.useRef(schemaIdentifiers);
   schemaIdsRef.current = schemaIdentifiers;
+
+  const schemaTablesRef = React.useRef(schemaTables ?? []);
+  schemaTablesRef.current = schemaTables ?? [];
+
+  const completionDisposableRef = React.useRef<IDisposable | null>(null);
 
   const { resolvedTheme } = useTheme();
   const monacoTheme = resolvedTheme === "light" ? "vs" : "vs-dark";
@@ -176,12 +188,138 @@ export function SqlEditor({
     codeActionDisposableRef.current =
       monaco.languages.registerCodeActionProvider("sql", codeActionProvider);
 
+    const SQL_KEYWORDS = [
+      "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY", "HAVING", "LIMIT",
+      "OFFSET", "JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL OUTER JOIN",
+      "INNER JOIN", "ON", "AS", "AND", "OR", "NOT", "NULL", "IS", "IN",
+      "BETWEEN", "LIKE", "ILIKE", "EXISTS", "DISTINCT", "UNION", "UNION ALL",
+      "INTERSECT", "EXCEPT", "CASE", "WHEN", "THEN", "ELSE", "END", "WITH",
+      "RECURSIVE", "OVER", "PARTITION BY", "ROWS", "RANGE", "ASC", "DESC",
+      "COUNT", "SUM", "AVG", "MIN", "MAX", "COALESCE", "NULLIF", "CAST",
+      "DATE_TRUNC", "EXTRACT", "ROW_NUMBER", "RANK", "DENSE_RANK", "LAG",
+      "LEAD", "FIRST_VALUE", "LAST_VALUE", "FILTER",
+    ];
+
+    const completionProvider: MonacoLanguages.CompletionItemProvider = {
+      triggerCharacters: [".", " "],
+      provideCompletionItems: (model, position) => {
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
+        const tables = schemaTablesRef.current;
+        const textUpToCursor = model.getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        });
+
+        // Build alias map from the whole document.
+        const fullText = model.getValue();
+        const aliasMap = new Map<string, string>();
+        const aliasRegex =
+          /\b(?:FROM|JOIN)\s+([a-zA-Z_][\w]*)(?:\s+(?:AS\s+)?([a-zA-Z_][\w]*))?/gi;
+        let am: RegExpExecArray | null;
+        while ((am = aliasRegex.exec(fullText)) !== null) {
+          const tableName = am[1];
+          const aliasName = am[2];
+          if (
+            aliasName &&
+            aliasName.toLowerCase() !== "where" &&
+            aliasName.toLowerCase() !== "on"
+          ) {
+            aliasMap.set(aliasName, tableName);
+          }
+          aliasMap.set(tableName, tableName);
+        }
+
+        // Did the user just type `<ident>.`? Suggest columns from that table.
+        const dotMatch = textUpToCursor.match(/([a-zA-Z_][\w]*)\.\w*$/);
+        if (dotMatch) {
+          const ident = dotMatch[1];
+          const tableName =
+            aliasMap.get(ident) ?? aliasMap.get(ident.toLowerCase()) ?? ident;
+          const tbl = tables.find(
+            (t) => t.name.toLowerCase() === tableName.toLowerCase(),
+          );
+          if (tbl) {
+            const dotPos = textUpToCursor.lastIndexOf(".");
+            const colRange = {
+              startLineNumber: position.lineNumber,
+              endLineNumber: position.lineNumber,
+              startColumn: dotPos + 2,
+              endColumn: position.column,
+            };
+            return {
+              suggestions: tbl.columns.map((c) => ({
+                label: c.name,
+                kind: monaco.languages.CompletionItemKind.Field,
+                insertText: c.name,
+                detail: c.type,
+                range: colRange,
+              })),
+            };
+          }
+        }
+
+        const suggestions: MonacoLanguages.CompletionItem[] = [];
+        const fromJoinMatch = /\b(FROM|JOIN)\s+\w*$/i.test(textUpToCursor);
+        if (fromJoinMatch) {
+          for (const t of tables) {
+            suggestions.push({
+              label: t.name,
+              kind: monaco.languages.CompletionItemKind.Class,
+              insertText: t.name,
+              detail: `table (${t.columns.length} cols)`,
+              range,
+            });
+          }
+          return { suggestions };
+        }
+
+        for (const t of tables) {
+          suggestions.push({
+            label: t.name,
+            kind: monaco.languages.CompletionItemKind.Class,
+            insertText: t.name,
+            detail: "table",
+            range,
+          });
+          for (const c of t.columns) {
+            suggestions.push({
+              label: c.name,
+              kind: monaco.languages.CompletionItemKind.Field,
+              insertText: c.name,
+              detail: `${t.name} · ${c.type}`,
+              range,
+            });
+          }
+        }
+        for (const kw of SQL_KEYWORDS) {
+          suggestions.push({
+            label: kw,
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: kw,
+            range,
+          });
+        }
+        return { suggestions };
+      },
+    };
+    completionDisposableRef.current =
+      monaco.languages.registerCompletionItemProvider("sql", completionProvider);
+
     runLint();
   };
 
   React.useEffect(() => {
     return () => {
       codeActionDisposableRef.current?.dispose();
+      completionDisposableRef.current?.dispose();
     };
   }, []);
 

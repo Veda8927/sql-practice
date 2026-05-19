@@ -17,9 +17,9 @@ const SHORTCUTS: { group: string; items: Shortcut[] }[] = [
   {
     group: "Editor",
     items: [
-      { keys: ["⌘", "↵"], label: "Run query" },
-      { keys: ["⌘", "S"], label: "Format SQL" },
-      { keys: ["⌘", "⇧", "F"], label: "Format SQL (alt)" },
+      { keys: ["⌘", "F"], label: "Format SQL" },
+      { keys: ["⌘", "R"], label: "Run (free run, no grading)" },
+      { keys: ["⌘", "S"], label: "Submit (grade against expected)" },
       { keys: ["⌘", "."], label: "Show quick fix on a SQL typo" },
     ],
   },

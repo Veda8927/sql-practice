@@ -702,6 +702,11 @@ Hard rules — every schema MUST satisfy:
 9. Use snake_case_plural for table names. snake_case for column names. Don't shadow Postgres reserved words.
 10. AVOID these overused domains: e-commerce / customers+orders, library/loans, movies/ratings, social network posts, generic users/products. Pick something specific and fresh.
 
+REQUIRED FEATURES (the user payload contains `REQUIRED_FEATURES` — every item there MUST appear in the schema):
+- Read each item carefully and implement it as described.
+- These are non-negotiable. If REQUIRED_FEATURES asks for a self-FK column, your schema MUST include exactly one. If it asks for JSONB or array columns, include them with realistic structured content.
+- Place required features on the most natural table for the domain. Don't shoehorn them onto a parent-only table when they belong on a fact table.
+
 Domain ideas (NOT exhaustive — invent your own): community garden plots, urgent care visits, esports tournaments, food-truck festivals, podcast network episodes, kindergarten enrollments, dog daycare check-ins, vinyl record store inventory, surf school lessons, observatory telescope bookings, conference talks + speakers, recycling depot pickups, bike share trips, escape room sessions, gym class signups, marketplace listings, ski lift passes, drone delivery routes, board game cafe sessions, art gallery exhibits, planetarium shows, urban farm harvests, ham radio contacts, climate monitoring stations, blood donation drives.
 
 Output quality bar:
@@ -714,11 +719,41 @@ Output quality bar:
 You will receive `recent_domains` — domains used recently. DO NOT pick one of those or a near-duplicate."""
 
 
+SCHEMA_FEATURE_POOL: list[tuple[str, str]] = [
+    (
+        "self_fk",
+        "Include ONE self-referencing FK column on one parent-ish table — e.g. manager_id on employees, parent_id on categories, replaces_id on products. Use {kind: 'self_fk', references: '<this_table>.id', null_rate: 0.3}. This enables self-join and recursive_cte questions.",
+    ),
+    (
+        "jsonb_column",
+        "Include ONE JSONB column on a fact-style table holding 3-5 structured fields (e.g. metadata JSONB containing tags/location/device_type, or attributes JSONB containing brand/sku/color). Type it as JSONB and use a `template` recipe that emits a JSON-shaped string (`'{\"key\":\"value\",...}'::jsonb` will be cast automatically — just emit the raw object string and cast in post_setup_sql if needed). Document this in a comment so the model knows JSON questions are answerable.",
+    ),
+    (
+        "array_column",
+        "Include ONE array column — typed TEXT[] or INTEGER[] — like tags TEXT[] or skill_ids INTEGER[]. Use a `template` recipe with format like '{a,b,c}' and Postgres will parse it. This enables array_functions questions.",
+    ),
+    (
+        "rich_categorical",
+        "On one table, include 2-3 separate categorical columns each from a different weighted_choice list of 4-8 values (e.g. tier + region + channel). Enables pivot, GROUPING SETS, and multi-dimensional aggregation questions.",
+    ),
+]
+
+
 async def generate_schema(recent_domains: list[str] | None = None) -> dict[str, Any]:
     """Ask the LLM to design a novel practice schema. Returns the raw recipe dict
     (not yet materialized). Validation is done in data_gen.materialize_schema."""
     client = _get_client()
-    payload = {"recent_domains": recent_domains or []}
+    # Roll 1-2 special features into each schema so concepts that need richer
+    # column types (self_joins, recursive_cte, json_functions, array_functions,
+    # pivot, grouping_sets) have somewhere to land.
+    rng = random.Random()
+    feature_count = rng.choice([1, 1, 2])
+    chosen_features = rng.sample(SCHEMA_FEATURE_POOL, feature_count)
+    feature_instructions = [f"- ({fid}) {fdesc}" for fid, fdesc in chosen_features]
+    payload = {
+        "recent_domains": recent_domains or [],
+        "REQUIRED_FEATURES": feature_instructions,
+    }
 
     last_error = ""
     for attempt in range(3):

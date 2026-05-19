@@ -49,6 +49,8 @@ _ALLOWED_TYPE_PATTERNS = [
     re.compile(r"^DATE$", re.IGNORECASE),
     re.compile(r"^TIMESTAMP$", re.IGNORECASE),
     re.compile(r"^NUMERIC\(\s*\d+\s*,\s*\d+\s*\)$", re.IGNORECASE),
+    re.compile(r"^JSONB?$", re.IGNORECASE),
+    re.compile(r"^(TEXT|INTEGER|BIGINT|NUMERIC\(\s*\d+\s*,\s*\d+\s*\))\s*\[\s*\]$", re.IGNORECASE),
 ]
 
 
