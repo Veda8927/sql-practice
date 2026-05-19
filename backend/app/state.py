@@ -12,6 +12,7 @@ class CurrentQuestion:
     difficulty: str
     expected_output: dict[str, Any] | None = None
     schema_context: dict[str, Any] | None = None
+    shape_id: str | None = None
 
 
 @dataclass

@@ -36,10 +36,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   health: () => request<{ ok: boolean }>("/api/health"),
   getSchema: () => request<SchemaInfo>("/api/schema"),
-  resetData: (seed?: number) =>
+  resetData: (opts?: {
+    seed?: number;
+    mode?: "auto" | "ai" | "ai_fresh";
+    scenario?: string;
+  }) =>
     request<SchemaInfo>("/api/reset_data", {
       method: "POST",
-      body: JSON.stringify({ seed: seed ?? null }),
+      body: JSON.stringify({
+        seed: opts?.seed ?? null,
+        mode: opts?.mode ?? "auto",
+        scenario: opts?.scenario ?? null,
+      }),
     }),
   newQuestion: (opts?: { concept?: string; difficulty?: string }) =>
     request<Question>("/api/new_question", {

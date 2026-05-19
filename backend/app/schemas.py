@@ -27,6 +27,8 @@ class SchemaInfo(BaseModel):
 
 class ResetDataRequest(BaseModel):
     seed: int | None = None
+    mode: Literal["auto", "ai", "ai_fresh"] = "auto"
+    scenario: str | None = None
 
 
 class NewQuestionRequest(BaseModel):

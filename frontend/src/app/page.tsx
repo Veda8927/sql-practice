@@ -11,6 +11,7 @@ import {
   Moon,
   PlayCircle,
   RotateCcw,
+  Sparkles,
   Sun,
   Table2,
   X,
@@ -288,7 +289,8 @@ export default function Page() {
   });
 
   const resetDataMutation = useMutation({
-    mutationFn: () => api.resetData(),
+    mutationFn: (opts?: { mode?: "auto" | "ai" | "ai_fresh" }) =>
+      api.resetData(opts),
     onSuccess: (schema) => {
       queryClient.setQueryData(["schema"], schema);
       setQuestion(null);
@@ -437,7 +439,17 @@ export default function Page() {
 
   const onReset = React.useCallback(() => {
     if (!window.confirm("Regenerate the database with a new scenario?")) return;
-    resetDataMutation.mutate();
+    resetDataMutation.mutate({ mode: "auto" });
+  }, [resetDataMutation]);
+
+  const onAiScenario = React.useCallback(() => {
+    if (
+      !window.confirm(
+        "Generate a brand-new AI-designed schema? This can take 10–30 seconds.",
+      )
+    )
+      return;
+    resetDataMutation.mutate({ mode: "ai_fresh" });
   }, [resetDataMutation]);
 
   const onGiveUp = React.useCallback(() => {
@@ -594,7 +606,24 @@ export default function Page() {
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              Regenerate database with a new scenario
+              Shuffle to a built-in scenario
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onAiScenario}
+                disabled={resetDataMutation.isPending}
+                className="rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Generate AI scenario"
+              >
+                <Sparkles className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Generate a brand-new AI-designed schema (10–30s)
             </TooltipContent>
           </Tooltip>
           <Tooltip>

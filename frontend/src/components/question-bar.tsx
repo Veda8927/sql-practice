@@ -4,9 +4,11 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  ArrowLeft,
   ArrowRight,
   Check,
   ChevronDown,
+  ChevronRight,
   Filter,
   Gauge,
   Lightbulb,
@@ -44,30 +46,100 @@ const DIFFICULTY_OPTIONS: SelectOption<DifficultyChoice>[] = [
     label: "Hard",
   },
 ];
-const CONCEPTS = [
-  ["", "Any concept"],
-  ["joins", "Joins"],
-  ["left_joins", "Left joins"],
-  ["self_joins", "Self joins"],
-  ["aggregations", "Aggregations"],
-  ["group_by", "Group by"],
-  ["having", "Having"],
-  ["window_functions", "Window functions"],
-  ["cte", "CTEs"],
-  ["subqueries", "Subqueries"],
-  ["set_operations", "Set operations"],
-  ["case_when", "CASE WHEN"],
-  ["date_functions", "Date functions"],
-  ["string_functions", "String functions"],
-  ["null_handling", "NULL handling"],
+type ConceptCategory = {
+  id: string;
+  label: string;
+  description: string;
+  concepts: ReadonlyArray<readonly [string, string]>;
+};
+
+const CONCEPT_CATEGORIES: readonly ConceptCategory[] = [
+  {
+    id: "query_patterns",
+    label: "Query patterns",
+    description: "Joining, filtering, combining row sets",
+    concepts: [
+      ["joins", "Joins"],
+      ["left_joins", "Left joins"],
+      ["self_joins", "Self joins"],
+      ["full_joins", "Full outer joins"],
+      ["lateral_joins", "Lateral joins"],
+      ["subqueries", "Subqueries"],
+      ["correlated_subqueries", "Correlated subqueries"],
+      ["exists", "EXISTS / NOT EXISTS"],
+      ["set_operations", "Set operations"],
+    ],
+  },
+  {
+    id: "aggregation",
+    label: "Aggregation",
+    description: "Rolling up rows into summaries",
+    concepts: [
+      ["aggregations", "Aggregations"],
+      ["distinct", "DISTINCT"],
+      ["group_by", "Group by"],
+      ["having", "Having"],
+      ["filter_clause", "FILTER clause"],
+      ["grouping_sets", "GROUPING SETS / ROLLUP"],
+    ],
+  },
+  {
+    id: "advanced",
+    label: "Advanced techniques",
+    description: "Window functions, CTEs, pivots",
+    concepts: [
+      ["window_functions", "Window functions"],
+      ["cte", "CTEs"],
+      ["recursive_cte", "Recursive CTEs"],
+      ["case_when", "CASE WHEN"],
+      ["pivot", "Pivot / conditional aggregation"],
+    ],
+  },
+  {
+    id: "data_ops",
+    label: "Data operations",
+    description: "Dates, strings, JSON, arrays, NULLs",
+    concepts: [
+      ["date_functions", "Date functions"],
+      ["string_functions", "String functions"],
+      ["regex", "Regex"],
+      ["null_handling", "NULL handling"],
+      ["json_functions", "JSON functions"],
+      ["array_functions", "Array functions"],
+    ],
+  },
+  {
+    id: "data_cleaning",
+    label: "Data cleaning",
+    description: "Deduplication, validation, normalization",
+    concepts: [
+      ["deduplication", "Deduplication"],
+      ["type_casting", "Type casting"],
+      ["data_validation", "Data validation"],
+      ["standardization", "Standardization"],
+    ],
+  },
 ] as const;
-type ConceptChoice = (typeof CONCEPTS)[number][0];
-const CONCEPT_OPTIONS: SelectOption<ConceptChoice>[] = CONCEPTS.map(
-  ([value, label]) => ({
-    value,
-    label,
-  }),
-);
+
+type ConceptChoice = string;
+
+const ALL_CONCEPTS: ReadonlyArray<readonly [string, string]> = [
+  ["", "Any concept"],
+  ...CONCEPT_CATEGORIES.flatMap((c) =>
+    c.concepts.map((p) => p as readonly [string, string]),
+  ),
+];
+
+function findConceptLabel(value: string): string {
+  return ALL_CONCEPTS.find(([v]) => v === value)?.[1] ?? "Any concept";
+}
+
+function findCategoryIdForConcept(value: string): string | null {
+  for (const cat of CONCEPT_CATEGORIES) {
+    if (cat.concepts.some(([v]) => v === value)) return cat.id;
+  }
+  return null;
+}
 
 type Props = {
   question: Question | null;
@@ -123,6 +195,7 @@ function WordReveal({ text }: { text: string }) {
 type SelectOption<T extends string> = {
   value: T;
   label: string;
+  group?: string;
 };
 
 function CommandSelect<T extends string>({
@@ -147,22 +220,30 @@ function CommandSelect<T extends string>({
     top: number;
     left: number;
     width: number;
+    maxHeight: number;
   } | null>(null);
   const selected = options.find((option) => option.value === value) ?? options[0];
 
   // Compute trigger position whenever the menu opens. Flip above when there
   // isn't room below. Re-close on scroll/resize for crisp popover behavior.
+  // The menu is capped at 60vh — pick the larger usable side (above vs below the trigger).
   React.useLayoutEffect(() => {
     if (!open) return;
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const estimatedMenuHeight = 36 + options.length * 36 + 8; // ~ header + rows
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const flip = spaceBelow < estimatedMenuHeight + 16 && rect.top > spaceBelow;
+    const desired = Math.min(
+      Math.floor(window.innerHeight * 0.6),
+      36 + options.length * 36 + 8 + 60,
+    );
+    const spaceBelow = window.innerHeight - rect.bottom - 16;
+    const spaceAbove = rect.top - 16;
+    const flip = spaceBelow < desired && spaceAbove > spaceBelow;
+    const available = flip ? spaceAbove : spaceBelow;
     setPos({
-      top: flip ? rect.top - estimatedMenuHeight : rect.bottom,
+      top: flip ? rect.top - Math.min(desired, available) : rect.bottom,
       left: rect.left,
       width: rect.width,
+      maxHeight: Math.max(available, 200),
     });
   }, [open, options.length]);
 
@@ -181,16 +262,22 @@ function CommandSelect<T extends string>({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
-    const onScrollOrResize = () => setOpen(false);
+    const onResize = () => setOpen(false);
+    // Only close on OUTER scrolls — ignore scroll events that originate inside the menu.
+    const onScroll = (event: Event) => {
+      const t = event.target as Node | null;
+      if (t && menuRef.current?.contains(t)) return;
+      setOpen(false);
+    };
     window.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("resize", onScrollOrResize);
-    window.addEventListener("scroll", onScrollOrResize, true);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onScroll, true);
     return () => {
       window.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("resize", onScrollOrResize);
-      window.removeEventListener("scroll", onScrollOrResize, true);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [open]);
 
@@ -245,56 +332,328 @@ function CommandSelect<T extends string>({
                   top: pos.top,
                   left: pos.left,
                   minWidth: Math.max(pos.width, 240),
+                  maxHeight: pos.maxHeight,
                 }}
-                className="z-50 w-64 overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-xl shadow-background/40"
+                className="z-50 flex w-64 flex-col overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-xl shadow-background/40"
               >
-            <div className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <div className="shrink-0 px-2 py-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               {label}
             </div>
-            {options.map((option, index) => {
-              const active = option.value === value;
-              return (
-                <motion.button
-                  key={option.value || "empty"}
-                  type="button"
-                  initial={{ opacity: 0, x: -4 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.14, delay: index * 0.018 }}
-                  onClick={() => {
-                    onChange(option.value);
-                    setOpen(false);
-                  }}
-                  className={cn(
-                    "flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left transition-colors",
-                    active
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                  )}
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-xs font-medium">
-                      {option.label}
-                    </span>
-                  </span>
-                  <AnimatePresence>
-                    {active && (
-                      <motion.span
-                        initial={{ opacity: 0, scale: 0.75 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.75 }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 420,
-                          damping: 28,
-                        }}
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                      </motion.span>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {options.map((option, index) => {
+                const active = option.value === value;
+                const prevGroup = index > 0 ? options[index - 1].group : undefined;
+                const showGroupHeader =
+                  !!option.group && option.group !== prevGroup;
+                return (
+                  <React.Fragment key={option.value || "empty"}>
+                    {showGroupHeader && (
+                      <div className="mt-1 px-2 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                        {option.group}
+                      </div>
                     )}
-                  </AnimatePresence>
-                </motion.button>
-              );
-            })}
+                    <motion.button
+                      type="button"
+                      initial={{ opacity: 0, x: -4 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.14, delay: Math.min(index, 8) * 0.012 }}
+                      onClick={() => {
+                        onChange(option.value);
+                        setOpen(false);
+                      }}
+                      className={cn(
+                        "flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left transition-colors",
+                        active
+                          ? "bg-muted text-foreground"
+                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                      )}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-medium">
+                          {option.label}
+                        </span>
+                      </span>
+                      <AnimatePresence>
+                        {active && (
+                          <motion.span
+                            initial={{ opacity: 0, scale: 0.75 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.75 }}
+                            transition={{
+                              type: "spring",
+                              stiffness: 420,
+                              damping: 28,
+                            }}
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </motion.button>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
+    </div>
+  );
+}
+
+function CategoryConceptSelect({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [view, setView] = React.useState<"categories" | "concepts">("categories");
+  const [activeCategoryId, setActiveCategoryId] = React.useState<string | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const menuRef = React.useRef<HTMLDivElement | null>(null);
+  const [pos, setPos] = React.useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
+
+  const selectedLabel = findConceptLabel(value);
+  const activeCategory = CONCEPT_CATEGORIES.find((c) => c.id === activeCategoryId);
+
+  // When the menu opens, drill into the category of the currently selected concept
+  // so the user lands in context. Reset on close.
+  React.useEffect(() => {
+    if (!open) {
+      setView("categories");
+      setActiveCategoryId(null);
+      return;
+    }
+    const initial = findCategoryIdForConcept(value);
+    if (initial) {
+      setActiveCategoryId(initial);
+      setView("concepts");
+    }
+  }, [open, value]);
+
+  React.useLayoutEffect(() => {
+    if (!open) return;
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const desired = Math.min(Math.floor(window.innerHeight * 0.65), 480);
+    const spaceBelow = window.innerHeight - rect.bottom - 16;
+    const spaceAbove = rect.top - 16;
+    const flip = spaceBelow < desired && spaceAbove > spaceBelow;
+    const available = flip ? spaceAbove : spaceBelow;
+    setPos({
+      top: flip ? rect.top - Math.min(desired, available) : rect.bottom,
+      left: rect.left,
+      width: rect.width,
+      maxHeight: Math.max(available, 240),
+    });
+  }, [open, view]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const t = event.target as Node;
+      if (!triggerRef.current?.contains(t) && !menuRef.current?.contains(t)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    const onResize = () => setOpen(false);
+    const onScroll = (event: Event) => {
+      const t = event.target as Node | null;
+      if (t && menuRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [open]);
+
+  const pickConcept = (v: string) => {
+    onChange(v);
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <motion.button
+        ref={triggerRef}
+        type="button"
+        whileTap={{ scale: disabled ? 1 : 0.98 }}
+        onClick={() => !disabled && setOpen((v) => !v)}
+        disabled={disabled}
+        className={cn(
+          "group inline-flex h-8 min-w-[136px] items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-2.5 text-xs font-medium text-foreground shadow-[0_1px_0_rgba(255,255,255,0.03)_inset] transition-colors",
+          "hover:border-muted-foreground/35 hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
+          open && "border-muted-foreground/35 bg-background",
+        )}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="text-muted-foreground">
+            <Filter className="h-3.5 w-3.5" />
+          </span>
+          <span className="sr-only">Concept</span>
+          <motion.span
+            key={value}
+            initial={{ opacity: 0, y: 3 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.16 }}
+            className="truncate"
+          >
+            {selectedLabel}
+          </motion.span>
+        </span>
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.18 }}
+          className="shrink-0 text-muted-foreground"
+        >
+          <ChevronDown className="h-3.5 w-3.5" />
+        </motion.span>
+      </motion.button>
+
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {open && pos && (
+              <motion.div
+                ref={menuRef}
+                initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 6, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                transition={{ duration: 0.16, ease: [0.2, 0.8, 0.2, 1] }}
+                style={{
+                  position: "fixed",
+                  top: pos.top,
+                  left: pos.left,
+                  minWidth: Math.max(pos.width, 280),
+                  maxHeight: pos.maxHeight,
+                }}
+                className="z-50 flex w-72 flex-col overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-xl shadow-background/40"
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  {view === "categories" ? (
+                    <motion.div
+                      key="categories"
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -8 }}
+                      transition={{ duration: 0.14 }}
+                      className="flex min-h-0 flex-1 flex-col"
+                    >
+                      <div className="shrink-0 px-2 py-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Concept
+                      </div>
+                      <div className="min-h-0 flex-1 overflow-y-auto">
+                        <button
+                          type="button"
+                          onClick={() => pickConcept("")}
+                          className={cn(
+                            "flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left transition-colors",
+                            value === ""
+                              ? "bg-muted text-foreground"
+                              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                          )}
+                        >
+                          <span className="text-xs font-medium">Any concept</span>
+                          {value === "" && <Check className="h-3.5 w-3.5" />}
+                        </button>
+                        <div className="my-1 h-px bg-border/60" />
+                        {CONCEPT_CATEGORIES.map((cat) => {
+                          const containsSelected = cat.concepts.some(
+                            ([v]) => v === value,
+                          );
+                          return (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() => {
+                                setActiveCategoryId(cat.id);
+                                setView("concepts");
+                              }}
+                              className={cn(
+                                "flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left transition-colors",
+                                containsSelected
+                                  ? "bg-muted/60 text-foreground"
+                                  : "text-foreground hover:bg-muted/60",
+                              )}
+                            >
+                              <span className="min-w-0">
+                                <span className="block truncate text-xs font-medium">
+                                  {cat.label}
+                                </span>
+                                <span className="block truncate text-[10px] text-muted-foreground">
+                                  {cat.description}
+                                </span>
+                              </span>
+                              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="concepts"
+                      initial={{ opacity: 0, x: 8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 8 }}
+                      transition={{ duration: 0.14 }}
+                      className="flex min-h-0 flex-1 flex-col"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setView("categories")}
+                        className="flex shrink-0 items-center gap-2 rounded-lg px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                      >
+                        <ArrowLeft className="h-3 w-3" />
+                        <span>{activeCategory?.label ?? "Back"}</span>
+                      </button>
+                      <div className="min-h-0 flex-1 overflow-y-auto">
+                        {activeCategory?.concepts.map(([v, label]) => {
+                          const active = v === value;
+                          return (
+                            <button
+                              key={v}
+                              type="button"
+                              onClick={() => pickConcept(v)}
+                              className={cn(
+                                "flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left transition-colors",
+                                active
+                                  ? "bg-muted text-foreground"
+                                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                              )}
+                            >
+                              <span className="block truncate text-xs font-medium">
+                                {label}
+                              </span>
+                              {active && <Check className="h-3.5 w-3.5" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>,
@@ -497,9 +856,10 @@ export function QuestionBar({
               key="empty"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-[22px] font-medium leading-snug tracking-tight text-muted-foreground"
+              className="max-w-2xl text-[22px] font-medium leading-snug tracking-tight text-muted-foreground"
             >
-              Press <span className="text-foreground">New question</span> to begin.
+              Choose a focus, then{" "}
+              <span className="text-foreground">start your first question</span>.
             </motion.p>
           )}
         </AnimatePresence>
@@ -509,13 +869,10 @@ export function QuestionBar({
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <CommandSelect
-            label="Concept"
+          <CategoryConceptSelect
             value={concept}
-            options={CONCEPT_OPTIONS}
-            icon={<Filter className="h-3.5 w-3.5" />}
-            disabled={loading}
             onChange={setConcept}
+            disabled={loading}
           />
           <CommandSelect
             label="Difficulty"
@@ -567,7 +924,7 @@ export function QuestionBar({
             ) : (
               <ArrowRight className="h-3.5 w-3.5" />
             )}
-            {question ? "Next question" : "Start"}
+            {question ? "Next question" : "Start question"}
           </Button>
         </div>
       </div>

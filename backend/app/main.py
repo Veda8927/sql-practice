@@ -196,7 +196,13 @@ async def _build_schema_info(seed: int) -> SchemaInfo:
 @app.post("/api/reset_data", response_model=SchemaInfo)
 async def reset_data(req: ResetDataRequest) -> SchemaInfo:
     seed = req.seed if req.seed is not None else random.randint(1, 1_000_000)
-    await data_gen.reset_data(seed)
+    try:
+        if req.mode == "ai_fresh":
+            await data_gen.generate_and_materialize_ai_schema(seed)
+        else:
+            await data_gen.reset_data(seed, scenario=req.scenario, mode=req.mode)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"reset_data failed: {e}") from e
     session_state.seed = seed
     session_state.current_question = None
     session_state.last_grade = None
@@ -219,13 +225,15 @@ async def get_schema() -> SchemaInfo:
 @app.post("/api/new_question", response_model=QuestionResponse)
 async def new_question(req: NewQuestionRequest) -> QuestionResponse:
     schema = await data_gen.get_schema_info()
-    recent = [q.question for q in session_state.question_history[:5]]
+    recent = [q.question for q in session_state.question_history[:8]]
+    recent_shapes = [q.shape_id for q in session_state.question_history[:8] if q.shape_id]
     try:
         data = await llm.generate_question(
             schema,
             req.concept,
             req.difficulty,
             recent_questions=recent,
+            recent_shapes=recent_shapes,
         )
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
@@ -245,6 +253,7 @@ async def new_question(req: NewQuestionRequest) -> QuestionResponse:
         difficulty=data["difficulty"],
         expected_output=expected.model_dump() if expected else None,
         schema_context=schema_context.model_dump(),
+        shape_id=data.get("_shape_id"),
     )
     session_state.current_question = q
     _remember_question(q)

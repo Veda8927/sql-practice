@@ -22,6 +22,9 @@ dist/
 .env.*.local
 frontend/.env.local
 
+# Runtime data caches
+backend/data/
+
 # IDE / editor
 .vscode/
 .idea/
