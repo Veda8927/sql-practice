@@ -28,6 +28,13 @@
       "category": "query_patterns",
       "count": 36,
       "file": "self_joins.json"
+    },
+    {
+      "concept": "full_joins",
+      "label": "Full outer joins",
+      "category": "query_patterns",
+      "count": 39,
+      "file": "full_joins.json"
     }
   ]
 }

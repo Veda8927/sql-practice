@@ -21,6 +21,7 @@ import {
   Group as PanelGroup,
   Panel,
   Separator as PanelResizeHandle,
+  usePanelRef,
   type Layout,
 } from "react-resizable-panels";
 
@@ -187,6 +188,33 @@ export default function Page() {
   const [vsplitLayout, setVsplitLayout] = React.useState<Layout | undefined>(
     undefined,
   );
+
+  // Imperative handle for the question panel so we can resize it to fit
+  // whatever the current question + schema-context block actually needs.
+  const questionPanelRef = usePanelRef();
+  const questionContentRef = React.useRef<HTMLDivElement>(null);
+
+  // Observe the QuestionBar's natural height and resize the top panel to match,
+  // so long questions never get clipped on small viewports. The user can still
+  // drag the divider afterwards — we only fire when the content height changes,
+  // not on every render.
+  React.useEffect(() => {
+    const el = questionContentRef.current;
+    if (!el) return;
+    let frame = 0;
+    const obs = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const h = el.scrollHeight;
+        if (h > 0) questionPanelRef.current?.resize(`${h + 16}px`);
+      });
+    });
+    obs.observe(el);
+    return () => {
+      cancelAnimationFrame(frame);
+      obs.disconnect();
+    };
+  }, [questionPanelRef]);
 
   React.useEffect(() => {
     try {
@@ -811,6 +839,7 @@ export default function Page() {
             id="question"
             defaultSize="40%"
             minSize="12%"
+            panelRef={questionPanelRef}
             className={`min-h-0 ${tourClass("question")}`}
           >
             {/*
@@ -819,7 +848,7 @@ export default function Page() {
             */}
             <div className="h-full overflow-auto">
               <div className="flex min-h-full items-center justify-center">
-                <div className="w-full">
+                <div ref={questionContentRef} className="w-full">
           <QuestionBar
             question={question}
             loading={

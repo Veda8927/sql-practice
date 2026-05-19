@@ -934,7 +934,7 @@ function SourceToggle({
       role="radiogroup"
       aria-label="Question source"
       className={cn(
-        "inline-flex h-8 items-center rounded-lg border border-border bg-muted/40 p-0.5",
+        "grid h-8 grid-cols-2 items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5",
         disabled && "opacity-50",
       )}
     >
@@ -950,7 +950,7 @@ function SourceToggle({
                 disabled={disabled}
                 onClick={() => onChange(opt.value)}
                 className={cn(
-                  "inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors",
+                  "inline-flex h-7 w-full items-center justify-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors",
                   active
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
@@ -990,12 +990,14 @@ export function QuestionBar({
 
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-8">
-      <div className="mb-5 flex justify-center">
-        <SourceToggle
-          value={source}
-          onChange={onSourceChange}
-          disabled={loading}
-        />
+      <div className="mb-10 flex justify-center">
+        <div className="w-[220px]">
+          <SourceToggle
+            value={source}
+            onChange={onSourceChange}
+            disabled={loading}
+          />
+        </div>
       </div>
       <div className="min-h-[64px]">
         <AnimatePresence mode="wait">

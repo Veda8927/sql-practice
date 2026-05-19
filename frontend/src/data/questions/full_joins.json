@@ -1,0 +1,4545 @@
+[
+  {
+    "id": "full_joins-001",
+    "concept": "full_joins",
+    "subconcept": "basic-full-outer-join",
+    "difficulty": "easy",
+    "prompt": "Retrieve all agents and their associated listings. If an agent does not have any listings, still include the agent in the results with NULL values for listing details. Return agent_id, agent_name, listing_id, and listing_address, sorted by agent_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS listings CASCADE;\nDROP TABLE IF EXISTS agents CASCADE;\n\nCREATE TABLE agents (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE listings (id INTEGER PRIMARY KEY, agent_id INTEGER REFERENCES agents(id), address TEXT NOT NULL);\n\nINSERT INTO agents VALUES (1, 'John Doe'), (2, 'Jane Smith'), (3, 'Alice Johnson');\nINSERT INTO listings VALUES (1, 1, '123 Elm St'), (2, 1, '456 Oak St'), (3, 2, '789 Pine St');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "agents",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "listings",
+          "columns": [
+            "id",
+            "agent_id",
+            "address"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "listings",
+          "from_column": "agent_id",
+          "to_table": "agents",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "agent_id",
+        "agent_name",
+        "listing_id",
+        "listing_address"
+      ],
+      "rows": [
+        [
+          1,
+          "John Doe",
+          1,
+          "123 Elm St"
+        ],
+        [
+          1,
+          "John Doe",
+          2,
+          "456 Oak St"
+        ],
+        [
+          2,
+          "Jane Smith",
+          3,
+          "789 Pine St"
+        ],
+        [
+          3,
+          "Alice Johnson",
+          null,
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT a.id AS agent_id, a.name AS agent_name, l.id AS listing_id, l.address AS listing_address\nFROM agents a\nFULL OUTER JOIN listings l ON a.id = l.agent_id\nORDER BY a.id;",
+    "hints": [
+      {
+        "hint": "Think about how to include all agents whether they have listings or not. What type of join does that?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use FULL OUTER JOIN to connect agents and listings on their IDs.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Make sure to alias your columns in the SELECT statement for clarity.",
+        "suggested_sql": "SELECT a.id AS agent_id, a.name AS agent_name, l.id AS listing_id, l.address AS listing_address\nFROM agents a\nFULL OUTER JOIN listings l ON a.id = l.agent_id\nORDER BY a.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from agents",
+        "what_it_does": "Start by selecting all agents as the primary dataset.",
+        "sql_snippet": "FROM agents a",
+        "how_postgres_reads_it": "Postgres begins with the agents table, treating each row as a potential result."
+      },
+      {
+        "title": "Join listings",
+        "what_it_does": "FULL OUTER JOIN listings to include all listings and keep agents without listings.",
+        "sql_snippet": "FULL OUTER JOIN listings l ON a.id = l.agent_id",
+        "how_postgres_reads_it": "Postgres looks for matches in listings for each agent. If no match exists, it still includes the agent with NULL values for listing fields."
+      },
+      {
+        "title": "Order results",
+        "what_it_does": "Sort results by agent_id.",
+        "sql_snippet": "ORDER BY a.id",
+        "how_postgres_reads_it": "Postgres arranges the final output by agent_id before displaying the results."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN on agents and listings retrieves all agents, including those without listings, sorted by agent_id.",
+    "solution_final_thought": "FULL OUTER JOIN is essential for reporting scenarios where you need to include all records from both tables regardless of whether they match.",
+    "explanation": "Using FULL OUTER JOIN ensures that all agents are included in the results, even if they have no associated listings, which is crucial for comprehensive reporting in real estate.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-002",
+    "concept": "full_joins",
+    "subconcept": "full-outer-join-with-filter",
+    "difficulty": "medium",
+    "prompt": "List all agents and their corresponding sales, including agents without any sales and sales without corresponding agents. Return agent_id, agent_name, sale_id, sale_price, sorted by agent_id and sale_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS sales CASCADE;\nDROP TABLE IF EXISTS agents CASCADE;\n\nCREATE TABLE agents (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE sales (id INTEGER PRIMARY KEY, agent_id INTEGER REFERENCES agents(id), price NUMERIC(10,2) NOT NULL);\n\nINSERT INTO agents VALUES (1, 'John Doe'), (2, 'Jane Smith'), (3, 'Alice Johnson');\nINSERT INTO sales VALUES (1, 1, 200000.00), (2, 1, 250000.00), (3, 3, 300000.00);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "agents",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "sales",
+          "columns": [
+            "id",
+            "agent_id",
+            "price"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "sales",
+          "from_column": "agent_id",
+          "to_table": "agents",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "agent_id",
+        "agent_name",
+        "sale_id",
+        "sale_price"
+      ],
+      "rows": [
+        [
+          1,
+          "John Doe",
+          1,
+          "200000.00"
+        ],
+        [
+          1,
+          "John Doe",
+          2,
+          "250000.00"
+        ],
+        [
+          2,
+          "Jane Smith",
+          null,
+          null
+        ],
+        [
+          3,
+          "Alice Johnson",
+          3,
+          "300000.00"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT a.id AS agent_id, a.name AS agent_name, s.id AS sale_id, s.price AS sale_price\nFROM agents a\nFULL OUTER JOIN sales s ON a.id = s.agent_id\nORDER BY a.id, s.id;",
+    "hints": [
+      {
+        "hint": "What type of join will allow you to see all agents, even if they have no sales?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You need to include both tables in the FULL OUTER JOIN statement.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Remember to sort by both agent_id and sale_id to achieve the desired output order.",
+        "suggested_sql": "SELECT a.id AS agent_id, a.name AS agent_name, s.id AS sale_id, s.price AS sale_price\nFROM agents a\nFULL OUTER JOIN sales s ON a.id = s.agent_id\nORDER BY a.id, s.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from agents",
+        "what_it_does": "Begin with all agents as the primary dataset.",
+        "sql_snippet": "FROM agents a",
+        "how_postgres_reads_it": "Postgres starts with the agents table, considering each row for inclusion in the result."
+      },
+      {
+        "title": "Join sales table",
+        "what_it_does": "FULL OUTER JOIN sales to bring in all sales and maintain agents without sales.",
+        "sql_snippet": "FULL OUTER JOIN sales s ON a.id = s.agent_id",
+        "how_postgres_reads_it": "Postgres finds matches in the sales table for each agent, including NULLs for agents without sales."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "Sort the final results by both agent_id and sale_id.",
+        "sql_snippet": "ORDER BY a.id, s.id",
+        "how_postgres_reads_it": "Postgres organizes the output by the specified columns before returning it."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN between agents and sales retrieves all agents and their sales, including those without matches, sorted accordingly.",
+    "solution_final_thought": "FULL OUTER JOIN allows for comprehensive data retrieval, ensuring no relevant records are omitted.",
+    "explanation": "The FULL OUTER JOIN ensures that all agents are included regardless of whether they have sales, thus providing a complete view of the agent's performance in sales.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-003",
+    "concept": "full_joins",
+    "subconcept": "full-outer-join-with-aggregate",
+    "difficulty": "medium",
+    "prompt": "Get a summary of all agents along with their total sales amount, even if they have no sales. Return agent_id, agent_name, total_sales, sorted by total_sales in descending order. Use NULL for agents without sales.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS sales CASCADE;\nDROP TABLE IF EXISTS agents CASCADE;\n\nCREATE TABLE agents (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE sales (id INTEGER PRIMARY KEY, agent_id INTEGER REFERENCES agents(id), price NUMERIC(10,2) NOT NULL);\n\nINSERT INTO agents VALUES (1, 'John Doe'), (2, 'Jane Smith'), (3, 'Alice Johnson');\nINSERT INTO sales VALUES (1, 1, 200000.00), (2, 1, 250000.00), (3, 3, 300000.00);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "agents",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "sales",
+          "columns": [
+            "id",
+            "agent_id",
+            "price"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "sales",
+          "from_column": "agent_id",
+          "to_table": "agents",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "agent_id",
+        "agent_name",
+        "total_sales"
+      ],
+      "rows": [
+        [
+          2,
+          "Jane Smith",
+          null
+        ],
+        [
+          1,
+          "John Doe",
+          "450000.00"
+        ],
+        [
+          3,
+          "Alice Johnson",
+          "300000.00"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT a.id AS agent_id, a.name AS agent_name, SUM(s.price) AS total_sales\nFROM agents a\nFULL OUTER JOIN sales s ON a.id = s.agent_id\nGROUP BY a.id\nORDER BY total_sales DESC;",
+    "hints": [
+      {
+        "hint": "How can you include all agents and also calculate their total sales? Think about grouping.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use SUM and GROUP BY to aggregate the sales amounts per agent.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Remember to include a sorting clause for total sales in descending order.",
+        "suggested_sql": "SELECT a.id AS agent_id, a.name AS agent_name, SUM(s.price) AS total_sales\nFROM agents a\nFULL OUTER JOIN sales s ON a.id = s.agent_id\nGROUP BY a.id\nORDER BY total_sales DESC;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from agents",
+        "what_it_does": "Start by selecting all agents as the core dataset.",
+        "sql_snippet": "FROM agents a",
+        "how_postgres_reads_it": "Postgres begins with the agents table, treating each row as a potential match."
+      },
+      {
+        "title": "Join sales table",
+        "what_it_does": "FULL OUTER JOIN sales to include all sales and keep agents without sales.",
+        "sql_snippet": "FULL OUTER JOIN sales s ON a.id = s.agent_id",
+        "how_postgres_reads_it": "Postgres looks for sales corresponding to each agent, including NULLs for agents without sales."
+      },
+      {
+        "title": "Aggregate and sort",
+        "what_it_does": "Use SUM() to calculate total sales and GROUP BY to aggregate results.",
+        "sql_snippet": "GROUP BY a.id ORDER BY total_sales DESC",
+        "how_postgres_reads_it": "Postgres groups the results by agent_id, calculates total sales, and sorts the output in descending order."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN combined with aggregation provides total sales amounts for all agents, sorted by their sales totals.",
+    "solution_final_thought": "Using FULL OUTER JOIN with aggregate functions allows you to summarize data while ensuring all relevant records are retained.",
+    "explanation": "The FULL OUTER JOIN ensures all agents are included, and the SUM function aggregates sales amounts, providing insights even for agents with no sales.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-004",
+    "concept": "full_joins",
+    "subconcept": "complex-full-outer-join",
+    "difficulty": "hard",
+    "prompt": "Retrieve a list of all agents and their listings, including agents without listings and listings without assigned agents. Return agent_id, agent_name, listing_id, listing_address, and sort by agent_id and listing_id. Ensure to handle NULLs appropriately.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS listings CASCADE;\nDROP TABLE IF EXISTS agents CASCADE;\n\nCREATE TABLE agents (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE listings (id INTEGER PRIMARY KEY, agent_id INTEGER REFERENCES agents(id), address TEXT NOT NULL);\n\nINSERT INTO agents VALUES (1, 'John Doe'), (2, 'Jane Smith'), (3, 'Alice Johnson');\nINSERT INTO listings VALUES (1, 1, '123 Elm St'), (2, 1, '456 Oak St'), (3, null, '789 Pine St');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "agents",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "listings",
+          "columns": [
+            "id",
+            "agent_id",
+            "address"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "listings",
+          "from_column": "agent_id",
+          "to_table": "agents",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "agent_id",
+        "agent_name",
+        "listing_id",
+        "listing_address"
+      ],
+      "rows": [
+        [
+          1,
+          "John Doe",
+          1,
+          "123 Elm St"
+        ],
+        [
+          1,
+          "John Doe",
+          2,
+          "456 Oak St"
+        ],
+        [
+          2,
+          "Jane Smith",
+          null,
+          null
+        ],
+        [
+          3,
+          "Alice Johnson",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          3,
+          "789 Pine St"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT a.id AS agent_id, a.name AS agent_name, l.id AS listing_id, l.address AS listing_address\nFROM agents a\nFULL OUTER JOIN listings l ON a.id = l.agent_id\nORDER BY a.id, l.id;",
+    "hints": [
+      {
+        "hint": "Consider how to include all listings and agents regardless of whether they match.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Utilize FULL OUTER JOIN to connect the agents and listings tables based on the agent_id.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Ensure you handle NULL values for listings without agents correctly in your output.",
+        "suggested_sql": "SELECT a.id AS agent_id, a.name AS agent_name, l.id AS listing_id, l.address AS listing_address\nFROM agents a\nFULL OUTER JOIN listings l ON a.id = l.agent_id\nORDER BY a.id, l.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from agents",
+        "what_it_does": "Begin with the agents table as the primary dataset.",
+        "sql_snippet": "FROM agents a",
+        "how_postgres_reads_it": "Postgres starts with the agents table, treating each row as a candidate for inclusion."
+      },
+      {
+        "title": "Join listings",
+        "what_it_does": "FULL OUTER JOIN listings to gather all listings, including those without agents.",
+        "sql_snippet": "FULL OUTER JOIN listings l ON a.id = l.agent_id",
+        "how_postgres_reads_it": "Postgres looks for matches in listings for each agent and includes NULLs where there are no matches."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "Sort the output by agent_id and listing_id for clarity.",
+        "sql_snippet": "ORDER BY a.id, l.id",
+        "how_postgres_reads_it": "Postgres organizes the results based on the specified columns before returning them."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN retrieves all agents and their corresponding listings, including unmatched records, sorted appropriately.",
+    "solution_final_thought": "Comprehensive data retrieval can be achieved with FULL OUTER JOIN, ensuring no records are lost in the process.",
+    "explanation": "The FULL OUTER JOIN ensures that all agents are listed alongside their listings, capturing those agents without listings and listings without assigned agents.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-005",
+    "concept": "full_joins",
+    "subconcept": "full-outer-join-with-conditional",
+    "difficulty": "medium",
+    "prompt": "List all agents and their sales, including agents without any sales and sales without corresponding agents. Include the sales amount only for those sales above a certain threshold (e.g., 250000). Return agent_id, agent_name, sale_id, and sale_price, sorted by agent_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS sales CASCADE;\nDROP TABLE IF EXISTS agents CASCADE;\n\nCREATE TABLE agents (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE sales (id INTEGER PRIMARY KEY, agent_id INTEGER REFERENCES agents(id), price NUMERIC(10,2) NOT NULL);\n\nINSERT INTO agents VALUES (1, 'John Doe'), (2, 'Jane Smith'), (3, 'Alice Johnson');\nINSERT INTO sales VALUES (1, 1, 200000.00), (2, 1, 250000.00), (3, 3, 300000.00);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "agents",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "sales",
+          "columns": [
+            "id",
+            "agent_id",
+            "price"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "sales",
+          "from_column": "agent_id",
+          "to_table": "agents",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "agent_id",
+        "agent_name",
+        "sale_id",
+        "sale_price"
+      ],
+      "rows": [
+        [
+          2,
+          "Jane Smith",
+          null,
+          null
+        ],
+        [
+          3,
+          "Alice Johnson",
+          3,
+          "300000.00"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT a.id AS agent_id, a.name AS agent_name, s.id AS sale_id, s.price AS sale_price\nFROM agents a\nFULL OUTER JOIN sales s ON a.id = s.agent_id\nWHERE s.price > 250000 OR s.price IS NULL\nORDER BY a.id;",
+    "hints": [
+      {
+        "hint": "What kind of join lets you see all agents, even those without sales?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You need to apply a condition to filter the sales based on price after the join.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Don't forget to include the condition for NULL sales prices appropriately in your WHERE clause.",
+        "suggested_sql": "SELECT a.id AS agent_id, a.name AS agent_name, s.id AS sale_id, s.price AS sale_price\nFROM agents a\nFULL OUTER JOIN sales s ON a.id = s.agent_id\nWHERE s.price > 250000 OR s.price IS NULL\nORDER BY a.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from agents",
+        "what_it_does": "Start with all agents as the primary dataset.",
+        "sql_snippet": "FROM agents a",
+        "how_postgres_reads_it": "Postgres begins with the agents table, selecting all rows for potential inclusion."
+      },
+      {
+        "title": "Join sales table",
+        "what_it_does": "FULL OUTER JOIN sales to bring in all sales and maintain agents without sales.",
+        "sql_snippet": "FULL OUTER JOIN sales s ON a.id = s.agent_id",
+        "how_postgres_reads_it": "Postgres finds matches in the sales table for each agent, including NULLs for agents without sales."
+      },
+      {
+        "title": "Filter and order",
+        "what_it_does": "Add a WHERE clause to filter sales based on price and order the results.",
+        "sql_snippet": "WHERE s.price > 250000 OR s.price IS NULL ORDER BY a.id",
+        "how_postgres_reads_it": "Postgres filters the joined results based on the specified condition before sorting and returning them."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN with a conditional filter retrieves all agents and their qualifying sales, sorted by agent_id.",
+    "solution_final_thought": "Use FULL OUTER JOIN with conditional filtering to effectively manage varying data relationships in your queries.",
+    "explanation": "The FULL OUTER JOIN allows all agents to be displayed, while the WHERE clause filters sales to only those above a specified threshold, ensuring clarity in the results.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-006",
+    "concept": "full_joins",
+    "subconcept": "full-outer-join-with-multiple-tables",
+    "difficulty": "hard",
+    "prompt": "Retrieve a comprehensive list of all agents, their listings, and sales, ensuring that even if an agent has no listings or sales, they are still included in the result. Return agent_id, agent_name, listing_id, listing_address, sale_id, and sale_price, sorted by agent_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS sales CASCADE;\nDROP TABLE IF EXISTS listings CASCADE;\nDROP TABLE IF EXISTS agents CASCADE;\n\nCREATE TABLE agents (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE listings (id INTEGER PRIMARY KEY, agent_id INTEGER REFERENCES agents(id), address TEXT NOT NULL);\nCREATE TABLE sales (id INTEGER PRIMARY KEY, agent_id INTEGER REFERENCES agents(id), price NUMERIC(10,2) NOT NULL);\n\nINSERT INTO agents VALUES (1, 'John Doe'), (2, 'Jane Smith'), (3, 'Alice Johnson');\nINSERT INTO listings VALUES (1, 1, '123 Elm St'), (2, 1, '456 Oak St'), (3, null, '789 Pine St');\nINSERT INTO sales VALUES (1, 1, 200000.00), (2, 1, 250000.00), (3, 3, 300000.00);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "agents",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "listings",
+          "columns": [
+            "id",
+            "agent_id",
+            "address"
+          ]
+        },
+        {
+          "name": "sales",
+          "columns": [
+            "id",
+            "agent_id",
+            "price"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "listings",
+          "from_column": "agent_id",
+          "to_table": "agents",
+          "to_column": "id"
+        },
+        {
+          "from_table": "sales",
+          "from_column": "agent_id",
+          "to_table": "agents",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "agent_id",
+        "agent_name",
+        "listing_id",
+        "listing_address",
+        "sale_id",
+        "sale_price"
+      ],
+      "rows": [
+        [
+          1,
+          "John Doe",
+          1,
+          "123 Elm St",
+          2,
+          "250000.00"
+        ],
+        [
+          1,
+          "John Doe",
+          1,
+          "123 Elm St",
+          1,
+          "200000.00"
+        ],
+        [
+          1,
+          "John Doe",
+          2,
+          "456 Oak St",
+          2,
+          "250000.00"
+        ],
+        [
+          1,
+          "John Doe",
+          2,
+          "456 Oak St",
+          1,
+          "200000.00"
+        ],
+        [
+          2,
+          "Jane Smith",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          3,
+          "Alice Johnson",
+          null,
+          null,
+          3,
+          "300000.00"
+        ],
+        [
+          null,
+          null,
+          3,
+          "789 Pine St",
+          null,
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT a.id AS agent_id, a.name AS agent_name, l.id AS listing_id, l.address AS listing_address, s.id AS sale_id, s.price AS sale_price\nFROM agents a\nFULL OUTER JOIN listings l ON a.id = l.agent_id\nFULL OUTER JOIN sales s ON a.id = s.agent_id\nORDER BY a.id;",
+    "hints": [
+      {
+        "hint": "Consider how to include all relevant records from multiple tables at once.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You will need to use FULL OUTER JOIN twice, once for listings and once for sales.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Make sure to sort the final output by agent_id to keep the results organized.",
+        "suggested_sql": "SELECT a.id AS agent_id, a.name AS agent_name, l.id AS listing_id, l.address AS listing_address, s.id AS sale_id, s.price AS sale_price\nFROM agents a\nFULL OUTER JOIN listings l ON a.id = l.agent_id\nFULL OUTER JOIN sales s ON a.id = s.agent_id\nORDER BY a.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from agents",
+        "what_it_does": "Begin with the agents table to ensure all agents are included.",
+        "sql_snippet": "FROM agents a",
+        "how_postgres_reads_it": "Postgres starts with the agents table, treating all rows as candidates for results."
+      },
+      {
+        "title": "Join listings",
+        "what_it_does": "FULL OUTER JOIN listings to include all listings and keep agents without listings.",
+        "sql_snippet": "FULL OUTER JOIN listings l ON a.id = l.agent_id",
+        "how_postgres_reads_it": "Postgres looks for matches in listings for each agent, including NULLs for agents without listings."
+      },
+      {
+        "title": "Join sales",
+        "what_it_does": "FULL OUTER JOIN sales to include all sales while maintaining agents without sales.",
+        "sql_snippet": "FULL OUTER JOIN sales s ON a.id = s.agent_id",
+        "how_postgres_reads_it": "Postgres finds matches in sales for each agent and includes NULLs where no matches exist."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "Sort the output by agent_id for clarity.",
+        "sql_snippet": "ORDER BY a.id",
+        "how_postgres_reads_it": "Postgres organizes the results before returning them, ensuring clarity in the output."
+      }
+    ],
+    "solution_summary": "A comprehensive FULL OUTER JOIN across agents, listings, and sales captures all relevant data, ensuring no records are omitted.",
+    "solution_final_thought": "Utilizing multiple FULL OUTER JOINs allows for detailed data retrieval across interconnected tables.",
+    "explanation": "The use of multiple FULL OUTER JOINs ensures all agents, their listings, and sales are included in the results, allowing for a complete overview of the data.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-007",
+    "concept": "full_joins",
+    "subconcept": "full-outer-join-with-date-filter",
+    "difficulty": "medium",
+    "prompt": "List all agents and their sales within a specific date range, including those without sales. Return agent_id, agent_name, sale_id, sale_price, and filter out sales not within the date range. Sort by agent_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS sales CASCADE;\nDROP TABLE IF EXISTS agents CASCADE;\n\nCREATE TABLE agents (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE sales (id INTEGER PRIMARY KEY, agent_id INTEGER REFERENCES agents(id), price NUMERIC(10,2) NOT NULL, sale_date DATE NOT NULL);\n\nINSERT INTO agents VALUES (1, 'John Doe'), (2, 'Jane Smith'), (3, 'Alice Johnson');\nINSERT INTO sales VALUES (1, 1, 200000.00, '2024-01-10'), (2, 1, 250000.00, '2024-02-15'), (3, 3, 300000.00, '2024-03-20');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "agents",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "sales",
+          "columns": [
+            "id",
+            "agent_id",
+            "price",
+            "sale_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "sales",
+          "from_column": "agent_id",
+          "to_table": "agents",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "agent_id",
+        "agent_name",
+        "sale_id",
+        "sale_price"
+      ],
+      "rows": [
+        [
+          1,
+          "John Doe",
+          1,
+          "200000.00"
+        ],
+        [
+          1,
+          "John Doe",
+          2,
+          "250000.00"
+        ],
+        [
+          2,
+          "Jane Smith",
+          null,
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT a.id AS agent_id, a.name AS agent_name, s.id AS sale_id, s.price AS sale_price\nFROM agents a\nFULL OUTER JOIN sales s ON a.id = s.agent_id\nWHERE s.sale_date BETWEEN '2024-01-01' AND '2024-02-28' OR s.sale_date IS NULL\nORDER BY a.id;",
+    "hints": [
+      {
+        "hint": "Consider how you would filter sales based on dates while still including agents without sales.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You may need to use a WHERE clause after joining to filter the results appropriately.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Don't forget to ensure NULLs are handled correctly in your WHERE clause to keep all agents.",
+        "suggested_sql": "SELECT a.id AS agent_id, a.name AS agent_name, s.id AS sale_id, s.price AS sale_price\nFROM agents a\nFULL OUTER JOIN sales s ON a.id = s.agent_id\nWHERE s.sale_date BETWEEN '2024-01-01' AND '2024-02-28' OR s.sale_date IS NULL\nORDER BY a.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from agents",
+        "what_it_does": "Start with all agents to ensure comprehensive results.",
+        "sql_snippet": "FROM agents a",
+        "how_postgres_reads_it": "Postgres begins with the agents table, treating each row as a potential result."
+      },
+      {
+        "title": "Join sales",
+        "what_it_does": "FULL OUTER JOIN sales to include all sales while keeping agents without sales.",
+        "sql_snippet": "FULL OUTER JOIN sales s ON a.id = s.agent_id",
+        "how_postgres_reads_it": "Postgres looks for matches in sales for each agent, including NULLs for agents without sales."
+      },
+      {
+        "title": "Filter by date",
+        "what_it_does": "Add a WHERE clause to filter sales within the specified date range.",
+        "sql_snippet": "WHERE s.sale_date BETWEEN '2024-01-01' AND '2024-02-28' OR s.sale_date IS NULL",
+        "how_postgres_reads_it": "Postgres applies the filter to the results, ensuring only relevant sales are included while keeping agents without sales."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "Sort the final output by agent_id for organization.",
+        "sql_snippet": "ORDER BY a.id",
+        "how_postgres_reads_it": "Postgres arranges the results based on the specified column before returning them."
+      }
+    ],
+    "solution_summary": "Using a FULL OUTER JOIN with date filtering ensures all agents are included, along with sales that fall within the specified range.",
+    "solution_final_thought": "Combine FULL OUTER JOIN with filtering for a targeted yet comprehensive view of your data.",
+    "explanation": "The FULL OUTER JOIN allows for all agents to be displayed, while the WHERE clause filters sales to only those within the specified date range, ensuring clarity in the results.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-008",
+    "concept": "full_joins",
+    "subconcept": "full-outer-join-with-multiple-conditions",
+    "difficulty": "hard",
+    "prompt": "Retrieve a complete list of all agents, their listings, and sales with specific conditions. Include all agents, even those without listings or sales. Return agent_id, agent_name, listing_id, listing_address, sale_id, sale_price, ensuring that listings without agents and sales without agents are included. Sort by agent_id and listing_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS sales CASCADE;\nDROP TABLE IF EXISTS listings CASCADE;\nDROP TABLE IF EXISTS agents CASCADE;\n\nCREATE TABLE agents (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE listings (id INTEGER PRIMARY KEY, agent_id INTEGER REFERENCES agents(id), address TEXT NOT NULL);\nCREATE TABLE sales (id INTEGER PRIMARY KEY, agent_id INTEGER REFERENCES agents(id), price NUMERIC(10,2) NOT NULL);\n\nINSERT INTO agents VALUES (1, 'John Doe'), (2, 'Jane Smith'), (3, 'Alice Johnson');\nINSERT INTO listings VALUES (1, 1, '123 Elm St'), (2, null, '456 Oak St'), (3, null, '789 Pine St');\nINSERT INTO sales VALUES (1, 1, 200000.00), (2, 3, 300000.00);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "agents",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "listings",
+          "columns": [
+            "id",
+            "agent_id",
+            "address"
+          ]
+        },
+        {
+          "name": "sales",
+          "columns": [
+            "id",
+            "agent_id",
+            "price"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "listings",
+          "from_column": "agent_id",
+          "to_table": "agents",
+          "to_column": "id"
+        },
+        {
+          "from_table": "sales",
+          "from_column": "agent_id",
+          "to_table": "agents",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "agent_id",
+        "agent_name",
+        "listing_id",
+        "listing_address",
+        "sale_id",
+        "sale_price"
+      ],
+      "rows": [
+        [
+          1,
+          "John Doe",
+          1,
+          "123 Elm St",
+          1,
+          "200000.00"
+        ],
+        [
+          2,
+          "Jane Smith",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          3,
+          "Alice Johnson",
+          null,
+          null,
+          2,
+          "300000.00"
+        ],
+        [
+          null,
+          null,
+          2,
+          "456 Oak St",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          3,
+          "789 Pine St",
+          null,
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT a.id AS agent_id, a.name AS agent_name, l.id AS listing_id, l.address AS listing_address, s.id AS sale_id, s.price AS sale_price\nFROM agents a\nFULL OUTER JOIN listings l ON a.id = l.agent_id\nFULL OUTER JOIN sales s ON a.id = s.agent_id\nORDER BY a.id, l.id;",
+    "hints": [
+      {
+        "hint": "What type of join can include all records from multiple tables?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You will need to use FULL OUTER JOIN on both listings and sales to capture all relevant data.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Make sure to sort the final output correctly for better readability.",
+        "suggested_sql": "SELECT a.id AS agent_id, a.name AS agent_name, l.id AS listing_id, l.address AS listing_address, s.id AS sale_id, s.price AS sale_price\nFROM agents a\nFULL OUTER JOIN listings l ON a.id = l.agent_id\nFULL OUTER JOIN sales s ON a.id = s.agent_id\nORDER BY a.id, l.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from agents",
+        "what_it_does": "Start with the agents table to ensure all agents are included.",
+        "sql_snippet": "FROM agents a",
+        "how_postgres_reads_it": "Postgres begins with the agents table, treating each row as a candidate for inclusion."
+      },
+      {
+        "title": "Join listings",
+        "what_it_does": "FULL OUTER JOIN listings to include all listings, even those without agents.",
+        "sql_snippet": "FULL OUTER JOIN listings l ON a.id = l.agent_id",
+        "how_postgres_reads_it": "Postgres finds matches in listings for each agent, including NULLs for agents without listings."
+      },
+      {
+        "title": "Join sales",
+        "what_it_does": "FULL OUTER JOIN sales to include all sales while maintaining agents without sales.",
+        "sql_snippet": "FULL OUTER JOIN sales s ON a.id = s.agent_id",
+        "how_postgres_reads_it": "Postgres looks for matches in sales for each agent, including NULLs for agents without sales."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "Sort the output by agent_id and listing_id for clarity.",
+        "sql_snippet": "ORDER BY a.id, l.id",
+        "how_postgres_reads_it": "Postgres organizes the results based on the specified columns before returning them."
+      }
+    ],
+    "solution_summary": "Using multiple FULL OUTER JOINs allows for comprehensive retrieval of agents, their listings, and sales, ensuring no records are omitted.",
+    "solution_final_thought": "FULL OUTER JOIN can effectively combine data from multiple sources, providing a holistic view.",
+    "explanation": "This approach guarantees that all agents are listed with their corresponding listings and sales, even if some records are missing, ensuring comprehensive data coverage.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-009",
+    "concept": "full_joins",
+    "subconcept": "basic-full-outer-join",
+    "difficulty": "easy",
+    "prompt": "Retrieve a list of all players and their associated scores, including players who have not scored and scores that do not belong to any player. Display player_id, player_name, and score, sorted by player_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS players CASCADE;\nDROP TABLE IF EXISTS scores CASCADE;\n\nCREATE TABLE players (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE scores (id SERIAL PRIMARY KEY, player_id INTEGER REFERENCES players(id), score INTEGER NOT NULL);\n\nINSERT INTO players (name) VALUES ('Alice'), ('Bob'), ('Charlie'), ('Diana');\nINSERT INTO scores (player_id, score) VALUES (1, 100), (2, 200), (1, 150), (3, 300);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "players",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "scores",
+          "columns": [
+            "id",
+            "player_id",
+            "score"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "players",
+          "from_column": "id",
+          "to_table": "scores",
+          "to_column": "player_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "player_id",
+        "player_name",
+        "score"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          100
+        ],
+        [
+          1,
+          "Alice",
+          150
+        ],
+        [
+          2,
+          "Bob",
+          200
+        ],
+        [
+          3,
+          "Charlie",
+          300
+        ],
+        [
+          4,
+          "Diana",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.id AS player_id, p.name AS player_name, s.score \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nORDER BY p.id;",
+    "hints": [
+      {
+        "hint": "Think about how to include all players, even those without scores.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using a FULL OUTER JOIN to connect players and scores.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use FULL OUTER JOIN and ensure to sort the result by player_id.",
+        "suggested_sql": "SELECT p.id AS player_id, p.name AS player_name, s.score \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nORDER BY p.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from players",
+        "what_it_does": "Start from the players table to ensure all players are included in the results.",
+        "sql_snippet": "FROM players p",
+        "how_postgres_reads_it": "Postgres begins scanning the players table, treating each player as a potential result."
+      },
+      {
+        "title": "Join with scores",
+        "what_it_does": "Use FULL OUTER JOIN to include scores based on player_id.",
+        "sql_snippet": "FULL OUTER JOIN scores s ON p.id = s.player_id",
+        "how_postgres_reads_it": "Postgres matches player rows with score rows, including players without scores and scores without players."
+      },
+      {
+        "title": "Order the results",
+        "what_it_does": "Sort the output by player_id for clarity.",
+        "sql_snippet": "ORDER BY p.id",
+        "how_postgres_reads_it": "Postgres organizes the result set by player_id after performing the join."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN between players and scores ensures all players and all scores are retrieved, sorted by player_id.",
+    "solution_final_thought": "FULL OUTER JOIN is essential when you want to include all records from both tables, regardless of matches.",
+    "explanation": "The FULL OUTER JOIN combines results from both tables, returning all records from players and scores. Where there are no matches, NULL values are used. This allows us to see players who have not scored and scores that do not correspond to any player.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-010",
+    "concept": "full_joins",
+    "subconcept": "full-outer-join-aggregate",
+    "difficulty": "medium",
+    "prompt": "Find the total scores for each player, including players without scores. Display player_id, player_name, and total_score. Sort the result by total_score in descending order, ensuring players without scores show as zero.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS players CASCADE;\nDROP TABLE IF EXISTS scores CASCADE;\n\nCREATE TABLE players (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE scores (id SERIAL PRIMARY KEY, player_id INTEGER REFERENCES players(id), score INTEGER NOT NULL);\n\nINSERT INTO players (name) VALUES ('Alice'), ('Bob'), ('Charlie'), ('Diana');\nINSERT INTO scores (player_id, score) VALUES (1, 100), (2, 200), (1, 150), (3, 300);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "players",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "scores",
+          "columns": [
+            "id",
+            "player_id",
+            "score"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "players",
+          "from_column": "id",
+          "to_table": "scores",
+          "to_column": "player_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "player_id",
+        "player_name",
+        "total_score"
+      ],
+      "rows": [
+        [
+          3,
+          "Charlie",
+          300
+        ],
+        [
+          1,
+          "Alice",
+          250
+        ],
+        [
+          2,
+          "Bob",
+          200
+        ],
+        [
+          4,
+          "Diana",
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.id AS player_id, p.name AS player_name, COALESCE(SUM(s.score), 0) AS total_score \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nGROUP BY p.id \nORDER BY total_score DESC;",
+    "hints": [
+      {
+        "hint": "Consider how to calculate the total score for each player, including those without scores.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "You might need to use aggregation with GROUP BY in your query.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use COALESCE to ensure players without scores show a total of zero in your results.",
+        "suggested_sql": "SELECT p.id AS player_id, p.name AS player_name, COALESCE(SUM(s.score), 0) AS total_score \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nGROUP BY p.id \nORDER BY total_score DESC;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from players",
+        "what_it_does": "Start with the players table to ensure all players are included.",
+        "sql_snippet": "FROM players p",
+        "how_postgres_reads_it": "Postgres scans the players table, preparing to include all players."
+      },
+      {
+        "title": "Join with scores",
+        "what_it_does": "Full outer join to include scores for each player.",
+        "sql_snippet": "FULL OUTER JOIN scores s ON p.id = s.player_id",
+        "how_postgres_reads_it": "Postgres matches players with their scores, including those without scores."
+      },
+      {
+        "title": "Group by player",
+        "what_it_does": "Aggregate scores by player_id using GROUP BY.",
+        "sql_snippet": "GROUP BY p.id",
+        "how_postgres_reads_it": "Postgres groups the results by player_id, allowing for score aggregation."
+      },
+      {
+        "title": "Calculate total scores",
+        "what_it_does": "Use COALESCE to handle NULL scores for players without any.",
+        "sql_snippet": "COALESCE(SUM(s.score), 0) AS total_score",
+        "how_postgres_reads_it": "Postgres sums scores for each player, replacing NULL with zero."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN with aggregation gives total scores for all players, including those with zero scores, sorted by total_score.",
+    "solution_final_thought": "Using COALESCE with SUM allows for clean handling of NULL values in aggregations.",
+    "explanation": "The FULL OUTER JOIN allows us to aggregate scores from both matched and unmatched records, ensuring players without scores are included with a total of zero. COALESCE is used to replace NULL sums with zero, providing a complete view of player performance.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-011",
+    "concept": "full_joins",
+    "subconcept": "full-outer-join-filter",
+    "difficulty": "medium",
+    "prompt": "List all players and their scores, but only display scores greater than 150. Include players without scores, showing their score as NULL. Sort the result by player_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS players CASCADE;\nDROP TABLE IF EXISTS scores CASCADE;\n\nCREATE TABLE players (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE scores (id SERIAL PRIMARY KEY, player_id INTEGER REFERENCES players(id), score INTEGER NOT NULL);\n\nINSERT INTO players (name) VALUES ('Alice'), ('Bob'), ('Charlie'), ('Diana');\nINSERT INTO scores (player_id, score) VALUES (1, 100), (2, 200), (1, 150), (3, 300);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "players",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "scores",
+          "columns": [
+            "id",
+            "player_id",
+            "score"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "players",
+          "from_column": "id",
+          "to_table": "scores",
+          "to_column": "player_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "player_id",
+        "player_name",
+        "score"
+      ],
+      "rows": [
+        [
+          2,
+          "Bob",
+          200
+        ],
+        [
+          3,
+          "Charlie",
+          300
+        ],
+        [
+          4,
+          "Diana",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.id AS player_id, p.name AS player_name, s.score \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nWHERE s.score > 150 OR s.score IS NULL \nORDER BY p.name;",
+    "hints": [
+      {
+        "hint": "You need to include all players and filter based on scores, but how?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a FULL OUTER JOIN to get all players and their scores, then apply a WHERE clause.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Remember to check for NULL values in the WHERE clause to keep players without scores.",
+        "suggested_sql": "SELECT p.id AS player_id, p.name AS player_name, s.score \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nWHERE s.score > 150 OR s.score IS NULL \nORDER BY p.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from players",
+        "what_it_does": "Begin with the players table to include all players.",
+        "sql_snippet": "FROM players p",
+        "how_postgres_reads_it": "Postgres scans the players table first."
+      },
+      {
+        "title": "Join with scores",
+        "what_it_does": "Use FULL OUTER JOIN to connect players with their scores.",
+        "sql_snippet": "FULL OUTER JOIN scores s ON p.id = s.player_id",
+        "how_postgres_reads_it": "Postgres matches players with their scores, keeping all records from players."
+      },
+      {
+        "title": "Filter scores",
+        "what_it_does": "Apply WHERE to filter scores greater than 150 or NULL.",
+        "sql_snippet": "WHERE s.score > 150 OR s.score IS NULL",
+        "how_postgres_reads_it": "Postgres filters the joined results, retaining only desired rows."
+      },
+      {
+        "title": "Order results by name",
+        "what_it_does": "Sort the final output by player_name for clarity.",
+        "sql_snippet": "ORDER BY p.name",
+        "how_postgres_reads_it": "Postgres sorts the filtered results based on player_name."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN with filtering gives players and scores, ensuring all players are shown, even if they have no scores.",
+    "solution_final_thought": "Filtering after a FULL OUTER JOIN allows for comprehensive results without losing unmatched records.",
+    "explanation": "Using FULL OUTER JOIN includes all players in the results, while the WHERE clause filters out only scores greater than 150. Players without scores are shown with NULL, ensuring a complete picture of player performance.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-012",
+    "concept": "full_joins",
+    "subconcept": "complex-full-outer-join",
+    "difficulty": "hard",
+    "prompt": "Generate a report listing all players, their highest scores, and the number of games played. Include players who haven't played any games, showing their highest score as NULL and games played as zero. Sort by player_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS players CASCADE;\nDROP TABLE IF EXISTS scores CASCADE;\nDROP TABLE IF EXISTS games CASCADE;\n\nCREATE TABLE players (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE scores (id SERIAL PRIMARY KEY, player_id INTEGER REFERENCES players(id), score INTEGER NOT NULL);\nCREATE TABLE games (id SERIAL PRIMARY KEY, player_id INTEGER REFERENCES players(id));\n\nINSERT INTO players (name) VALUES ('Alice'), ('Bob'), ('Charlie'), ('Diana');\nINSERT INTO scores (player_id, score) VALUES (1, 100), (2, 200), (1, 150), (3, 300);\nINSERT INTO games (player_id) VALUES (1), (2), (1), (3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "players",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "scores",
+          "columns": [
+            "id",
+            "player_id",
+            "score"
+          ]
+        },
+        {
+          "name": "games",
+          "columns": [
+            "id",
+            "player_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "players",
+          "from_column": "id",
+          "to_table": "scores",
+          "to_column": "player_id"
+        },
+        {
+          "from_table": "players",
+          "from_column": "id",
+          "to_table": "games",
+          "to_column": "player_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "player_id",
+        "player_name",
+        "highest_score",
+        "games_played"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          150,
+          4
+        ],
+        [
+          2,
+          "Bob",
+          200,
+          1
+        ],
+        [
+          3,
+          "Charlie",
+          300,
+          1
+        ],
+        [
+          4,
+          "Diana",
+          null,
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.id AS player_id, p.name AS player_name, COALESCE(MAX(s.score), NULL) AS highest_score, COALESCE(COUNT(g.id), 0) AS games_played \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nFULL OUTER JOIN games g ON p.id = g.player_id \nGROUP BY p.id \nORDER BY p.name;",
+    "hints": [
+      {
+        "hint": "You need to combine information from three tables: players, scores, and games. How would you do that?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using multiple FULL OUTER JOINs to connect these tables.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use COALESCE to manage NULL values for highest scores and games played.",
+        "suggested_sql": "SELECT p.id AS player_id, p.name AS player_name, COALESCE(MAX(s.score), NULL) AS highest_score, COALESCE(COUNT(g.id), 0) AS games_played \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nFULL OUTER JOIN games g ON p.id = g.player_id \nGROUP BY p.id \nORDER BY p.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from players",
+        "what_it_does": "Start with the players table to ensure all players are included.",
+        "sql_snippet": "FROM players p",
+        "how_postgres_reads_it": "Postgres begins with the players table, ensuring every player is represented."
+      },
+      {
+        "title": "Join with scores",
+        "what_it_does": "Use FULL OUTER JOIN to connect players with their scores.",
+        "sql_snippet": "FULL OUTER JOIN scores s ON p.id = s.player_id",
+        "how_postgres_reads_it": "Postgres matches scores to players, allowing inclusion of players with no scores."
+      },
+      {
+        "title": "Join with games",
+        "what_it_does": "Perform another FULL OUTER JOIN to include games played.",
+        "sql_snippet": "FULL OUTER JOIN games g ON p.id = g.player_id",
+        "how_postgres_reads_it": "Postgres combines players with their games, ensuring all players are represented."
+      },
+      {
+        "title": "Aggregate results",
+        "what_it_does": "Use COALESCE and aggregate functions to summarize highest scores and game counts.",
+        "sql_snippet": "COALESCE(MAX(s.score), NULL) AS highest_score, COALESCE(COUNT(g.id), 0) AS games_played",
+        "how_postgres_reads_it": "Postgres computes the maximum score and counts the games for each player, handling NULLs appropriately."
+      }
+    ],
+    "solution_summary": "A complex FULL OUTER JOIN retrieves the highest score and game count for all players, including those with no activity, sorted by player_name.",
+    "solution_final_thought": "Combining multiple FULL OUTER JOINs allows for comprehensive insights across several dimensions.",
+    "explanation": "This query aggregates data from players, scores, and games using FULL OUTER JOINs, ensuring every player is accounted for, even if they have no scores or games. COALESCE is applied to handle NULLs effectively, allowing for clear reporting on player performance.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-013",
+    "concept": "full_joins",
+    "subconcept": "full-outer-join-multiple-conditions",
+    "difficulty": "medium",
+    "prompt": "Create a report showing all players and their scores, but include only scores that are greater than 100. Players without scores should show NULL for their score. Sort the result by player_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS players CASCADE;\nDROP TABLE IF EXISTS scores CASCADE;\n\nCREATE TABLE players (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE scores (id SERIAL PRIMARY KEY, player_id INTEGER REFERENCES players(id), score INTEGER NOT NULL);\n\nINSERT INTO players (name) VALUES ('Alice'), ('Bob'), ('Charlie'), ('Diana');\nINSERT INTO scores (player_id, score) VALUES (1, 100), (2, 150), (1, 200), (3, 50);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "players",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "scores",
+          "columns": [
+            "id",
+            "player_id",
+            "score"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "players",
+          "from_column": "id",
+          "to_table": "scores",
+          "to_column": "player_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "player_id",
+        "player_name",
+        "score"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          200
+        ],
+        [
+          2,
+          "Bob",
+          150
+        ],
+        [
+          4,
+          "Diana",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.id AS player_id, p.name AS player_name, s.score \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nWHERE s.score > 100 OR s.score IS NULL \nORDER BY p.id;",
+    "hints": [
+      {
+        "hint": "Consider how to include players without scores in your result.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "A FULL OUTER JOIN may help to connect both tables while preserving all records.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Don\u2019t forget to apply a filter for scores greater than 100 in a WHERE clause.",
+        "suggested_sql": "SELECT p.id AS player_id, p.name AS player_name, s.score \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nWHERE s.score > 100 OR s.score IS NULL \nORDER BY p.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from players",
+        "what_it_does": "Start with the players table to include all players in the results.",
+        "sql_snippet": "FROM players p",
+        "how_postgres_reads_it": "Postgres scans the players table first."
+      },
+      {
+        "title": "Join with scores",
+        "what_it_does": "Use FULL OUTER JOIN to connect players with their scores.",
+        "sql_snippet": "FULL OUTER JOIN scores s ON p.id = s.player_id",
+        "how_postgres_reads_it": "Postgres matches players to their scores, including unmatched records."
+      },
+      {
+        "title": "Filter for scores",
+        "what_it_does": "Apply the WHERE clause to filter scores greater than 100 or show NULL.",
+        "sql_snippet": "WHERE s.score > 100 OR s.score IS NULL",
+        "how_postgres_reads_it": "Postgres filters the results based on the specified conditions."
+      },
+      {
+        "title": "Order by player_id",
+        "what_it_does": "Sort the final output by player_id for clarity.",
+        "sql_snippet": "ORDER BY p.id",
+        "how_postgres_reads_it": "Postgres organizes the filtered results based on player_id."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN with a filter for scores greater than 100 provides a comprehensive list of players and their scores.",
+    "solution_final_thought": "Using FULL OUTER JOIN ensures all players are represented, regardless of whether they have a score.",
+    "explanation": "Using a FULL OUTER JOIN ensures that all players are included in the results, while the WHERE clause filters scores to show only those above 100. Players without scores are displayed with NULL, maintaining a complete view.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-014",
+    "concept": "full_joins",
+    "subconcept": "full-outer-join-with-self",
+    "difficulty": "hard",
+    "prompt": "Generate a report showing all players and their highest scores, but include only the highest score for each player. Players without scores should show NULL for their highest score. Sort the result by player_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS players CASCADE;\nDROP TABLE IF EXISTS scores CASCADE;\n\nCREATE TABLE players (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE scores (id SERIAL PRIMARY KEY, player_id INTEGER REFERENCES players(id), score INTEGER NOT NULL);\n\nINSERT INTO players (name) VALUES ('Alice'), ('Bob'), ('Charlie'), ('Diana');\nINSERT INTO scores (player_id, score) VALUES (1, 100), (1, 150), (2, 200), (3, 300), (2, 250);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "players",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "scores",
+          "columns": [
+            "id",
+            "player_id",
+            "score"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "players",
+          "from_column": "id",
+          "to_table": "scores",
+          "to_column": "player_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "player_id",
+        "player_name",
+        "highest_score"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          150
+        ],
+        [
+          2,
+          "Bob",
+          250
+        ],
+        [
+          3,
+          "Charlie",
+          300
+        ],
+        [
+          4,
+          "Diana",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.id AS player_id, p.name AS player_name, COALESCE(MAX(s.score), NULL) AS highest_score \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nGROUP BY p.id \nORDER BY p.name;",
+    "hints": [
+      {
+        "hint": "You need to aggregate the highest score for each player. Think about using an aggregation function.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using GROUP BY to get the highest score for each player.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Apply COALESCE to handle NULL values for players with no scores.",
+        "suggested_sql": "SELECT p.id AS player_id, p.name AS player_name, COALESCE(MAX(s.score), NULL) AS highest_score \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nGROUP BY p.id \nORDER BY p.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from players",
+        "what_it_does": "Begin with the players table to ensure all players are included.",
+        "sql_snippet": "FROM players p",
+        "how_postgres_reads_it": "Postgres starts with the players table, preparing to include every player."
+      },
+      {
+        "title": "Join with scores",
+        "what_it_does": "Use FULL OUTER JOIN to connect players with their scores.",
+        "sql_snippet": "FULL OUTER JOIN scores s ON p.id = s.player_id",
+        "how_postgres_reads_it": "Postgres matches players to their scores, including all players."
+      },
+      {
+        "title": "Group by player",
+        "what_it_does": "Aggregate scores using GROUP BY to find the highest score for each player.",
+        "sql_snippet": "GROUP BY p.id",
+        "how_postgres_reads_it": "Postgres groups the results by player_id, allowing for aggregation."
+      },
+      {
+        "title": "Aggregate highest scores",
+        "what_it_does": "Use COALESCE and MAX to summarize the highest scores per player.",
+        "sql_snippet": "COALESCE(MAX(s.score), NULL) AS highest_score",
+        "how_postgres_reads_it": "Postgres computes the maximum score for each player, handling NULL appropriately."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN with aggregation retrieves players and their highest scores, including those without scores, sorted by player name.",
+    "solution_final_thought": "Use aggregation with FULL OUTER JOIN to summarize data across multiple records for comprehensive insights.",
+    "explanation": "The FULL OUTER JOIN allows us to retrieve all players while using aggregation to find their highest scores. COALESCE handles cases where players have no scores, ensuring they are displayed with NULL for their highest score.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-015",
+    "concept": "full_joins",
+    "subconcept": "full-outer-join-multiple-tables",
+    "difficulty": "hard",
+    "prompt": "Create a report showing all players and their scores, games played, and total time played. Include players without scores or games, showing NULL for their scores and zeros for games played. Sort by player_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS players CASCADE;\nDROP TABLE IF EXISTS scores CASCADE;\nDROP TABLE IF EXISTS games CASCADE;\nDROP TABLE IF EXISTS time_played CASCADE;\n\nCREATE TABLE players (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE scores (id SERIAL PRIMARY KEY, player_id INTEGER REFERENCES players(id), score INTEGER NOT NULL);\nCREATE TABLE games (id SERIAL PRIMARY KEY, player_id INTEGER REFERENCES players(id));\nCREATE TABLE time_played (id SERIAL PRIMARY KEY, player_id INTEGER REFERENCES players(id), time INTEGER NOT NULL);\n\nINSERT INTO players (name) VALUES ('Alice'), ('Bob'), ('Charlie'), ('Diana');\nINSERT INTO scores (player_id, score) VALUES (1, 100), (2, 150), (1, 200), (3, 50);\nINSERT INTO games (player_id) VALUES (1), (2), (1);\nINSERT INTO time_played (player_id, time) VALUES (1, 120), (2, 90);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "players",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "scores",
+          "columns": [
+            "id",
+            "player_id",
+            "score"
+          ]
+        },
+        {
+          "name": "games",
+          "columns": [
+            "id",
+            "player_id"
+          ]
+        },
+        {
+          "name": "time_played",
+          "columns": [
+            "id",
+            "player_id",
+            "time"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "players",
+          "from_column": "id",
+          "to_table": "scores",
+          "to_column": "player_id"
+        },
+        {
+          "from_table": "players",
+          "from_column": "id",
+          "to_table": "games",
+          "to_column": "player_id"
+        },
+        {
+          "from_table": "players",
+          "from_column": "id",
+          "to_table": "time_played",
+          "to_column": "player_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "player_id",
+        "player_name",
+        "score",
+        "games_played",
+        "total_time"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          200,
+          4,
+          480
+        ],
+        [
+          2,
+          "Bob",
+          150,
+          1,
+          90
+        ],
+        [
+          3,
+          "Charlie",
+          50,
+          0,
+          0
+        ],
+        [
+          4,
+          "Diana",
+          null,
+          0,
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.id AS player_id, p.name AS player_name, COALESCE(MAX(s.score), NULL) AS score, COALESCE(COUNT(g.id), 0) AS games_played, COALESCE(SUM(t.time), 0) AS total_time \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nFULL OUTER JOIN games g ON p.id = g.player_id \nFULL OUTER JOIN time_played t ON p.id = t.player_id \nGROUP BY p.id \nORDER BY p.name;",
+    "hints": [
+      {
+        "hint": "You need to pull data from multiple tables to create a comprehensive report. What would be your approach?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using FULL OUTER JOINs for each table to ensure all players are included.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use COALESCE for NULL values and ensure you're aggregating correctly with GROUP BY.",
+        "suggested_sql": "SELECT p.id AS player_id, p.name AS player_name, COALESCE(MAX(s.score), NULL) AS score, COALESCE(COUNT(g.id), 0) AS games_played, COALESCE(SUM(t.time), 0) AS total_time \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nFULL OUTER JOIN games g ON p.id = g.player_id \nFULL OUTER JOIN time_played t ON p.id = t.player_id \nGROUP BY p.id \nORDER BY p.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from players",
+        "what_it_does": "Begin with the players table to ensure all players are included.",
+        "sql_snippet": "FROM players p",
+        "how_postgres_reads_it": "Postgres starts with the players table."
+      },
+      {
+        "title": "Join with scores",
+        "what_it_does": "Use FULL OUTER JOIN to connect players with their scores.",
+        "sql_snippet": "FULL OUTER JOIN scores s ON p.id = s.player_id",
+        "how_postgres_reads_it": "Postgres matches players to their scores."
+      },
+      {
+        "title": "Join with games and time played",
+        "what_it_does": "Perform FULL OUTER JOINs with games and time_played tables.",
+        "sql_snippet": "FULL OUTER JOIN games g ON p.id = g.player_id \nFULL OUTER JOIN time_played t ON p.id = t.player_id",
+        "how_postgres_reads_it": "Postgres combines data from all three tables, ensuring every player is represented."
+      },
+      {
+        "title": "Aggregate results",
+        "what_it_does": "Use COALESCE and aggregate functions to summarize scores, games, and time.",
+        "sql_snippet": "COALESCE(MAX(s.score), NULL) AS score, COALESCE(COUNT(g.id), 0) AS games_played, COALESCE(SUM(t.time), 0) AS total_time",
+        "how_postgres_reads_it": "Postgres computes maximum scores, counts games, and sums time for each player."
+      }
+    ],
+    "solution_summary": "A comprehensive report using FULL OUTER JOINs aggregates scores, games played, and total time for all players, including those without activity.",
+    "solution_final_thought": "Using multiple FULL OUTER JOINs across tables provides a holistic view of player performance.",
+    "explanation": "This query aggregates data from players, scores, games, and time_played using FULL OUTER JOINs to ensure all players are included, even if they have no scores, games, or time recorded. COALESCE helps manage NULLs effectively, ensuring clear reporting.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-016",
+    "concept": "full_joins",
+    "subconcept": "full-outer-join-custom-filter",
+    "difficulty": "hard",
+    "prompt": "Generate a report of players and their total scores, games played, and average time played. Include all players, even those who have not played any games or scored, showing NULL for scores and zero for games played. Sort by player_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS players CASCADE;\nDROP TABLE IF EXISTS scores CASCADE;\nDROP TABLE IF EXISTS games CASCADE;\nDROP TABLE IF EXISTS time_played CASCADE;\n\nCREATE TABLE players (id SERIAL PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE scores (id SERIAL PRIMARY KEY, player_id INTEGER REFERENCES players(id), score INTEGER NOT NULL);\nCREATE TABLE games (id SERIAL PRIMARY KEY, player_id INTEGER REFERENCES players(id));\nCREATE TABLE time_played (id SERIAL PRIMARY KEY, player_id INTEGER REFERENCES players(id), time INTEGER NOT NULL);\n\nINSERT INTO players (name) VALUES ('Alice'), ('Bob'), ('Charlie'), ('Diana');\nINSERT INTO scores (player_id, score) VALUES (1, 200), (2, 150), (1, 250);\nINSERT INTO games (player_id) VALUES (1), (2);\nINSERT INTO time_played (player_id, time) VALUES (1, 120), (2, 90), (3, 45);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "players",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "scores",
+          "columns": [
+            "id",
+            "player_id",
+            "score"
+          ]
+        },
+        {
+          "name": "games",
+          "columns": [
+            "id",
+            "player_id"
+          ]
+        },
+        {
+          "name": "time_played",
+          "columns": [
+            "id",
+            "player_id",
+            "time"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "players",
+          "from_column": "id",
+          "to_table": "scores",
+          "to_column": "player_id"
+        },
+        {
+          "from_table": "players",
+          "from_column": "id",
+          "to_table": "games",
+          "to_column": "player_id"
+        },
+        {
+          "from_table": "players",
+          "from_column": "id",
+          "to_table": "time_played",
+          "to_column": "player_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "player_id",
+        "player_name",
+        "total_score",
+        "games_played",
+        "average_time"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          450,
+          2,
+          "120.0000000000000000"
+        ],
+        [
+          2,
+          "Bob",
+          150,
+          1,
+          "90.0000000000000000"
+        ],
+        [
+          3,
+          "Charlie",
+          null,
+          0,
+          "45.0000000000000000"
+        ],
+        [
+          4,
+          "Diana",
+          null,
+          0,
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.id AS player_id, p.name AS player_name, COALESCE(SUM(s.score), NULL) AS total_score, COALESCE(COUNT(g.id), 0) AS games_played, COALESCE(AVG(t.time), NULL) AS average_time \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nFULL OUTER JOIN games g ON p.id = g.player_id \nFULL OUTER JOIN time_played t ON p.id = t.player_id \nGROUP BY p.id \nORDER BY p.name;",
+    "hints": [
+      {
+        "hint": "Think about how to include all players, even those without any scores or games played.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using FULL OUTER JOINs for all your tables.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use COALESCE for NULL handling and ensure you aggregate correctly with GROUP BY.",
+        "suggested_sql": "SELECT p.id AS player_id, p.name AS player_name, COALESCE(SUM(s.score), NULL) AS total_score, COALESCE(COUNT(g.id), 0) AS games_played, COALESCE(AVG(t.time), NULL) AS average_time \nFROM players p \nFULL OUTER JOIN scores s ON p.id = s.player_id \nFULL OUTER JOIN games g ON p.id = g.player_id \nFULL OUTER JOIN time_played t ON p.id = t.player_id \nGROUP BY p.id \nORDER BY p.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from players",
+        "what_it_does": "Start with the players table to ensure all players are included.",
+        "sql_snippet": "FROM players p",
+        "how_postgres_reads_it": "Postgres scans the players table first."
+      },
+      {
+        "title": "Join with scores",
+        "what_it_does": "Use FULL OUTER JOIN to connect players with their scores.",
+        "sql_snippet": "FULL OUTER JOIN scores s ON p.id = s.player_id",
+        "how_postgres_reads_it": "Postgres matches players to their scores, ensuring all records are retained."
+      },
+      {
+        "title": "Join with games and time played",
+        "what_it_does": "Perform additional FULL OUTER JOINs with games and time_played.",
+        "sql_snippet": "FULL OUTER JOIN games g ON p.id = g.player_id \nFULL OUTER JOIN time_played t ON p.id = t.player_id",
+        "how_postgres_reads_it": "Postgres combines data from all relevant tables, guaranteeing every player is represented."
+      },
+      {
+        "title": "Aggregate results",
+        "what_it_does": "Use COALESCE and aggregate functions for total scores, games, and average time.",
+        "sql_snippet": "COALESCE(SUM(s.score), NULL) AS total_score, COALESCE(COUNT(g.id), 0) AS games_played, COALESCE(AVG(t.time), NULL) AS average_time",
+        "how_postgres_reads_it": "Postgres calculates total scores and averages while managing NULLs."
+      }
+    ],
+    "solution_summary": "Using multiple FULL OUTER JOINs ensures all players are included with comprehensive stats, sorted by player name.",
+    "solution_final_thought": "FULL OUTER JOINs facilitate detailed reporting across multiple dimensions of player performance.",
+    "explanation": "This query uses FULL OUTER JOINs across all relevant tables to ensure a complete view of player performance, even if they have no scores or games. COALESCE is utilized to manage NULL values effectively, providing clear insights.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-017",
+    "concept": "full_joins",
+    "subconcept": "basic-join",
+    "difficulty": "easy",
+    "prompt": "Retrieve a list of all teams and the players on those teams, including teams with no players and players not assigned to any team. Display team_id, team_name, player_id, and player_name, sorted by team_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS teams CASCADE;\nDROP TABLE IF EXISTS players CASCADE;\n\nCREATE TABLE teams (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE players (id INTEGER PRIMARY KEY, name TEXT NOT NULL, team_id INTEGER REFERENCES teams(id));\n\nINSERT INTO teams VALUES (1,'Team A'),(2,'Team B'),(3,'Team C');\nINSERT INTO players VALUES (1,'Player 1',1),(2,'Player 2',1),(3,'Player 3',2),(4,'Player 4',NULL);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "teams",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "players",
+          "columns": [
+            "id",
+            "name",
+            "team_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "teams",
+          "from_column": "id",
+          "to_table": "players",
+          "to_column": "team_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "team_id",
+        "team_name",
+        "player_id",
+        "player_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Team A",
+          1,
+          "Player 1"
+        ],
+        [
+          1,
+          "Team A",
+          2,
+          "Player 2"
+        ],
+        [
+          2,
+          "Team B",
+          3,
+          "Player 3"
+        ],
+        [
+          3,
+          "Team C",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          4,
+          "Player 4"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT t.id AS team_id, t.name AS team_name, p.id AS player_id, p.name AS player_name\nFROM teams t\nFULL OUTER JOIN players p ON t.id = p.team_id\nORDER BY t.id;",
+    "hints": [
+      {
+        "hint": "Consider how to include all records from both tables, regardless of matches.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use FULL OUTER JOIN to combine all teams with their players, including those without matches.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Construct your SQL to select from teams and FULL OUTER JOIN with players on the team_id.",
+        "suggested_sql": "SELECT t.id AS team_id, t.name AS team_name, p.id AS player_id, p.name AS player_name\nFROM teams t\nFULL OUTER JOIN players p ON t.id = p.team_id\nORDER BY t.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from teams",
+        "what_it_does": "Begin the query by selecting from the teams table to ensure all teams are included.",
+        "sql_snippet": "FROM teams t",
+        "how_postgres_reads_it": "Postgres starts with the teams table, treating each row as a candidate for the result."
+      },
+      {
+        "title": "Join players table",
+        "what_it_does": "Utilize FULL OUTER JOIN to include players regardless of whether they have a matching team.",
+        "sql_snippet": "FULL OUTER JOIN players p ON t.id = p.team_id",
+        "how_postgres_reads_it": "Postgres combines rows from teams and players, returning all rows from both tables, with NULLs where there are no matches."
+      },
+      {
+        "title": "Order results",
+        "what_it_does": "Sort the final output by team_id to maintain a clear structure.",
+        "sql_snippet": "ORDER BY t.id",
+        "how_postgres_reads_it": "Postgres sorts the result set by team_id before returning it to ensure the data is presented in a logical order."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN between teams and players, ensuring all records are represented, is used to display team and player information.",
+    "solution_final_thought": "FULL OUTER JOIN is essential for including all records from both tables in a result set, even when there are no matching entries.",
+    "explanation": "Using FULL OUTER JOIN allows you to see all teams and all players, including those without matches. This is particularly useful in scenarios where you want to identify teams with no players and players that are unassigned.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-018",
+    "concept": "full_joins",
+    "subconcept": "aggregate-stats",
+    "difficulty": "medium",
+    "prompt": "List all teams along with their total number of wins and losses. Include teams with no recorded games. Display team_id, team_name, total_wins, and total_losses, sorted by team_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS games CASCADE;\nDROP TABLE IF EXISTS teams CASCADE;\n\nCREATE TABLE teams (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE games (id INTEGER PRIMARY KEY, team_id INTEGER REFERENCES teams(id), wins INTEGER, losses INTEGER);\n\nINSERT INTO teams VALUES (1,'Team A'),(2,'Team B'),(3,'Team C');\nINSERT INTO games VALUES (1,1,5,2),(2,1,3,1),(3,2,2,3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "teams",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "games",
+          "columns": [
+            "id",
+            "team_id",
+            "wins",
+            "losses"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "teams",
+          "from_column": "id",
+          "to_table": "games",
+          "to_column": "team_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "team_id",
+        "team_name",
+        "total_wins",
+        "total_losses"
+      ],
+      "rows": [
+        [
+          1,
+          "Team A",
+          8,
+          3
+        ],
+        [
+          2,
+          "Team B",
+          2,
+          3
+        ],
+        [
+          3,
+          "Team C",
+          0,
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT t.id AS team_id, t.name AS team_name, COALESCE(SUM(g.wins), 0) AS total_wins, COALESCE(SUM(g.losses), 0) AS total_losses\nFROM teams t\nLEFT JOIN games g ON t.id = g.team_id\nGROUP BY t.id, t.name\nORDER BY t.id;",
+    "hints": [
+      {
+        "hint": "You need to calculate total wins and losses for each team, even if they have no games.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use COALESCE to handle teams without recorded games, returning zero instead of NULL.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use LEFT JOIN to include all teams and aggregate wins and losses with GROUP BY.",
+        "suggested_sql": "SELECT t.id AS team_id, t.name AS team_name, COALESCE(SUM(g.wins), 0) AS total_wins, COALESCE(SUM(g.losses), 0) AS total_losses\nFROM teams t\nLEFT JOIN games g ON t.id = g.team_id\nGROUP BY t.id, t.name\nORDER BY t.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Start with teams",
+        "what_it_does": "Select from the teams table to ensure all teams are represented in the result.",
+        "sql_snippet": "FROM teams t",
+        "how_postgres_reads_it": "Postgres reads the teams table and considers each team for inclusion."
+      },
+      {
+        "title": "Join games table",
+        "what_it_does": "LEFT JOIN the games table to include wins and losses while keeping teams without games.",
+        "sql_snippet": "LEFT JOIN games g ON t.id = g.team_id",
+        "how_postgres_reads_it": "Postgres includes all teams and fetches matching game records, adding NULLs where no games exist."
+      },
+      {
+        "title": "Aggregate data",
+        "what_it_does": "Use SUM to calculate total wins and losses per team, using COALESCE to handle NULLs.",
+        "sql_snippet": "COALESCE(SUM(g.wins), 0) AS total_wins, COALESCE(SUM(g.losses), 0) AS total_losses",
+        "how_postgres_reads_it": "Postgres aggregates data by team, replacing NULL sums with zero."
+      },
+      {
+        "title": "Group and order results",
+        "what_it_does": "Group by team ID and name, and order the final output by team ID.",
+        "sql_snippet": "GROUP BY t.id, t.name ORDER BY t.id",
+        "how_postgres_reads_it": "Postgres groups results by team while sorting them before returning."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN aggregates wins and losses for each team, ensuring all teams are shown, even those without games.",
+    "solution_final_thought": "COALESCE and LEFT JOIN work together to handle NULL values and ensure full representation of data.",
+    "explanation": "The LEFT JOIN allows all teams to be displayed, while COALESCE converts any NULL results from teams without games into zero, ensuring a complete view of all teams' performance.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-019",
+    "concept": "full_joins",
+    "subconcept": "games-by-date",
+    "difficulty": "medium",
+    "prompt": "Fetch a list of all teams and the games they played with dates, including teams that have not played any games. Display team_id, team_name, game_id, and game_date, sorted by game_date.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS games CASCADE;\nDROP TABLE IF EXISTS teams CASCADE;\n\nCREATE TABLE teams (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE games (id INTEGER PRIMARY KEY, team_id INTEGER REFERENCES teams(id), game_date DATE);\n\nINSERT INTO teams VALUES (1,'Team A'),(2,'Team B'),(3,'Team C');\nINSERT INTO games VALUES (1,1,'2024-01-10'),(2,1,'2024-01-15'),(3,2,'2024-01-20');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "teams",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "games",
+          "columns": [
+            "id",
+            "team_id",
+            "game_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "teams",
+          "from_column": "id",
+          "to_table": "games",
+          "to_column": "team_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "team_id",
+        "team_name",
+        "game_id",
+        "game_date"
+      ],
+      "rows": [
+        [
+          1,
+          "Team A",
+          1,
+          "2024-01-10"
+        ],
+        [
+          1,
+          "Team A",
+          2,
+          "2024-01-15"
+        ],
+        [
+          2,
+          "Team B",
+          3,
+          "2024-01-20"
+        ],
+        [
+          3,
+          "Team C",
+          null,
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT t.id AS team_id, t.name AS team_name, g.id AS game_id, g.game_date\nFROM teams t\nLEFT JOIN games g ON t.id = g.team_id\nORDER BY g.game_date;",
+    "hints": [
+      {
+        "hint": "Consider how to include teams that have not played any games in your results.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "A LEFT JOIN will help retain teams with no associated games while listing played games.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Select team details and LEFT JOIN with games, ordering by game_date for the results.",
+        "suggested_sql": "SELECT t.id AS team_id, t.name AS team_name, g.id AS game_id, g.game_date\nFROM teams t\nLEFT JOIN games g ON t.id = g.team_id\nORDER BY g.game_date;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from teams",
+        "what_it_does": "Start the query by retrieving data from the teams table to include all teams.",
+        "sql_snippet": "FROM teams t",
+        "how_postgres_reads_it": "Postgres reads all rows from the teams table."
+      },
+      {
+        "title": "Join games table",
+        "what_it_does": "Perform a LEFT JOIN to connect teams with their games, preserving teams with no games.",
+        "sql_snippet": "LEFT JOIN games g ON t.id = g.team_id",
+        "how_postgres_reads_it": "Postgres looks for matches in the games table and retains teams that have no associated games."
+      },
+      {
+        "title": "Order by game date",
+        "what_it_does": "Sort the results by game_date to present the games chronologically.",
+        "sql_snippet": "ORDER BY g.game_date",
+        "how_postgres_reads_it": "Postgres sorts the result set based on game_date before returning it."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN retrieves all teams and their associated games, ensuring teams without games are still included.",
+    "solution_final_thought": "Using LEFT JOIN allows for comprehensive results that show all teams regardless of game participation.",
+    "explanation": "The LEFT JOIN ensures that all teams are returned, even those that have not played any games. This is crucial for maintaining a complete view of team participation in the schedule.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-020",
+    "concept": "full_joins",
+    "subconcept": "player-stats",
+    "difficulty": "hard",
+    "prompt": "List all players along with their team and the number of games they played, including players with no recorded games or teams. Display player_id, player_name, team_id, team_name, and games_played, sorted by player_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS players CASCADE;\nDROP TABLE IF EXISTS teams CASCADE;\nDROP TABLE IF EXISTS games CASCADE;\n\nCREATE TABLE teams (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE players (id INTEGER PRIMARY KEY, name TEXT NOT NULL, team_id INTEGER REFERENCES teams(id));\nCREATE TABLE games (id INTEGER PRIMARY KEY, team_id INTEGER REFERENCES teams(id), game_date DATE);\n\nINSERT INTO teams VALUES (1,'Team A'),(2,'Team B');\nINSERT INTO players VALUES (1,'Player 1',1),(2,'Player 2',1),(3,'Player 3',2),(4,'Player 4',NULL); \nINSERT INTO games VALUES (1,1,'2024-01-10'),(2,1,'2024-01-15');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "teams",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "players",
+          "columns": [
+            "id",
+            "name",
+            "team_id"
+          ]
+        },
+        {
+          "name": "games",
+          "columns": [
+            "id",
+            "team_id",
+            "game_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "players",
+          "from_column": "team_id",
+          "to_table": "teams",
+          "to_column": "id"
+        },
+        {
+          "from_table": "teams",
+          "from_column": "id",
+          "to_table": "games",
+          "to_column": "team_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "player_id",
+        "player_name",
+        "team_id",
+        "team_name",
+        "games_played"
+      ],
+      "rows": [
+        [
+          1,
+          "Player 1",
+          1,
+          "Team A",
+          2
+        ],
+        [
+          2,
+          "Player 2",
+          1,
+          "Team A",
+          2
+        ],
+        [
+          3,
+          "Player 3",
+          2,
+          "Team B",
+          0
+        ],
+        [
+          4,
+          "Player 4",
+          null,
+          null,
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.id AS player_id, p.name AS player_name, t.id AS team_id, t.name AS team_name, COUNT(g.id) AS games_played\nFROM players p\nFULL OUTER JOIN teams t ON p.team_id = t.id\nFULL OUTER JOIN games g ON t.id = g.team_id\nGROUP BY p.id, p.name, t.id, t.name\nORDER BY p.name;",
+    "hints": [
+      {
+        "hint": "You need to include players without teams and teams without games in your result.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using FULL OUTER JOIN to combine players with their teams and games together.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use FULL OUTER JOIN for both teams and games, while counting the games played per player.",
+        "suggested_sql": "SELECT p.id AS player_id, p.name AS player_name, t.id AS team_id, t.name AS team_name, COUNT(g.id) AS games_played\nFROM players p\nFULL OUTER JOIN teams t ON p.team_id = t.id\nFULL OUTER JOIN games g ON t.id = g.team_id\nGROUP BY p.id, p.name, t.id, t.name\nORDER BY p.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from players",
+        "what_it_does": "Begin by selecting from the players table to ensure all players are included.",
+        "sql_snippet": "FROM players p",
+        "how_postgres_reads_it": "Postgres reads all rows from the players table."
+      },
+      {
+        "title": "Join teams and games",
+        "what_it_does": "Apply FULL OUTER JOIN on teams and again on games to link player, team, and game data.",
+        "sql_snippet": "FULL OUTER JOIN teams t ON p.team_id = t.id\nFULL OUTER JOIN games g ON t.id = g.team_id",
+        "how_postgres_reads_it": "Postgres combines rows from players, teams, and games, returning all rows from each table with NULLs where no matches occur."
+      },
+      {
+        "title": "Count games and group results",
+        "what_it_does": "Count the number of games played and group the results by player and team attributes.",
+        "sql_snippet": "COUNT(g.id) AS games_played\nGROUP BY p.id, p.name, t.id, t.name",
+        "how_postgres_reads_it": "Postgres aggregates the data by counting the games played while grouping by the selected fields."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN across players, teams, and games retrieves comprehensive player data including game counts, even for those without teams or games.",
+    "solution_final_thought": "Utilizing FULL OUTER JOIN allows for a complete overview of player participation, regardless of team affiliations or game records.",
+    "explanation": "The FULL OUTER JOIN ensures that players are shown even if they do not belong to any team and counts the number of games played for each player. This comprehensive approach provides insights into player activity across the entire dataset.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-021",
+    "concept": "full_joins",
+    "subconcept": "team-performance",
+    "difficulty": "hard",
+    "prompt": "Display a table of all teams and their average points scored and conceded in games, including teams with no games played. Show team_id, team_name, avg_points_scored, and avg_points_conceded, sorted by team_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS games CASCADE;\nDROP TABLE IF EXISTS teams CASCADE;\n\nCREATE TABLE teams (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE games (id INTEGER PRIMARY KEY, team_id INTEGER REFERENCES teams(id), points_scored INTEGER, points_conceded INTEGER);\n\nINSERT INTO teams VALUES (1,'Team A'),(2,'Team B'),(3,'Team C');\nINSERT INTO games VALUES (1,1,20,10),(2,1,30,20),(3,2,15,25);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "teams",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "games",
+          "columns": [
+            "id",
+            "team_id",
+            "points_scored",
+            "points_conceded"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "teams",
+          "from_column": "id",
+          "to_table": "games",
+          "to_column": "team_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "team_id",
+        "team_name",
+        "avg_points_scored",
+        "avg_points_conceded"
+      ],
+      "rows": [
+        [
+          1,
+          "Team A",
+          "25.0000000000000000",
+          "15.0000000000000000"
+        ],
+        [
+          2,
+          "Team B",
+          "15.0000000000000000",
+          "25.0000000000000000"
+        ],
+        [
+          3,
+          "Team C",
+          null,
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT t.id AS team_id, t.name AS team_name, AVG(g.points_scored) AS avg_points_scored, AVG(g.points_conceded) AS avg_points_conceded\nFROM teams t\nLEFT JOIN games g ON t.id = g.team_id\nGROUP BY t.id, t.name\nORDER BY t.id;",
+    "hints": [
+      {
+        "hint": "You need to calculate average points for each team, including those with no games.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use AVG to compute average points scored and conceded, and COALESCE to handle NULL values.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Perform a LEFT JOIN on teams with games and group the results for averages.",
+        "suggested_sql": "SELECT t.id AS team_id, t.name AS team_name, AVG(g.points_scored) AS avg_points_scored, AVG(g.points_conceded) AS avg_points_conceded\nFROM teams t\nLEFT JOIN games g ON t.id = g.team_id\nGROUP BY t.id, t.name\nORDER BY t.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Start with teams",
+        "what_it_does": "Select from the teams table to ensure all teams are included in the result set.",
+        "sql_snippet": "FROM teams t",
+        "how_postgres_reads_it": "Postgres reads the teams table, preparing to include all teams."
+      },
+      {
+        "title": "Join games table",
+        "what_it_does": "LEFT JOIN the games table to link scores to each team, keeping all teams regardless of game participation.",
+        "sql_snippet": "LEFT JOIN games g ON t.id = g.team_id",
+        "how_postgres_reads_it": "Postgres combines records from both tables, ensuring teams without games still appear with NULLs."
+      },
+      {
+        "title": "Calculate averages and group results",
+        "what_it_does": "Use AVG to compute average points, grouping by team to summarize data.",
+        "sql_snippet": "AVG(g.points_scored) AS avg_points_scored, AVG(g.points_conceded) AS avg_points_conceded\nGROUP BY t.id, t.name",
+        "how_postgres_reads_it": "Postgres computes averages for the scores while grouping the results by team."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN aggregates average points for each team, ensuring all teams are displayed, even those without games.",
+    "solution_final_thought": "Using AVG with LEFT JOIN allows for a complete analysis of team performance while handling missing data gracefully.",
+    "explanation": "The LEFT JOIN ensures that all teams are included in the results, while the AVG function provides insights into their scoring performance, even if they have not played any games.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-022",
+    "concept": "full_joins",
+    "subconcept": "player-availability",
+    "difficulty": "hard",
+    "prompt": "Create a report of all players along with their teams and the games they have played in, including players who have not participated in any games. Display player_id, player_name, team_id, team_name, and game_id, sorted by player_name.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS players CASCADE;\nDROP TABLE IF EXISTS teams CASCADE;\nDROP TABLE IF EXISTS games CASCADE;\n\nCREATE TABLE teams (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE players (id INTEGER PRIMARY KEY, name TEXT NOT NULL, team_id INTEGER REFERENCES teams(id));\nCREATE TABLE games (id INTEGER PRIMARY KEY, team_id INTEGER REFERENCES teams(id), game_date DATE);\n\nINSERT INTO teams VALUES (1,'Team A'),(2,'Team B');\nINSERT INTO players VALUES (1,'Player 1',1),(2,'Player 2',1),(3,'Player 3',2),(4,'Player 4',NULL); \nINSERT INTO games VALUES (1,1,'2024-01-10');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "teams",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "players",
+          "columns": [
+            "id",
+            "name",
+            "team_id"
+          ]
+        },
+        {
+          "name": "games",
+          "columns": [
+            "id",
+            "team_id",
+            "game_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "players",
+          "from_column": "team_id",
+          "to_table": "teams",
+          "to_column": "id"
+        },
+        {
+          "from_table": "teams",
+          "from_column": "id",
+          "to_table": "games",
+          "to_column": "team_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "player_id",
+        "player_name",
+        "team_id",
+        "team_name",
+        "game_id"
+      ],
+      "rows": [
+        [
+          1,
+          "Player 1",
+          1,
+          "Team A",
+          1
+        ],
+        [
+          2,
+          "Player 2",
+          1,
+          "Team A",
+          1
+        ],
+        [
+          3,
+          "Player 3",
+          2,
+          "Team B",
+          null
+        ],
+        [
+          4,
+          "Player 4",
+          null,
+          null,
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT p.id AS player_id, p.name AS player_name, t.id AS team_id, t.name AS team_name, g.id AS game_id\nFROM players p\nFULL OUTER JOIN teams t ON p.team_id = t.id\nFULL OUTER JOIN games g ON t.id = g.team_id\nORDER BY p.name;",
+    "hints": [
+      {
+        "hint": "You need to include players without teams and teams that have not played any games in your results.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using FULL OUTER JOIN to combine players with their teams and games together.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use FULL OUTER JOIN for both teams and games, ensuring all players are reflected in the output.",
+        "suggested_sql": "SELECT p.id AS player_id, p.name AS player_name, t.id AS team_id, t.name AS team_name, g.id AS game_id\nFROM players p\nFULL OUTER JOIN teams t ON p.team_id = t.id\nFULL OUTER JOIN games g ON t.id = g.team_id\nORDER BY p.name;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from players",
+        "what_it_does": "Start the query by selecting from the players table to ensure all players are included.",
+        "sql_snippet": "FROM players p",
+        "how_postgres_reads_it": "Postgres reads all rows from the players table."
+      },
+      {
+        "title": "Join teams and games",
+        "what_it_does": "Apply FULL OUTER JOIN on teams and again on games to link player, team, and game data.",
+        "sql_snippet": "FULL OUTER JOIN teams t ON p.team_id = t.id\nFULL OUTER JOIN games g ON t.id = g.team_id",
+        "how_postgres_reads_it": "Postgres combines rows from players, teams, and games, returning all rows from each table with NULLs where no matches occur."
+      },
+      {
+        "title": "Order by player name",
+        "what_it_does": "Sort the results by player name to present them in alphabetical order.",
+        "sql_snippet": "ORDER BY p.name",
+        "how_postgres_reads_it": "Postgres sorts the final result set by player name before returning."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN across players, teams, and games retrieves comprehensive player data, ensuring all players are included.",
+    "solution_final_thought": "Utilizing FULL OUTER JOIN allows for a complete overview of player participation, regardless of team affiliations or game records.",
+    "explanation": "The FULL OUTER JOIN ensures that all players are shown, even if they do not belong to any team and includes both the teams and games they have participated in.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-023",
+    "concept": "full_joins",
+    "subconcept": "team-and-games",
+    "difficulty": "easy",
+    "prompt": "List all teams and the dates of the games they played, including teams that have not played any games. Display team_id, team_name, game_date, sorted by team_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS games CASCADE;\nDROP TABLE IF EXISTS teams CASCADE;\n\nCREATE TABLE teams (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE games (id INTEGER PRIMARY KEY, team_id INTEGER REFERENCES teams(id), game_date DATE);\n\nINSERT INTO teams VALUES (1,'Team A'),(2,'Team B'),(3,'Team C');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "teams",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "games",
+          "columns": [
+            "id",
+            "team_id",
+            "game_date"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "teams",
+          "from_column": "id",
+          "to_table": "games",
+          "to_column": "team_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "team_id",
+        "team_name",
+        "game_date"
+      ],
+      "rows": [
+        [
+          1,
+          "Team A",
+          null
+        ],
+        [
+          2,
+          "Team B",
+          null
+        ],
+        [
+          3,
+          "Team C",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT t.id AS team_id, t.name AS team_name, g.game_date\nFROM teams t\nLEFT JOIN games g ON t.id = g.team_id\nORDER BY t.id;",
+    "hints": [
+      {
+        "hint": "You need to include all teams, even if they have not played any games.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "A LEFT JOIN will help retain teams with no associated games while listing played games.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Select team details and LEFT JOIN with games, ordering by team_id for the results.",
+        "suggested_sql": "SELECT t.id AS team_id, t.name AS team_name, g.game_date\nFROM teams t\nLEFT JOIN games g ON t.id = g.team_id\nORDER BY t.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from teams",
+        "what_it_does": "Start the query by retrieving data from the teams table to include all teams.",
+        "sql_snippet": "FROM teams t",
+        "how_postgres_reads_it": "Postgres reads all rows from the teams table."
+      },
+      {
+        "title": "Join games table",
+        "what_it_does": "Perform a LEFT JOIN to connect teams with their games, preserving teams with no games.",
+        "sql_snippet": "LEFT JOIN games g ON t.id = g.team_id",
+        "how_postgres_reads_it": "Postgres looks for matches in the games table and retains teams that have no associated games."
+      },
+      {
+        "title": "Order by team id",
+        "what_it_does": "Sort the results by team_id to maintain a clear structure.",
+        "sql_snippet": "ORDER BY t.id",
+        "how_postgres_reads_it": "Postgres sorts the result set based on team_id before returning it."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN retrieves all teams and their associated games, ensuring teams without games are still included.",
+    "solution_final_thought": "Using LEFT JOIN allows for comprehensive results that show all teams regardless of game participation.",
+    "explanation": "The LEFT JOIN ensures that all teams are returned, even those that have not played any games. This is crucial for maintaining a complete view of team participation in the schedule.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-024",
+    "concept": "full_joins",
+    "subconcept": "team-scores",
+    "difficulty": "medium",
+    "prompt": "List all teams and their average scores and average points conceded in games, including teams that have no recorded games. Display team_id, team_name, avg_score, avg_conceded, sorted by team_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS games CASCADE;\nDROP TABLE IF EXISTS teams CASCADE;\n\nCREATE TABLE teams (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE games (id INTEGER PRIMARY KEY, team_id INTEGER REFERENCES teams(id), score INTEGER, points_conceded INTEGER);\n\nINSERT INTO teams VALUES (1,'Team A'),(2,'Team B'),(3,'Team C');\nINSERT INTO games VALUES (1,1,20,10),(2,1,30,20),(3,2,15,25);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "teams",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "games",
+          "columns": [
+            "id",
+            "team_id",
+            "score",
+            "points_conceded"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "teams",
+          "from_column": "id",
+          "to_table": "games",
+          "to_column": "team_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "team_id",
+        "team_name",
+        "avg_score",
+        "avg_conceded"
+      ],
+      "rows": [
+        [
+          1,
+          "Team A",
+          "25.0000000000000000",
+          "15.0000000000000000"
+        ],
+        [
+          2,
+          "Team B",
+          "15.0000000000000000",
+          "25.0000000000000000"
+        ],
+        [
+          3,
+          "Team C",
+          null,
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT t.id AS team_id, t.name AS team_name, AVG(g.score) AS avg_score, AVG(g.points_conceded) AS avg_conceded\nFROM teams t\nLEFT JOIN games g ON t.id = g.team_id\nGROUP BY t.id, t.name\nORDER BY t.id;",
+    "hints": [
+      {
+        "hint": "You need to calculate average scores and points conceded for each team, including those with no games.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use AVG to compute average scores and points conceded, and COALESCE to handle NULL values.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Perform a LEFT JOIN on teams with games and group the results for averages.",
+        "suggested_sql": "SELECT t.id AS team_id, t.name AS team_name, AVG(g.score) AS avg_score, AVG(g.points_conceded) AS avg_conceded\nFROM teams t\nLEFT JOIN games g ON t.id = g.team_id\nGROUP BY t.id, t.name\nORDER BY t.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Start with teams",
+        "what_it_does": "Select from the teams table to ensure all teams are included in the result set.",
+        "sql_snippet": "FROM teams t",
+        "how_postgres_reads_it": "Postgres reads the teams table, preparing to include all teams."
+      },
+      {
+        "title": "Join games table",
+        "what_it_does": "LEFT JOIN the games table to link scores to each team, keeping all teams regardless of game participation.",
+        "sql_snippet": "LEFT JOIN games g ON t.id = g.team_id",
+        "how_postgres_reads_it": "Postgres combines records from both tables, ensuring teams without games still appear with NULLs."
+      },
+      {
+        "title": "Calculate averages and group results",
+        "what_it_does": "Use AVG to compute average scores and points conceded, grouping by team to summarize data.",
+        "sql_snippet": "AVG(g.score) AS avg_score, AVG(g.points_conceded) AS avg_conceded\nGROUP BY t.id, t.name",
+        "how_postgres_reads_it": "Postgres computes averages for the scores while grouping the results by team."
+      }
+    ],
+    "solution_summary": "A LEFT JOIN aggregates average scores and points for each team, ensuring all teams are displayed, even those without games.",
+    "solution_final_thought": "Using AVG with LEFT JOIN allows for a complete analysis of team performance while handling missing data gracefully.",
+    "explanation": "The LEFT JOIN ensures that all teams are included in the results, while the AVG function provides insights into their scoring performance, even if they have not played any games.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-025",
+    "concept": "full_joins",
+    "subconcept": "basic-driver-trip-join",
+    "difficulty": "easy",
+    "prompt": "Return a list of all drivers and their corresponding trips. If a driver has no trips, still include them in the result. Show driver_id, driver_name, and trip_id, sorted by driver_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS trips CASCADE;\nDROP TABLE IF EXISTS drivers CASCADE;\n\nCREATE TABLE drivers (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE trips (id INTEGER PRIMARY KEY, driver_id INTEGER REFERENCES drivers(id), destination TEXT NOT NULL);\n\nINSERT INTO drivers VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');\nINSERT INTO trips VALUES (1, 1, 'Downtown'), (2, 1, 'Airport'), (3, 2, 'Uptown');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "drivers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "trips",
+          "columns": [
+            "id",
+            "driver_id",
+            "destination"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "drivers",
+          "from_column": "id",
+          "to_table": "trips",
+          "to_column": "driver_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "driver_id",
+        "driver_name",
+        "trip_id"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          1
+        ],
+        [
+          1,
+          "Alice",
+          2
+        ],
+        [
+          2,
+          "Bob",
+          3
+        ],
+        [
+          3,
+          "Charlie",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT d.id AS driver_id, d.name AS driver_name, t.id AS trip_id\nFROM drivers d\nFULL OUTER JOIN trips t ON d.id = t.driver_id\nORDER BY d.id;",
+    "hints": [
+      {
+        "hint": "Think about how to capture all drivers even if they have no trips.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use FULL OUTER JOIN to ensure you include all records from both tables.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Make sure to alias the columns correctly and order by driver_id.",
+        "suggested_sql": "SELECT d.id AS driver_id, d.name AS driver_name, t.id AS trip_id\nFROM drivers d\nFULL OUTER JOIN trips t ON d.id = t.driver_id\nORDER BY d.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from drivers table",
+        "what_it_does": "Start the query from the drivers table to ensure all drivers are included.",
+        "sql_snippet": "FROM drivers d",
+        "how_postgres_reads_it": "Postgres begins with the drivers table, treating each row as a potential result candidate."
+      },
+      {
+        "title": "Join trips with FULL OUTER JOIN",
+        "what_it_does": "Join the trips table in such a way that all drivers are kept, whether they have trips or not.",
+        "sql_snippet": "FULL OUTER JOIN trips t ON d.id = t.driver_id",
+        "how_postgres_reads_it": "Postgres will combine rows from both tables, keeping all rows from drivers and matching rows from trips."
+      },
+      {
+        "title": "Select and order the results",
+        "what_it_does": "Choose the columns to display and sort the final output by driver_id.",
+        "sql_snippet": "SELECT d.id AS driver_id, d.name AS driver_name, t.id AS trip_id\nORDER BY d.id;",
+        "how_postgres_reads_it": "Postgres gathers the necessary columns from the join and sorts them by driver_id before returning the results."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN between drivers and trips ensures all drivers are listed, with their trips if they exist.",
+    "solution_final_thought": "FULL OUTER JOIN is useful for including all data from both joined tables, even when there are no matches.",
+    "explanation": "The FULL OUTER JOIN combines all records from both drivers and trips. If a driver has no trip, NULL is returned for the trip_id, ensuring all drivers appear in the output regardless of whether they have completed any trips.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-026",
+    "concept": "full_joins",
+    "subconcept": "driver-rating-join",
+    "difficulty": "medium",
+    "prompt": "List all drivers and their ratings. If a driver has not received any ratings, still include them in the result. Show driver_id, driver_name, and rating, sorted by driver_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS ratings CASCADE;\nDROP TABLE IF EXISTS drivers CASCADE;\n\nCREATE TABLE drivers (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE ratings (id INTEGER PRIMARY KEY, driver_id INTEGER REFERENCES drivers(id), score INTEGER NOT NULL);\n\nINSERT INTO drivers VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');\nINSERT INTO ratings VALUES (1, 1, 5), (2, 1, 4), (3, 2, 3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "drivers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "ratings",
+          "columns": [
+            "id",
+            "driver_id",
+            "score"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "drivers",
+          "from_column": "id",
+          "to_table": "ratings",
+          "to_column": "driver_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "driver_id",
+        "driver_name",
+        "rating"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          5
+        ],
+        [
+          1,
+          "Alice",
+          4
+        ],
+        [
+          2,
+          "Bob",
+          3
+        ],
+        [
+          3,
+          "Charlie",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT d.id AS driver_id, d.name AS driver_name, r.score AS rating\nFROM drivers d\nFULL OUTER JOIN ratings r ON d.id = r.driver_id\nORDER BY d.id;",
+    "hints": [
+      {
+        "hint": "Consider how to include all drivers, even those without ratings.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "A FULL OUTER JOIN will allow you to capture records from both tables.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Remember to select the appropriate columns and order the results by driver_id.",
+        "suggested_sql": "SELECT d.id AS driver_id, d.name AS driver_name, r.score AS rating\nFROM drivers d\nFULL OUTER JOIN ratings r ON d.id = r.driver_id\nORDER BY d.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from drivers table",
+        "what_it_does": "Begin with the drivers to ensure all records are included.",
+        "sql_snippet": "FROM drivers d",
+        "how_postgres_reads_it": "Postgres scans the drivers table and considers each row as a potential result."
+      },
+      {
+        "title": "Join ratings using FULL OUTER JOIN",
+        "what_it_does": "Join ratings to keep records from both tables, including unmatched drivers.",
+        "sql_snippet": "FULL OUTER JOIN ratings r ON d.id = r.driver_id",
+        "how_postgres_reads_it": "Postgres combines records from both drivers and ratings, ensuring all drivers are retained."
+      },
+      {
+        "title": "Choose columns and sort the results",
+        "what_it_does": "Select specified columns and sort by driver_id for ordered output.",
+        "sql_snippet": "SELECT d.id AS driver_id, d.name AS driver_name, r.score AS rating\nORDER BY d.id;",
+        "how_postgres_reads_it": "Postgres gathers the results, applies the sorting, and prepares the final output."
+      }
+    ],
+    "solution_summary": "Utilizing a FULL OUTER JOIN ensures all drivers are listed with their ratings, if available.",
+    "solution_final_thought": "FULL OUTER JOIN is effective when you want to retain all data points from both sides of the join.",
+    "explanation": "The FULL OUTER JOIN allows all records from both the drivers and ratings tables to appear in the result set. If a driver does not have a corresponding rating, NULL is displayed for the rating column, ensuring the inclusion of all drivers in the output.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-027",
+    "concept": "full_joins",
+    "subconcept": "trip-rider-join",
+    "difficulty": "medium",
+    "prompt": "List all trips and riders associated with them. If a trip has no associated rider, still include it in the result. Show trip_id, destination, and rider_name, sorted by trip_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS riders CASCADE;\nDROP TABLE IF EXISTS trips CASCADE;\n\nCREATE TABLE trips (id INTEGER PRIMARY KEY, destination TEXT NOT NULL);\nCREATE TABLE riders (id INTEGER PRIMARY KEY, trip_id INTEGER REFERENCES trips(id), name TEXT NOT NULL);\n\nINSERT INTO trips VALUES (1, 'Downtown'), (2, 'Airport'), (3, 'Uptown');\nINSERT INTO riders VALUES (1, 1, 'John'), (2, 1, 'Jane');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "trips",
+          "columns": [
+            "id",
+            "destination"
+          ]
+        },
+        {
+          "name": "riders",
+          "columns": [
+            "id",
+            "trip_id",
+            "name"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "trips",
+          "from_column": "id",
+          "to_table": "riders",
+          "to_column": "trip_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "trip_id",
+        "destination",
+        "rider_name"
+      ],
+      "rows": [
+        [
+          1,
+          "Downtown",
+          "John"
+        ],
+        [
+          1,
+          "Downtown",
+          "Jane"
+        ],
+        [
+          2,
+          "Airport",
+          null
+        ],
+        [
+          3,
+          "Uptown",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT t.id AS trip_id, t.destination AS destination, r.name AS rider_name\nFROM trips t\nFULL OUTER JOIN riders r ON t.id = r.trip_id\nORDER BY t.id;",
+    "hints": [
+      {
+        "hint": "You need to include all trips, even if there are no riders associated with them.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Utilize FULL OUTER JOIN to retrieve all records from both tables.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Select the necessary columns and order by trip_id for clarity.",
+        "suggested_sql": "SELECT t.id AS trip_id, t.destination AS destination, r.name AS rider_name\nFROM trips t\nFULL OUTER JOIN riders r ON t.id = r.trip_id\nORDER BY t.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Start with the trips table",
+        "what_it_does": "Begin the query from the trips table to ensure all trips are included.",
+        "sql_snippet": "FROM trips t",
+        "how_postgres_reads_it": "Postgres processes the trips table first, evaluating each trip as a candidate."
+      },
+      {
+        "title": "Join riders with FULL OUTER JOIN",
+        "what_it_does": "Incorporate the riders table using FULL OUTER JOIN to capture all relationships.",
+        "sql_snippet": "FULL OUTER JOIN riders r ON t.id = r.trip_id",
+        "how_postgres_reads_it": "Postgres combines both tables, ensuring trips without riders still appear in the results."
+      },
+      {
+        "title": "Select desired columns and sort",
+        "what_it_does": "Choose the columns to display and order the output by trip_id.",
+        "sql_snippet": "SELECT t.id AS trip_id, t.destination AS destination, r.name AS rider_name\nORDER BY t.id;",
+        "how_postgres_reads_it": "Postgres collects the necessary data and organizes it before returning the final result."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN on trips and riders ensures all trips are displayed, with riders shown if they exist.",
+    "solution_final_thought": "FULL OUTER JOIN is essential for retrieving full datasets from both tables, regardless of matches.",
+    "explanation": "The FULL OUTER JOIN ensures that every trip is represented in the output. If a trip lacks associated riders, NULL is returned for the rider_name, preserving the trip's presence in the result set.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-028",
+    "concept": "full_joins",
+    "subconcept": "driver-rating-summary",
+    "difficulty": "hard",
+    "prompt": "Provide a summary of each driver and their average rating. Include drivers with no ratings in the result. Show driver_id, driver_name, and average_rating, sorted by driver_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS ratings CASCADE;\nDROP TABLE IF EXISTS drivers CASCADE;\n\nCREATE TABLE drivers (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE ratings (id INTEGER PRIMARY KEY, driver_id INTEGER REFERENCES drivers(id), score INTEGER NOT NULL);\n\nINSERT INTO drivers VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');\nINSERT INTO ratings VALUES (1, 1, 5), (2, 1, 4), (3, 2, 3);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "drivers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "ratings",
+          "columns": [
+            "id",
+            "driver_id",
+            "score"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "drivers",
+          "from_column": "id",
+          "to_table": "ratings",
+          "to_column": "driver_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "driver_id",
+        "driver_name",
+        "average_rating"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          "4.5000000000000000"
+        ],
+        [
+          2,
+          "Bob",
+          "3.0000000000000000"
+        ],
+        [
+          3,
+          "Charlie",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT d.id AS driver_id, d.name AS driver_name, AVG(r.score) AS average_rating\nFROM drivers d\nFULL OUTER JOIN ratings r ON d.id = r.driver_id\nGROUP BY d.id, d.name\nORDER BY d.id;",
+    "hints": [
+      {
+        "hint": "You need a summary of ratings, which may involve aggregation.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using FULL OUTER JOIN to ensure all drivers are included, even without ratings.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Don't forget to use GROUP BY for the aggregation and order by driver_id.",
+        "suggested_sql": "SELECT d.id AS driver_id, d.name AS driver_name, AVG(r.score) AS average_rating\nFROM drivers d\nFULL OUTER JOIN ratings r ON d.id = r.driver_id\nGROUP BY d.id, d.name\nORDER BY d.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from drivers table",
+        "what_it_does": "Start with drivers to ensure full inclusion in the summary.",
+        "sql_snippet": "FROM drivers d",
+        "how_postgres_reads_it": "Postgres processes the drivers first, identifying each as a candidate for the result."
+      },
+      {
+        "title": "Join ratings using FULL OUTER JOIN",
+        "what_it_does": "Incorporate ratings to gather all relevant information about drivers' scores.",
+        "sql_snippet": "FULL OUTER JOIN ratings r ON d.id = r.driver_id",
+        "how_postgres_reads_it": "Postgres combines records, ensuring all drivers appear even if they lack ratings."
+      },
+      {
+        "title": "Aggregate and group the results",
+        "what_it_does": "Calculate the average rating for each driver and group accordingly.",
+        "sql_snippet": "AVG(r.score) AS average_rating\nGROUP BY d.id, d.name",
+        "how_postgres_reads_it": "Postgres computes the average for grouped records, creating a summary for each driver."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN followed by aggregation provides average ratings for all drivers, including those without ratings.",
+    "solution_final_thought": "FULL OUTER JOIN with aggregation is a powerful tool for comprehensive data summaries.",
+    "explanation": "The FULL OUTER JOIN ensures that every driver is included in the results, and the AVG function calculates their average rating. If a driver has no ratings, NULL is returned for average_rating, preserving their presence in the output.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-029",
+    "concept": "full_joins",
+    "subconcept": "rider-trip-summary",
+    "difficulty": "hard",
+    "prompt": "Create a summary that lists all riders along with their trip details. If a rider has not taken any trips, still include them in the result. Show rider_id, rider_name, trip_id, and destination, sorted by rider_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS riders CASCADE;\nDROP TABLE IF EXISTS trips CASCADE;\n\nCREATE TABLE riders (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE trips (id INTEGER PRIMARY KEY, rider_id INTEGER REFERENCES riders(id), destination TEXT NOT NULL);\n\nINSERT INTO riders VALUES (1, 'John'), (2, 'Jane'), (3, 'Doe');\nINSERT INTO trips VALUES (1, 1, 'Downtown'), (2, 1, 'Airport');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "riders",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "trips",
+          "columns": [
+            "id",
+            "rider_id",
+            "destination"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "riders",
+          "from_column": "id",
+          "to_table": "trips",
+          "to_column": "rider_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "rider_id",
+        "rider_name",
+        "trip_id",
+        "destination"
+      ],
+      "rows": [
+        [
+          1,
+          "John",
+          1,
+          "Downtown"
+        ],
+        [
+          1,
+          "John",
+          2,
+          "Airport"
+        ],
+        [
+          2,
+          "Jane",
+          null,
+          null
+        ],
+        [
+          3,
+          "Doe",
+          null,
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT r.id AS rider_id, r.name AS rider_name, t.id AS trip_id, t.destination AS destination\nFROM riders r\nFULL OUTER JOIN trips t ON r.id = t.rider_id\nORDER BY r.id;",
+    "hints": [
+      {
+        "hint": "Focus on including all riders, even if they haven't taken trips.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "A FULL OUTER JOIN will help you capture all records from both sides.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Select and order the columns as specified in the prompt.",
+        "suggested_sql": "SELECT r.id AS rider_id, r.name AS rider_name, t.id AS trip_id, t.destination AS destination\nFROM riders r\nFULL OUTER JOIN trips t ON r.id = t.rider_id\nORDER BY r.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Begin with the riders table",
+        "what_it_does": "Start from the riders to ensure all are accounted for in the summary.",
+        "sql_snippet": "FROM riders r",
+        "how_postgres_reads_it": "Postgres processes the riders first, allowing all to be potential candidates for the output."
+      },
+      {
+        "title": "Join trips using FULL OUTER JOIN",
+        "what_it_does": "Join the trips table to gather details for each rider.",
+        "sql_snippet": "FULL OUTER JOIN trips t ON r.id = t.rider_id",
+        "how_postgres_reads_it": "Postgres combines records from both tables, ensuring all riders appear, even those without trips."
+      },
+      {
+        "title": "Select required columns and sort",
+        "what_it_does": "Choose the necessary columns and enforce order by rider_id.",
+        "sql_snippet": "SELECT r.id AS rider_id, r.name AS rider_name, t.id AS trip_id, t.destination AS destination\nORDER BY r.id;",
+        "how_postgres_reads_it": "Postgres collects the relevant data and sorts it before returning the results."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN allows for a complete summary of riders and their trips, including riders with no trips.",
+    "solution_final_thought": "FULL OUTER JOIN is crucial for including all data points across multiple relationships.",
+    "explanation": "The FULL OUTER JOIN ensures that every rider is represented in the output. If a rider has not taken any trips, NULL values are displayed for trip_id and destination, maintaining their visibility in the results.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-030",
+    "concept": "full_joins",
+    "subconcept": "trip-count-per-rider",
+    "difficulty": "hard",
+    "prompt": "Generate a summary of riders and the count of their trips. Include riders with no trips in the result. Show rider_id, rider_name, and trip_count, sorted by rider_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS riders CASCADE;\nDROP TABLE IF EXISTS trips CASCADE;\n\nCREATE TABLE riders (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE trips (id INTEGER PRIMARY KEY, rider_id INTEGER REFERENCES riders(id), destination TEXT NOT NULL);\n\nINSERT INTO riders VALUES (1, 'John'), (2, 'Jane'), (3, 'Doe');\nINSERT INTO trips VALUES (1, 1, 'Downtown'), (2, 1, 'Airport');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "riders",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "trips",
+          "columns": [
+            "id",
+            "rider_id",
+            "destination"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "riders",
+          "from_column": "id",
+          "to_table": "trips",
+          "to_column": "rider_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "rider_id",
+        "rider_name",
+        "trip_count"
+      ],
+      "rows": [
+        [
+          1,
+          "John",
+          2
+        ],
+        [
+          2,
+          "Jane",
+          0
+        ],
+        [
+          3,
+          "Doe",
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT r.id AS rider_id, r.name AS rider_name, COUNT(t.id) AS trip_count\nFROM riders r\nFULL OUTER JOIN trips t ON r.id = t.rider_id\nGROUP BY r.id, r.name\nORDER BY r.id;",
+    "hints": [
+      {
+        "hint": "Consider how to aggregate the number of trips each rider has taken.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "A FULL OUTER JOIN will help you include all riders, even those without trips.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use GROUP BY for aggregation and ensure you count trip IDs correctly.",
+        "suggested_sql": "SELECT r.id AS rider_id, r.name AS rider_name, COUNT(t.id) AS trip_count\nFROM riders r\nFULL OUTER JOIN trips t ON r.id = t.rider_id\nGROUP BY r.id, r.name\nORDER BY r.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from riders table",
+        "what_it_does": "Start with the riders table to ensure all riders are included in the summary.",
+        "sql_snippet": "FROM riders r",
+        "how_postgres_reads_it": "Postgres scans the riders table first, evaluating each row as a candidate for the result."
+      },
+      {
+        "title": "Join trips with FULL OUTER JOIN",
+        "what_it_does": "Include the trips table to get counts for each rider.",
+        "sql_snippet": "FULL OUTER JOIN trips t ON r.id = t.rider_id",
+        "how_postgres_reads_it": "Postgres combines records, ensuring all riders are retained whether or not they have trips."
+      },
+      {
+        "title": "Aggregate and group results",
+        "what_it_does": "Count the trips for each rider and group the results accordingly.",
+        "sql_snippet": "COUNT(t.id) AS trip_count\nGROUP BY r.id, r.name",
+        "how_postgres_reads_it": "Postgres counts the number of trips per rider, creating a summary while grouping by rider identifiers."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN with aggregation allows for a count of trips per rider, including those without trips.",
+    "solution_final_thought": "FULL OUTER JOIN with COUNT is powerful for summarizing relationships in data.",
+    "explanation": "The FULL OUTER JOIN ensures every rider is included in the results, and the COUNT function aggregates the number of trips per rider. If a rider has no trips, a count of 0 is displayed, preserving their presence in the output.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-031",
+    "concept": "full_joins",
+    "subconcept": "driver-and-trip-aggregation",
+    "difficulty": "hard",
+    "prompt": "Provide a summary of each driver and the total number of trips they have taken. Include drivers with no trips. Show driver_id, driver_name, and total_trips, sorted by driver_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS drivers CASCADE;\nDROP TABLE IF EXISTS trips CASCADE;\n\nCREATE TABLE drivers (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE trips (id INTEGER PRIMARY KEY, driver_id INTEGER REFERENCES drivers(id), destination TEXT NOT NULL);\n\nINSERT INTO drivers VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');\nINSERT INTO trips VALUES (1, 1, 'Downtown'), (2, 1, 'Airport'), (3, 2, 'Uptown');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "drivers",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "trips",
+          "columns": [
+            "id",
+            "driver_id",
+            "destination"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "drivers",
+          "from_column": "id",
+          "to_table": "trips",
+          "to_column": "driver_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "driver_id",
+        "driver_name",
+        "total_trips"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          2
+        ],
+        [
+          2,
+          "Bob",
+          1
+        ],
+        [
+          3,
+          "Charlie",
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT d.id AS driver_id, d.name AS driver_name, COUNT(t.id) AS total_trips\nFROM drivers d\nFULL OUTER JOIN trips t ON d.id = t.driver_id\nGROUP BY d.id, d.name\nORDER BY d.id;",
+    "hints": [
+      {
+        "hint": "You need to count the number of trips for each driver, including those with no trips.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use FULL OUTER JOIN to ensure you capture all drivers regardless of trip count.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Remember to group by driver and count the trip IDs accordingly.",
+        "suggested_sql": "SELECT d.id AS driver_id, d.name AS driver_name, COUNT(t.id) AS total_trips\nFROM drivers d\nFULL OUTER JOIN trips t ON d.id = t.driver_id\nGROUP BY d.id, d.name\nORDER BY d.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Begin with the drivers table",
+        "what_it_does": "Start with the drivers to ensure all are included in the summary.",
+        "sql_snippet": "FROM drivers d",
+        "how_postgres_reads_it": "Postgres evaluates each driver as a candidate for the output."
+      },
+      {
+        "title": "Join trips using FULL OUTER JOIN",
+        "what_it_does": "Join the trips table to capture counts of trips for each driver.",
+        "sql_snippet": "FULL OUTER JOIN trips t ON d.id = t.driver_id",
+        "how_postgres_reads_it": "Postgres combines both tables, ensuring even drivers without trips appear in the results."
+      },
+      {
+        "title": "Aggregate and group results",
+        "what_it_does": "Count trips for each driver and group the output appropriately.",
+        "sql_snippet": "COUNT(t.id) AS total_trips\nGROUP BY d.id, d.name",
+        "how_postgres_reads_it": "Postgres counts the total trips and groups the results to create a summary for each driver."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN followed by aggregation provides a total trip count for each driver, including those without trips.",
+    "solution_final_thought": "FULL OUTER JOIN with COUNT is essential for comprehensive analysis of relationships in your data.",
+    "explanation": "The FULL OUTER JOIN ensures all drivers are included in the output, and the COUNT function totals the number of trips per driver. If a driver has no trips, a count of 0 is displayed, ensuring their visibility in the summary.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-032",
+    "concept": "full_joins",
+    "subconcept": "rider-trip-comparison",
+    "difficulty": "hard",
+    "prompt": "Create a report comparing riders and their trip destinations. If a rider has not taken any trips, still include them in the report. Show rider_id, rider_name, trip_id, and destination, sorted by rider_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS riders CASCADE;\nDROP TABLE IF EXISTS trips CASCADE;\n\nCREATE TABLE riders (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE trips (id INTEGER PRIMARY KEY, rider_id INTEGER REFERENCES riders(id), destination TEXT NOT NULL);\n\nINSERT INTO riders VALUES (1, 'John'), (2, 'Jane'), (3, 'Doe');\nINSERT INTO trips VALUES (1, 1, 'Downtown'), (2, 1, 'Airport');",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "riders",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "trips",
+          "columns": [
+            "id",
+            "rider_id",
+            "destination"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "riders",
+          "from_column": "id",
+          "to_table": "trips",
+          "to_column": "rider_id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "rider_id",
+        "rider_name",
+        "trip_id",
+        "destination"
+      ],
+      "rows": [
+        [
+          1,
+          "John",
+          1,
+          "Downtown"
+        ],
+        [
+          1,
+          "John",
+          2,
+          "Airport"
+        ],
+        [
+          2,
+          "Jane",
+          null,
+          null
+        ],
+        [
+          3,
+          "Doe",
+          null,
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT r.id AS rider_id, r.name AS rider_name, t.id AS trip_id, t.destination AS destination\nFROM riders r\nFULL OUTER JOIN trips t ON r.id = t.rider_id\nORDER BY r.id;",
+    "hints": [
+      {
+        "hint": "Ensure all riders are included in the report, even those without trips.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "A FULL OUTER JOIN will help with this inclusion.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Select and sort the columns as specified in the prompt.",
+        "suggested_sql": "SELECT r.id AS rider_id, r.name AS rider_name, t.id AS trip_id, t.destination AS destination\nFROM riders r\nFULL OUTER JOIN trips t ON r.id = t.rider_id\nORDER BY r.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Start from the riders table",
+        "what_it_does": "Begin with the riders table to ensure all riders are represented in the report.",
+        "sql_snippet": "FROM riders r",
+        "how_postgres_reads_it": "Postgres processes the riders table first, considering each row as a candidate."
+      },
+      {
+        "title": "Join trips using FULL OUTER JOIN",
+        "what_it_does": "Include the trips table to gather all trip details associated with each rider.",
+        "sql_snippet": "FULL OUTER JOIN trips t ON r.id = t.rider_id",
+        "how_postgres_reads_it": "Postgres combines records, ensuring no riders are omitted even if they lack trips."
+      },
+      {
+        "title": "Select and order the relevant columns",
+        "what_it_does": "Choose the columns for the final report and order by rider_id.",
+        "sql_snippet": "SELECT r.id AS rider_id, r.name AS rider_name, t.id AS trip_id, t.destination AS destination\nORDER BY r.id;",
+        "how_postgres_reads_it": "Postgres collects the specified data, organizes it by rider_id, and prepares the final output."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN allows for a comprehensive report of riders and their trips, including riders without trips.",
+    "solution_final_thought": "FULL OUTER JOIN is crucial when you want to retain all records from both sides of a relationship.",
+    "explanation": "The FULL OUTER JOIN ensures every rider is captured in the report, and if they have not taken any trips, NULL values are returned for trip_id and destination, preserving their presence in the output.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-033",
+    "concept": "full_joins",
+    "subconcept": "full-outer-basic",
+    "difficulty": "easy",
+    "prompt": "Retrieve a complete list of all members and the books they have borrowed. Include members who haven't borrowed any books and books that haven't been borrowed by any member. Return member_id, member_name, book_id, book_title, sorted by member_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS loans CASCADE;\nDROP TABLE IF EXISTS members CASCADE;\nDROP TABLE IF EXISTS books CASCADE;\n\nCREATE TABLE members (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT NOT NULL);\nCREATE TABLE loans (member_id INTEGER REFERENCES members(id), book_id INTEGER REFERENCES books(id), PRIMARY KEY (member_id, book_id));\n\nINSERT INTO members VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');\nINSERT INTO books VALUES (1, '1984'), (2, 'Brave New World'), (3, 'Fahrenheit 451');\nINSERT INTO loans VALUES (1, 1), (1, 2), (2, 1);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "members",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "books",
+          "columns": [
+            "id",
+            "title"
+          ]
+        },
+        {
+          "name": "loans",
+          "columns": [
+            "member_id",
+            "book_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "loans",
+          "from_column": "member_id",
+          "to_table": "members",
+          "to_column": "id"
+        },
+        {
+          "from_table": "loans",
+          "from_column": "book_id",
+          "to_table": "books",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "member_id",
+        "member_name",
+        "book_id",
+        "book_title"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          1,
+          "1984"
+        ],
+        [
+          1,
+          "Alice",
+          2,
+          "Brave New World"
+        ],
+        [
+          2,
+          "Bob",
+          1,
+          "1984"
+        ],
+        [
+          3,
+          "Charlie",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          3,
+          "Fahrenheit 451"
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT m.id AS member_id, m.name AS member_name, b.id AS book_id, b.title AS book_title\nFROM members m\nFULL OUTER JOIN loans l ON m.id = l.member_id\nFULL OUTER JOIN books b ON l.book_id = b.id\nORDER BY m.id;",
+    "hints": [
+      {
+        "hint": "Consider how to include all members and all borrowed books, even when there's no match.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use FULL OUTER JOIN to connect members, loans, and books.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Chain two FULL OUTER JOINs: first between members and loans, and then between loans and books.",
+        "suggested_sql": "SELECT m.id AS member_id, m.name AS member_name, b.id AS book_id, b.title AS book_title\nFROM members m\nFULL OUTER JOIN loans l ON m.id = l.member_id\nFULL OUTER JOIN books b ON l.book_id = b.id\nORDER BY m.id;"
+      },
+      {
+        "title": "Start with members",
+        "what_it_does": "Begin the query with the members table as the base set.",
+        "sql_snippet": "FROM members m",
+        "how_postgres_reads_it": "Postgres starts with the members table to ensure all members are included."
+      },
+      {
+        "title": "Join loans to members",
+        "what_it_does": "Include loans associated with members using FULL OUTER JOIN.",
+        "sql_snippet": "FULL OUTER JOIN loans l ON m.id = l.member_id",
+        "how_postgres_reads_it": "Postgres matches loans to members, adding NULLs for unmatched rows."
+      },
+      {
+        "title": "Join books to loans",
+        "what_it_does": "Incorporate books using another FULL OUTER JOIN on loans.",
+        "sql_snippet": "FULL OUTER JOIN books b ON l.book_id = b.id",
+        "how_postgres_reads_it": "Postgres matches books to loans, again adding NULLs where there are no matches."
+      }
+    ],
+    "solution_summary": "A FULL OUTER JOIN of members and loans, followed by a FULL OUTER JOIN with books, ensures all members and books are included regardless of borrowing status.",
+    "solution_final_thought": "FULL OUTER JOIN is useful for retrieving all records from both tables, even when they don't match.",
+    "explanation": "The FULL OUTER JOIN allows us to see all members regardless of whether they've borrowed books, as well as all books regardless of whether they have been borrowed. This is key for understanding the entire library system, including members who haven't borrowed anything and books that are currently not checked out.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-034",
+    "concept": "full_joins",
+    "subconcept": "full-outer-aggregate",
+    "difficulty": "hard",
+    "prompt": "List all books and the count of members who have borrowed them. Include books that have never been borrowed. Return book_id, book_title, member_count, sorted by book_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS loans CASCADE;\nDROP TABLE IF EXISTS members CASCADE;\nDROP TABLE IF EXISTS books CASCADE;\n\nCREATE TABLE members (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT NOT NULL);\nCREATE TABLE loans (member_id INTEGER REFERENCES members(id), book_id INTEGER REFERENCES books(id), PRIMARY KEY (member_id, book_id));\n\nINSERT INTO members VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');\nINSERT INTO books VALUES (1, '1984'), (2, 'Brave New World'), (3, 'Fahrenheit 451');\nINSERT INTO loans VALUES (1, 1), (1, 2), (2, 1);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "members",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "books",
+          "columns": [
+            "id",
+            "title"
+          ]
+        },
+        {
+          "name": "loans",
+          "columns": [
+            "member_id",
+            "book_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "loans",
+          "from_column": "book_id",
+          "to_table": "books",
+          "to_column": "id"
+        },
+        {
+          "from_table": "loans",
+          "from_column": "member_id",
+          "to_table": "members",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "book_id",
+        "book_title",
+        "member_count"
+      ],
+      "rows": [
+        [
+          1,
+          "1984",
+          2
+        ],
+        [
+          2,
+          "Brave New World",
+          1
+        ],
+        [
+          3,
+          "Fahrenheit 451",
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT b.id AS book_id, b.title AS book_title, COUNT(l.member_id) AS member_count\nFROM books b\nLEFT JOIN loans l ON b.id = l.book_id\nGROUP BY b.id\nORDER BY b.id;",
+    "hints": [
+      {
+        "hint": "You want to count members per book while including books that have no loans. What join can accommodate that?",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Think about how to use GROUP BY to count members for each book.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use a LEFT JOIN to include books without loans, and use COUNT to get the member count per book.",
+        "suggested_sql": "SELECT b.id AS book_id, b.title AS book_title, COUNT(l.member_id) AS member_count\nFROM books b\nLEFT JOIN loans l ON b.id = l.book_id\nGROUP BY b.id\nORDER BY b.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Start with books table",
+        "what_it_does": "Begin the query with the books table to ensure all books are included.",
+        "sql_snippet": "FROM books b",
+        "how_postgres_reads_it": "Postgres scans the books table to select all book entries."
+      },
+      {
+        "title": "Join loans with LEFT JOIN",
+        "what_it_does": "Join loans on the book_id to include member borrowing information.",
+        "sql_snippet": "LEFT JOIN loans l ON b.id = l.book_id",
+        "how_postgres_reads_it": "Postgres adds loans information to each book, filling in NULLs where no loans exist."
+      },
+      {
+        "title": "Group by book ID",
+        "what_it_does": "Group results by book ID to aggregate member counts.",
+        "sql_snippet": "GROUP BY b.id",
+        "how_postgres_reads_it": "Postgres gathers results for each unique book ID, preparing for the count."
+      },
+      {
+        "title": "Count members per book",
+        "what_it_does": "Count the number of member IDs associated with each book.",
+        "sql_snippet": "COUNT(l.member_id) AS member_count",
+        "how_postgres_reads_it": "Postgres counts non-null entries of member_id for each grouped book, returning 0 for books with no loans."
+      }
+    ],
+    "solution_summary": "The query uses a LEFT JOIN to count members per book, ensuring all books are represented, including those with zero loans.",
+    "solution_final_thought": "Using LEFT JOIN allows for inclusion of all records from one table, regardless of matches in another table.",
+    "explanation": "By using a LEFT JOIN, we ensure that all books are included in the result, even those that have never been borrowed. The COUNT function, combined with GROUP BY, effectively counts the number of unique members who have borrowed each book, returning 0 for those that are not borrowed at all.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-035",
+    "concept": "full_joins",
+    "subconcept": "full-outer-multiple-conditions",
+    "difficulty": "medium",
+    "prompt": "Retrieve a list of all books, their respective loan status, and member names, including books that have never been borrowed and members who haven't borrowed any books. Return book_id, book_title, member_name, and loan_status, sorted by book_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS loans CASCADE;\nDROP TABLE IF EXISTS members CASCADE;\nDROP TABLE IF EXISTS books CASCADE;\n\nCREATE TABLE members (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT NOT NULL);\nCREATE TABLE loans (member_id INTEGER REFERENCES members(id), book_id INTEGER REFERENCES books(id), PRIMARY KEY (member_id, book_id));\n\nINSERT INTO members VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');\nINSERT INTO books VALUES (1, '1984'), (2, 'Brave New World'), (3, 'Fahrenheit 451');\nINSERT INTO loans VALUES (1, 1), (2, 2);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "members",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "books",
+          "columns": [
+            "id",
+            "title"
+          ]
+        },
+        {
+          "name": "loans",
+          "columns": [
+            "member_id",
+            "book_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "loans",
+          "from_column": "member_id",
+          "to_table": "members",
+          "to_column": "id"
+        },
+        {
+          "from_table": "loans",
+          "from_column": "book_id",
+          "to_table": "books",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "book_id",
+        "book_title",
+        "member_name",
+        "loan_status"
+      ],
+      "rows": [
+        [
+          1,
+          "1984",
+          "Alice",
+          "borrowed"
+        ],
+        [
+          2,
+          "Brave New World",
+          "Bob",
+          "borrowed"
+        ],
+        [
+          3,
+          "Fahrenheit 451",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "Charlie",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT b.id AS book_id, b.title AS book_title, m.name AS member_name,\n       CASE WHEN l.member_id IS NOT NULL THEN 'borrowed' ELSE NULL END AS loan_status\nFROM books b\nFULL OUTER JOIN loans l ON b.id = l.book_id\nFULL OUTER JOIN members m ON l.member_id = m.id\nORDER BY b.id;",
+    "hints": [
+      {
+        "hint": "You need to show the loan status for each book, even if there are no loans.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using CASE to determine the loan status based on whether a member_id is present.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use FULL OUTER JOIN to connect books with loans and members, and apply CASE for loan status.",
+        "suggested_sql": "SELECT b.id AS book_id, b.title AS book_title, m.name AS member_name,\n       CASE WHEN l.member_id IS NOT NULL THEN 'borrowed' ELSE NULL END AS loan_status\nFROM books b\nFULL OUTER JOIN loans l ON b.id = l.book_id\nFULL OUTER JOIN members m ON l.member_id = m.id\nORDER BY b.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Begin with books",
+        "what_it_does": "Start with the books table to ensure all books are included in the output.",
+        "sql_snippet": "FROM books b",
+        "how_postgres_reads_it": "Postgres begins with the books table, selecting all entries."
+      },
+      {
+        "title": "Join loans with FULL OUTER",
+        "what_it_does": "Join the loans table to capture borrowing details.",
+        "sql_snippet": "FULL OUTER JOIN loans l ON b.id = l.book_id",
+        "how_postgres_reads_it": "Postgres adds loans to each book, allowing for NULLs where no loans exist."
+      },
+      {
+        "title": "Join members with FULL OUTER",
+        "what_it_does": "Join the members table to associate member names with loans.",
+        "sql_snippet": "FULL OUTER JOIN members m ON l.member_id = m.id",
+        "how_postgres_reads_it": "Postgres matches members to loans, including NULLs where there are no matches."
+      },
+      {
+        "title": "Determine loan status",
+        "what_it_does": "Use CASE to assign loan status based on member presence.",
+        "sql_snippet": "CASE WHEN l.member_id IS NOT NULL THEN 'borrowed' ELSE NULL END AS loan_status",
+        "how_postgres_reads_it": "Postgres evaluates each row to determine if the loan status should be 'borrowed' or NULL."
+      }
+    ],
+    "solution_summary": "The query employs FULL OUTER JOINs to connect books, loans, and members, determining loan status with a CASE expression.",
+    "solution_final_thought": "FULL OUTER JOINs are effective for merging multiple datasets while preserving all individual records.",
+    "explanation": "By using FULL OUTER JOINs, we ensure that all books are listed regardless of whether they've been borrowed, and all members are included even if they haven't borrowed anything. The CASE statement helps indicate the borrowing status of each book based on the presence of a member ID in the loans table.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-036",
+    "concept": "full_joins",
+    "subconcept": "full-outer-aggregate-with-group",
+    "difficulty": "hard",
+    "prompt": "Create a report showing all members, the total number of books they have borrowed, and the total number of books available in the library. Include members who have never borrowed any books. Return member_id, member_name, total_borrowed, total_books, sorted by member_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS loans CASCADE;\nDROP TABLE IF EXISTS members CASCADE;\nDROP TABLE IF EXISTS books CASCADE;\n\nCREATE TABLE members (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT NOT NULL);\nCREATE TABLE loans (member_id INTEGER REFERENCES members(id), book_id INTEGER REFERENCES books(id), PRIMARY KEY (member_id, book_id));\n\nINSERT INTO members VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');\nINSERT INTO books VALUES (1, '1984'), (2, 'Brave New World'), (3, 'Fahrenheit 451');\nINSERT INTO loans VALUES (1, 1), (2, 1);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "members",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "books",
+          "columns": [
+            "id",
+            "title"
+          ]
+        },
+        {
+          "name": "loans",
+          "columns": [
+            "member_id",
+            "book_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "loans",
+          "from_column": "member_id",
+          "to_table": "members",
+          "to_column": "id"
+        },
+        {
+          "from_table": "loans",
+          "from_column": "book_id",
+          "to_table": "books",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "member_id",
+        "member_name",
+        "total_borrowed",
+        "total_books"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          1,
+          3
+        ],
+        [
+          2,
+          "Bob",
+          1,
+          3
+        ],
+        [
+          3,
+          "Charlie",
+          0,
+          3
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT m.id AS member_id, m.name AS member_name, COUNT(l.book_id) AS total_borrowed, (SELECT COUNT(*) FROM books) AS total_books\nFROM members m\nLEFT JOIN loans l ON m.id = l.member_id\nGROUP BY m.id\nORDER BY m.id;",
+    "hints": [
+      {
+        "hint": "You need to count borrowed books per member while also including total available books.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider subqueries to calculate the total number of books available.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use LEFT JOIN to count borrowed books and a subquery for the total number of books.",
+        "suggested_sql": "SELECT m.id AS member_id, m.name AS member_name, COUNT(l.book_id) AS total_borrowed, (SELECT COUNT(*) FROM books) AS total_books\nFROM members m\nLEFT JOIN loans l ON m.id = l.member_id\nGROUP BY m.id\nORDER BY m.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from members",
+        "what_it_does": "Begin with members to ensure all members are included in the output.",
+        "sql_snippet": "FROM members m",
+        "how_postgres_reads_it": "Postgres starts with members to prepare the base result."
+      },
+      {
+        "title": "Join loans with LEFT JOIN",
+        "what_it_does": "Join the loans table to include borrowed book counts.",
+        "sql_snippet": "LEFT JOIN loans l ON m.id = l.member_id",
+        "how_postgres_reads_it": "Postgres adds loan information, counting borrowed books while allowing NULLs for members without loans."
+      },
+      {
+        "title": "Count borrowed books",
+        "what_it_does": "Count the number of books borrowed by each member.",
+        "sql_snippet": "COUNT(l.book_id) AS total_borrowed",
+        "how_postgres_reads_it": "Postgres counts non-null entries of book_id for each member."
+      },
+      {
+        "title": "Subquery for total books",
+        "what_it_does": "Calculate the total number of books in the library as a subquery.",
+        "sql_snippet": "(SELECT COUNT(*) FROM books) AS total_books",
+        "how_postgres_reads_it": "Postgres executes the subquery independently to find the total number of books."
+      }
+    ],
+    "solution_summary": "The query combines member data with loan counts and includes a total count of available books using a subquery.",
+    "solution_final_thought": "Using a subquery can effectively provide aggregate totals while still performing joins for detailed data.",
+    "explanation": "The LEFT JOIN ensures all members are included, counting their borrowed books, while the subquery provides a total of all books in the library. This approach allows us to see the borrowing behavior of each member alongside the total resources available.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-037",
+    "concept": "full_joins",
+    "subconcept": "full-outer-missing-books",
+    "difficulty": "medium",
+    "prompt": "List all books along with the names of members who have borrowed them. Include books that haven't been borrowed at all and show NULL for the member name in those cases. Return book_id, book_title, member_name, sorted by book_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS loans CASCADE;\nDROP TABLE IF EXISTS members CASCADE;\nDROP TABLE IF EXISTS books CASCADE;\n\nCREATE TABLE members (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT NOT NULL);\nCREATE TABLE loans (member_id INTEGER REFERENCES members(id), book_id INTEGER REFERENCES books(id), PRIMARY KEY (member_id, book_id));\n\nINSERT INTO members VALUES (1, 'Alice'), (2, 'Bob');\nINSERT INTO books VALUES (1, '1984'), (2, 'Brave New World'), (3, 'Fahrenheit 451');\nINSERT INTO loans VALUES (1, 1);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "members",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "books",
+          "columns": [
+            "id",
+            "title"
+          ]
+        },
+        {
+          "name": "loans",
+          "columns": [
+            "member_id",
+            "book_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "loans",
+          "from_column": "book_id",
+          "to_table": "books",
+          "to_column": "id"
+        },
+        {
+          "from_table": "loans",
+          "from_column": "member_id",
+          "to_table": "members",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "book_id",
+        "book_title",
+        "member_name"
+      ],
+      "rows": [
+        [
+          1,
+          "1984",
+          "Alice"
+        ],
+        [
+          2,
+          "Brave New World",
+          null
+        ],
+        [
+          3,
+          "Fahrenheit 451",
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT b.id AS book_id, b.title AS book_title, m.name AS member_name\nFROM books b\nLEFT JOIN loans l ON b.id = l.book_id\nLEFT JOIN members m ON l.member_id = m.id\nORDER BY b.id;",
+    "hints": [
+      {
+        "hint": "Think about how you can include books that have never been borrowed.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use LEFT JOIN to connect books with loans and members to retain all book records.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use two LEFT JOINs: one from books to loans, and another from loans to members.",
+        "suggested_sql": "SELECT b.id AS book_id, b.title AS book_title, m.name AS member_name\nFROM books b\nLEFT JOIN loans l ON b.id = l.book_id\nLEFT JOIN members m ON l.member_id = m.id\nORDER BY b.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from books",
+        "what_it_does": "Start the query with books to ensure all books are included.",
+        "sql_snippet": "FROM books b",
+        "how_postgres_reads_it": "Postgres begins with the books table, preparing to include every book."
+      },
+      {
+        "title": "Join loans with LEFT JOIN",
+        "what_it_does": "Join loans to include borrowing information.",
+        "sql_snippet": "LEFT JOIN loans l ON b.id = l.book_id",
+        "how_postgres_reads_it": "Postgres adds loan details to each book, filling in NULLs where no loans exist."
+      },
+      {
+        "title": "Join members with LEFT JOIN",
+        "what_it_does": "Join members to associate member names with borrowed books.",
+        "sql_snippet": "LEFT JOIN members m ON l.member_id = m.id",
+        "how_postgres_reads_it": "Postgres matches member names to loans, allowing for NULLs where there are no matches."
+      }
+    ],
+    "solution_summary": "The query uses LEFT JOINs to connect books, loans, and members, ensuring all books are listed regardless of borrowing status.",
+    "solution_final_thought": "LEFT JOINs effectively preserve all records from one table while associating data from another.",
+    "explanation": "Using LEFT JOINs allows the query to include all books, even those that haven't been borrowed. If a book hasn't been borrowed, the member name will be NULL. This method provides a clear view of all available books in the library and their borrowing history if applicable.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-038",
+    "concept": "full_joins",
+    "subconcept": "full-outer-member-borrowing-status",
+    "difficulty": "medium",
+    "prompt": "Generate a report of all members, their borrowing status (indicating whether they have borrowed books), and the total number of books each member has borrowed. Return member_id, member_name, has_borrowed, total_borrowed, sorted by member_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS loans CASCADE;\nDROP TABLE IF EXISTS members CASCADE;\nDROP TABLE IF EXISTS books CASCADE;\n\nCREATE TABLE members (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT NOT NULL);\nCREATE TABLE loans (member_id INTEGER REFERENCES members(id), book_id INTEGER REFERENCES books(id), PRIMARY KEY (member_id, book_id));\n\nINSERT INTO members VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');\nINSERT INTO books VALUES (1, '1984'), (2, 'Brave New World');\nINSERT INTO loans VALUES (1, 1);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "members",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "books",
+          "columns": [
+            "id",
+            "title"
+          ]
+        },
+        {
+          "name": "loans",
+          "columns": [
+            "member_id",
+            "book_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "loans",
+          "from_column": "member_id",
+          "to_table": "members",
+          "to_column": "id"
+        },
+        {
+          "from_table": "loans",
+          "from_column": "book_id",
+          "to_table": "books",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "member_id",
+        "member_name",
+        "has_borrowed",
+        "total_borrowed"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          "Yes",
+          1
+        ],
+        [
+          2,
+          "Bob",
+          "No",
+          0
+        ],
+        [
+          3,
+          "Charlie",
+          "No",
+          0
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT m.id AS member_id, m.name AS member_name,\n       CASE WHEN COUNT(l.book_id) > 0 THEN 'Yes' ELSE 'No' END AS has_borrowed,\n       COUNT(l.book_id) AS total_borrowed\nFROM members m\nLEFT JOIN loans l ON m.id = l.member_id\nGROUP BY m.id\nORDER BY m.id;",
+    "hints": [
+      {
+        "hint": "You want to show whether each member has borrowed any books.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Consider using a CASE statement to indicate borrowing status based on counts.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use LEFT JOIN and COUNT to summarize borrowing status and totals in a single query.",
+        "suggested_sql": "SELECT m.id AS member_id, m.name AS member_name,\n       CASE WHEN COUNT(l.book_id) > 0 THEN 'Yes' ELSE 'No' END AS has_borrowed,\n       COUNT(l.book_id) AS total_borrowed\nFROM members m\nLEFT JOIN loans l ON m.id = l.member_id\nGROUP BY m.id\nORDER BY m.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from members",
+        "what_it_does": "Begin the query with members to ensure all members are included.",
+        "sql_snippet": "FROM members m",
+        "how_postgres_reads_it": "Postgres starts with the members table to prepare the base output."
+      },
+      {
+        "title": "Join loans with LEFT JOIN",
+        "what_it_does": "Join loans to include borrowing counts for each member.",
+        "sql_snippet": "LEFT JOIN loans l ON m.id = l.member_id",
+        "how_postgres_reads_it": "Postgres adds loan details, allowing NULLs for members without loans."
+      },
+      {
+        "title": "Determine borrowing status",
+        "what_it_does": "Use CASE to set borrowing status based on the count of borrowed books.",
+        "sql_snippet": "CASE WHEN COUNT(l.book_id) > 0 THEN 'Yes' ELSE 'No' END AS has_borrowed",
+        "how_postgres_reads_it": "Postgres evaluates the count to determine if the member has borrowed any books."
+      },
+      {
+        "title": "Count total borrowed books",
+        "what_it_does": "Count the number of books borrowed by each member.",
+        "sql_snippet": "COUNT(l.book_id) AS total_borrowed",
+        "how_postgres_reads_it": "Postgres counts non-null entries of book_id for each member."
+      }
+    ],
+    "solution_summary": "The query uses LEFT JOIN to include all members, counting borrowed books and determining their borrowing status with a CASE statement.",
+    "solution_final_thought": "LEFT JOINs enable a comprehensive view of all records while aggregating related data.",
+    "explanation": "This query provides a comprehensive view of all members, showing whether they've borrowed books and the total number of books borrowed. The LEFT JOIN ensures that even members who haven't borrowed are included, and the CASE statement clearly indicates their borrowing status based on the count of loans.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  },
+  {
+    "id": "full_joins-039",
+    "concept": "full_joins",
+    "subconcept": "full-outer-member-loan-history",
+    "difficulty": "hard",
+    "prompt": "Generate a report of all members and their loan history, including the titles of books they have borrowed. Show NULL for members who have not borrowed any books. Return member_id, member_name, book_id, book_title, sorted by member_id.",
+    "ordered_results": true,
+    "schema_setup_sql": "DROP TABLE IF EXISTS loans CASCADE;\nDROP TABLE IF EXISTS members CASCADE;\nDROP TABLE IF EXISTS books CASCADE;\n\nCREATE TABLE members (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nCREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT NOT NULL);\nCREATE TABLE loans (member_id INTEGER REFERENCES members(id), book_id INTEGER REFERENCES books(id), PRIMARY KEY (member_id, book_id));\n\nINSERT INTO members VALUES (1, 'Alice'), (2, 'Bob');\nINSERT INTO books VALUES (1, '1984'), (2, 'Brave New World');\nINSERT INTO loans VALUES (1, 1);",
+    "schema_context": {
+      "tables": [
+        {
+          "name": "members",
+          "columns": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "name": "books",
+          "columns": [
+            "id",
+            "title"
+          ]
+        },
+        {
+          "name": "loans",
+          "columns": [
+            "member_id",
+            "book_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "from_table": "loans",
+          "from_column": "member_id",
+          "to_table": "members",
+          "to_column": "id"
+        },
+        {
+          "from_table": "loans",
+          "from_column": "book_id",
+          "to_table": "books",
+          "to_column": "id"
+        }
+      ]
+    },
+    "expected_output": {
+      "columns": [
+        "member_id",
+        "member_name",
+        "book_id",
+        "book_title"
+      ],
+      "rows": [
+        [
+          1,
+          "Alice",
+          1,
+          "1984"
+        ],
+        [
+          2,
+          "Bob",
+          null,
+          null
+        ]
+      ]
+    },
+    "reference_solution_sql": "SELECT m.id AS member_id, m.name AS member_name, b.id AS book_id, b.title AS book_title\nFROM members m\nLEFT JOIN loans l ON m.id = l.member_id\nLEFT JOIN books b ON l.book_id = b.id\nORDER BY m.id;",
+    "hints": [
+      {
+        "hint": "You want to include all members and their loaned books, even if some members haven't borrowed.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Utilize LEFT JOINs to ensure all members are represented.",
+        "suggested_sql": null
+      },
+      {
+        "hint": "Use two LEFT JOINs: one for loans and one for books to retrieve loan history.",
+        "suggested_sql": "SELECT m.id AS member_id, m.name AS member_name, b.id AS book_id, b.title AS book_title\nFROM members m\nLEFT JOIN loans l ON m.id = l.member_id\nLEFT JOIN books b ON l.book_id = b.id\nORDER BY m.id;"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Select from members",
+        "what_it_does": "Begin with the members table to ensure all members are included in the report.",
+        "sql_snippet": "FROM members m",
+        "how_postgres_reads_it": "Postgres starts with the members table as the base for the report."
+      },
+      {
+        "title": "Join loans with LEFT JOIN",
+        "what_it_does": "Join the loans table to include loan records for each member.",
+        "sql_snippet": "LEFT JOIN loans l ON m.id = l.member_id",
+        "how_postgres_reads_it": "Postgres matches loans to members, filling in NULLs for members without loans."
+      },
+      {
+        "title": "Join books with LEFT JOIN",
+        "what_it_does": "Join the books table to retrieve titles for the loans.",
+        "sql_snippet": "LEFT JOIN books b ON l.book_id = b.id",
+        "how_postgres_reads_it": "Postgres matches book titles to loans, adding NULLs for loans that don't exist."
+      }
+    ],
+    "solution_summary": "This query uses LEFT JOINs to retrieve all members and their loan history, ensuring all members are included regardless of their borrowing status.",
+    "solution_final_thought": "LEFT JOINs allow you to maintain all records from one table while integrating data from related tables.",
+    "explanation": "By implementing LEFT JOINs, this query ensures that all members are listed along with their borrowed books. If a member has not borrowed any books, the corresponding fields for the book will show NULL, providing a complete view of member loan history.",
+    "source": "llm-generated",
+    "license": "MIT",
+    "attribution_url": null
+  }
+]
