@@ -7,17 +7,12 @@ import type {
   languages as MonacoLanguages,
   IDisposable,
 } from "monaco-editor";
-import { Loader2, Play, Wand2 } from "lucide-react";
+import { CheckCircle2, Loader2, Play, Wand2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { format as formatSql } from "sql-formatter";
 
-import { Button } from "@/components/ui/button";
 import { EditorOutline } from "@/components/editor-outline";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { HoverExpandButton } from "@/components/hover-expand-button";
 import { lintSql, type LintIssue } from "@/lib/sql-lint";
 
 // Wrap bare YYYY-MM-DD literals in single quotes so the formatter doesn't
@@ -33,7 +28,9 @@ type Props = {
   value: string;
   onChange: (v: string) => void;
   onRun: () => void;
+  onSubmit: () => void;
   running: boolean;
+  submitting: boolean;
   schemaIdentifiers: Set<string>;
   expectedTables?: string[];
 };
@@ -46,7 +43,9 @@ export function SqlEditor({
   value,
   onChange,
   onRun,
+  onSubmit,
   running,
+  submitting,
   schemaIdentifiers,
   expectedTables,
 }: Props) {
@@ -57,6 +56,9 @@ export function SqlEditor({
 
   const onRunRef = React.useRef(onRun);
   onRunRef.current = onRun;
+
+  const onSubmitRef = React.useRef(onSubmit);
+  onSubmitRef.current = onSubmit;
 
   const schemaIdsRef = React.useRef(schemaIdentifiers);
   schemaIdsRef.current = schemaIdentifiers;
@@ -116,18 +118,20 @@ export function SqlEditor({
     monacoRef.current = monaco;
     editor.focus();
 
+    // ⌘F → Format (overrides Monaco's built-in find dialog).
     editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
+      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF,
+      () => handleFormat(),
+    );
+    // ⌘R → Run.
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyR,
       () => onRunRef.current(),
     );
-    editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF,
-      () => handleFormat(),
-    );
-    // ⌘S / Ctrl+S — intercept the browser save and format instead.
+    // ⌘S → Submit.
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
-      () => handleFormat(),
+      () => onSubmitRef.current(),
     );
 
     // Code action provider: offer quick-fix to replace the typo.
@@ -193,6 +197,14 @@ export function SqlEditor({
     }
   }, [isPlaceholder]);
 
+  // Listen for the global ⌘F format event dispatched by the page-level
+  // shortcut handler so format works even when the editor isn't focused.
+  React.useEffect(() => {
+    const h = () => handleFormat();
+    window.addEventListener("sqlpractice:format", h);
+    return () => window.removeEventListener("sqlpractice:format", h);
+  }, [handleFormat]);
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       {/* Top nav of the editor — label on the left, actions on the right */}
@@ -202,43 +214,42 @@ export function SqlEditor({
           SQL editor
         </div>
         <div className="flex items-center gap-1.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 rounded-md text-xs"
-                onClick={handleFormat}
-              >
-                <Wand2 className="h-3.5 w-3.5" />
-                Format
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Format SQL — <kbd className="font-mono">⌘S</kbd> or{" "}
-              <kbd className="font-mono">⌘⇧F</kbd>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                className="h-7 rounded-md"
-                onClick={onRun}
-                disabled={running}
-              >
-                {running ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Play className="h-3.5 w-3.5" />
-                )}
-                Run
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Run query — <kbd className="font-mono">⌘↵</kbd>
-            </TooltipContent>
-          </Tooltip>
+          <HoverExpandButton
+            label="Format"
+            shortcut="⌘F"
+            icon={<Wand2 className="h-3.5 w-3.5" />}
+            onClick={handleFormat}
+            tone="neutral"
+          />
+          <HoverExpandButton
+            label="Run"
+            shortcut="⌘R"
+            icon={
+              running ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )
+            }
+            onClick={onRun}
+            disabled={running}
+            tone="primary"
+          />
+          <HoverExpandButton
+            label="Submit"
+            shortcut="⌘S"
+            icon={
+              submitting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              )
+            }
+            onClick={onSubmit}
+            disabled={submitting}
+            tone="success"
+            alwaysOpen
+          />
         </div>
       </div>
 

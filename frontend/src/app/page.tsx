@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
   History,
-  HelpCircle,
   Keyboard,
   Loader2,
   Moon,
@@ -35,7 +34,6 @@ import { SchemaModal } from "@/components/schema-modal";
 import { QuestionBar } from "@/components/question-bar";
 import { SqlEditor, PLACEHOLDER } from "@/components/sql-editor";
 import { ResultsPanel } from "@/components/results-panel";
-import { AnswerSheet } from "@/components/answer-sheet";
 import { ShortcutsModal } from "@/components/shortcuts-modal";
 import { SyllabusView } from "@/components/syllabus-view";
 import {
@@ -55,6 +53,7 @@ import type {
   PerformanceResponse,
   Question,
   QuestionHistoryItem,
+  RunQueryResponse,
   SchemaInfo,
 } from "@/lib/types";
 
@@ -227,6 +226,9 @@ export default function Page() {
   const [question, setQuestion] = React.useState<Question | null>(null);
   const [sql, setSql] = React.useState<string>(PLACEHOLDER);
   const [result, setResult] = React.useState<GradeResult | null>(null);
+  const [runResult, setRunResult] = React.useState<RunQueryResponse | null>(
+    null,
+  );
   const [explanation, setExplanation] =
     React.useState<ExplainResponse | null>(null);
   const [solution, setSolution] = React.useState<GiveUpResponse | null>(null);
@@ -254,6 +256,7 @@ export default function Page() {
     setQuestion(q);
     setSql(loadDraft(q.id) ?? PLACEHOLDER);
     setResult(null);
+    setRunResult(null);
     setExplanation(null);
     setSolution(null);
     setHint(null);
@@ -296,6 +299,7 @@ export default function Page() {
       setQuestion(null);
       setSql(PLACEHOLDER);
       setResult(null);
+    setRunResult(null);
       setExplanation(null);
       setSolution(null);
       setHint(null);
@@ -307,6 +311,31 @@ export default function Page() {
       toast.success(
         `New scenario: ${schema.scenario_label} · seed ${schema.seed}`,
       );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const runQueryMutation = useMutation({
+    mutationFn: async (s: string) => {
+      runStartRef.current = performance.now();
+      return await api.runQuery(s);
+    },
+    onSuccess: (r) => {
+      const ms =
+        runStartRef.current !== null
+          ? Math.round(performance.now() - runStartRef.current)
+          : null;
+      setLastRunMs(ms);
+      setRunResult(r);
+      // Free-form Run clears any prior graded state so the panel
+      // doesn't mix "your last grade" with "your latest run".
+      setResult(null);
+      setExplanation(null);
+      setErrorHelp(null);
+      setPerformanceReview(null);
+      if (r.status === "error" && r.error_message) {
+        toast.error(r.error_message);
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -323,6 +352,7 @@ export default function Page() {
           : null;
       setLastRunMs(ms);
       setResult(r);
+      setRunResult(null);
       setExplanation(null);
       setErrorHelp(null);
       setPerformanceReview(null);
@@ -428,6 +458,19 @@ export default function Page() {
       toast.error("Write some SQL.");
       return;
     }
+    runQueryMutation.mutate(sql);
+  }, [question, sql, runQueryMutation]);
+
+  const onSubmit = React.useCallback(() => {
+    if (!question) {
+      toast.error("Generate a question first.");
+      return;
+    }
+    const trimmed = sql.trim();
+    if (!trimmed || trimmed === PLACEHOLDER.trim()) {
+      toast.error("Write some SQL.");
+      return;
+    }
     submitMutation.mutate(sql);
   }, [question, sql, submitMutation]);
 
@@ -452,27 +495,43 @@ export default function Page() {
     resetDataMutation.mutate({ mode: "ai_fresh" });
   }, [resetDataMutation]);
 
-  const onGiveUp = React.useCallback(() => {
-    if (!question) {
-      toast.error("Generate a question first.");
-      return;
-    }
+  // Auto-fetch the solution for whatever question is currently active.
+  // The backend pre-computes it in the background when the question is
+  // generated, so this call is usually instant from cache. We only fire
+  // once per question id and never override an already-present solution.
+  const solutionFetchedRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (!question) return;
+    if (solutionFetchedRef.current === question.id) return;
+    if (solution) return;
+    solutionFetchedRef.current = question.id;
     giveUpMutation.mutate();
-  }, [question, giveUpMutation]);
+  }, [question, solution, giveUpMutation]);
 
-  // Keyboard shortcuts.
+  // Keyboard shortcuts. Capture phase so we beat the browser AND Monaco
+  // defaults (⌘F find, ⌘R reload, ⌘S save) before they can fire.
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (!mod) return;
-      if (e.key === "Enter") {
+      if (!mod || e.shiftKey || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k === "f") {
         e.preventDefault();
+        e.stopPropagation();
+        window.dispatchEvent(new CustomEvent("sqlpractice:format"));
+      } else if (k === "r") {
+        e.preventDefault();
+        e.stopPropagation();
         onRun();
-      } else if (e.key.toLowerCase() === "n") {
+      } else if (k === "s") {
         e.preventDefault();
+        e.stopPropagation();
+        onSubmit();
+      } else if (k === "n") {
+        e.preventDefault();
+        e.stopPropagation();
         onNewQuestion(undefined);
       }
-      // ⌘S is captured inside Monaco for format; nothing global to do.
     };
     const helpHandler = (e: KeyboardEvent) => {
       // `?` opens the shortcuts modal — but only when not typing in an input.
@@ -491,12 +550,12 @@ export default function Page() {
     window.addEventListener("keydown", helpHandler);
     const cleanupHelp = () =>
       window.removeEventListener("keydown", helpHandler);
-    window.addEventListener("keydown", handler);
+    window.addEventListener("keydown", handler, true);
     return () => {
-      window.removeEventListener("keydown", handler);
+      window.removeEventListener("keydown", handler, true);
       cleanupHelp();
     };
-  }, [onRun, onNewQuestion]);
+  }, [onRun, onSubmit, onNewQuestion]);
 
   return (
     <div className="flex h-screen w-screen flex-col bg-background text-foreground">
@@ -566,27 +625,6 @@ export default function Page() {
               </Button>
             </TooltipTrigger>
             <TooltipContent>Revisit recent questions and drafts</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onGiveUp}
-                disabled={!question || giveUpMutation.isPending}
-                className="h-8 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:px-3"
-              >
-                {giveUpMutation.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <HelpCircle className="h-3.5 w-3.5" />
-                )}
-                <span className="hidden sm:inline">Show answer</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Reveal the answer with a step-by-step walkthrough
-            </TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -721,7 +759,9 @@ export default function Page() {
                 value={sql}
                 onChange={setSql}
                 onRun={onRun}
-                running={submitMutation.isPending}
+                onSubmit={onSubmit}
+                submitting={submitMutation.isPending}
+                running={runQueryMutation.isPending}
                 schemaIdentifiers={schemaIdentifiers}
                 expectedTables={question?.schema_context?.tables.map(
                   (t) => t.name,
@@ -752,6 +792,7 @@ export default function Page() {
             >
               <ResultsPanel
                 result={result}
+                runResult={runResult}
                 expectedPreview={question?.expected_output ?? null}
                 explanation={explanation}
                 explainLoading={explainMutation.isPending}
@@ -765,6 +806,7 @@ export default function Page() {
                 onApplySql={setSql}
                 lastRunMs={lastRunMs}
                 orderedResults={question?.ordered_results ?? false}
+                solution={solution}
               />
             </Panel>
           </PanelGroup>
@@ -844,15 +886,6 @@ export default function Page() {
           </aside>
         </div>
       )}
-
-      <AnswerSheet
-        solution={solution}
-        onClose={() => setSolution(null)}
-        onApplyToEditor={(s) => {
-          setSql(s);
-          setSolution(null);
-        }}
-      />
 
       <ShortcutsModal
         open={shortcutsOpen}

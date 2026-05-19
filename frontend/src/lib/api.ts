@@ -7,6 +7,7 @@ import type {
   PerformanceResponse,
   Question,
   QuestionHistoryItem,
+  RunQueryResponse,
   SchemaInfo,
 } from "./types";
 
@@ -63,6 +64,11 @@ export const api = {
     request<Question>("/api/select_question", {
       method: "POST",
       body: JSON.stringify({ question_id: questionId }),
+    }),
+  runQuery: (sql: string) =>
+    request<RunQueryResponse>("/api/run_query", {
+      method: "POST",
+      body: JSON.stringify({ sql }),
     }),
   submit: (sql: string) =>
     request<GradeResult>("/api/submit", {

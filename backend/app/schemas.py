@@ -92,6 +92,17 @@ class GradeResult(BaseModel):
     reference_time_ms: float | None = None
 
 
+class RunQueryRequest(BaseModel):
+    sql: str
+
+
+class RunQueryResponse(BaseModel):
+    status: Literal["ok", "error"]
+    output: TableResult | None = None
+    error_message: str | None = None
+    execution_time_ms: float | None = None
+
+
 class ExplainRequest(BaseModel):
     sql: str
 
@@ -113,9 +124,16 @@ class SolutionStep(BaseModel):
     how_postgres_reads_it: str
 
 
+class BreakdownItem(BaseModel):
+    phrase: str
+    means: str
+
+
 class GiveUpResponse(BaseModel):
     reference_sql: str
     summary: str
+    breakdown: list[BreakdownItem] = Field(default_factory=list)
+    approach: str = ""
     steps: list[SolutionStep]
     final_thought: str
 

@@ -604,33 +604,44 @@ Rules:
 - Do not shame the learner. Explain why the faster shape helps."""
 
 
-EXPLAIN_SOLUTION_SYSTEM_PROMPT = """You explain a SQL solution to a beginner — assume they know what a spreadsheet is but have NEVER written SQL before. Think 5th grade reading level.
+EXPLAIN_SOLUTION_SYSTEM_PROMPT = """You teach a beginner HOW TO THINK about a SQL question — parsing the English, planning the query, then writing it. Assume they know what a spreadsheet is but have NEVER written SQL.
 
 You receive: the question, the reference SQL that solves it, and the table schema.
 
 Return ONLY JSON:
 {
   "summary": "ONE short sentence saying what we're trying to find. No SQL terms.",
+  "breakdown": [
+    {
+      "phrase": "short phrase copied VERBATIM from the question (e.g. \"for each food truck\")",
+      "means": "what that phrase tells us about the SQL — which clause, which column, which operation, in plain English"
+    }
+  ],
+  "approach": "2-4 short sentences explaining the OVERALL plan, like you're at a whiteboard. Which tables we start from. What needs joining. What needs grouping. What needs filtering. Mention SQL terms once but in plain words.",
   "steps": [
     {
       "title": "5-8 words. Plain English. No SQL keywords.",
-      "what_it_does": "1-2 short sentences. Plain English. Use an everyday analogy. Mention which tables we touch.",
+      "what_it_does": "1-2 short sentences. Plain English. Mention which tables we touch.",
       "sql_snippet": "the smallest piece of the reference SQL for this step, copied VERBATIM",
       "how_postgres_reads_it": "1-2 short sentences. What does the database actually do here?"
     }
   ],
-  "final_thought": "ONE short sentence that ties it together."
+  "final_thought": "ONE short sentence tying it together."
 }
 
 WRITING RULES (strict):
+- BREAKDOWN: split the question into 3-6 chunks. Each `phrase` MUST be a literal substring of the question (don't paraphrase). Each `means` is one short sentence explaining what SQL operation that phrase implies. Examples:
+  · "for each food truck" → "we want one row per food truck — that means GROUP BY food_truck"
+  · "with more than 5 reviews" → "filter the groups, keeping only those whose count is over 5 — that's HAVING"
+  · "sorted by total sales descending" → "ORDER BY the total_sales column from highest to lowest"
+  · "Return name and count" → "the SELECT clause has exactly two output columns: name and the count"
+- APPROACH: walk through the PLAN, not the SQL. Like: "We have customers and orders. We need to count orders per customer, so we group by customer. Then we filter to only those over 5 with HAVING."
+- STEPS: walk through the SQL in Postgres execution order (FROM → JOIN → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT). 3-5 steps.
 - 5th-grade vocabulary. Short sentences. Active voice.
-- The FIRST time you mention any SQL term (SELECT, JOIN, GROUP BY, etc.), explain it in everyday words in parentheses. Example: "JOIN (it's like gluing two lists together where they share an ID)".
-- Use analogies: "matching rows by id" = "finding pairs"; "filtering" = "throwing out ones that don't fit"; "aggregating" = "rolling many rows into one summary".
-- 3-5 steps based on query complexity.
+- The FIRST time you mention any SQL term (SELECT, JOIN, GROUP BY, HAVING, etc.) in ANY field, explain it once in parentheses. Don't keep re-defining it.
 - Each sql_snippet MUST appear verbatim somewhere in the reference SQL.
-- Walk through steps in the order Postgres executes them (FROM → JOIN → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT), even if the SQL is written in a different order.
-- NO filler. NO restating the question. NO "as you can see".
-- titles do not start with "Step N:" — just the description (the UI numbers them)."""
+- titles do NOT start with "Step N:" — the UI numbers them.
+- NO filler. NO restating the question. NO "as you can see"."""
 
 
 SCHEMA_SYSTEM_PROMPT = """You design realistic PostgreSQL practice databases. Each schema you ship is a self-contained learning playground that supports interesting questions across many SQL concepts.

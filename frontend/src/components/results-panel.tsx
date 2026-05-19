@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 
+import { SolutionView } from "@/components/answer-sheet";
 import { CoachCard } from "@/components/coach-card";
 import { DataTable } from "@/components/data-table";
 import { InsightsCard } from "@/components/insights-card";
@@ -18,14 +19,17 @@ import { computeInsights } from "@/lib/insights";
 import type {
   ErrorHelpResponse,
   ExplainResponse,
+  GiveUpResponse,
   GradeResult,
   PerformanceResponse,
+  RunQueryResponse,
   TableResult,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type Props = {
   result: GradeResult | null;
+  runResult: RunQueryResponse | null;
   expectedPreview: TableResult | null;
   explanation: ExplainResponse | null;
   explainLoading: boolean;
@@ -39,6 +43,7 @@ type Props = {
   onApplySql: (sql: string) => void;
   lastRunMs: number | null;
   orderedResults: boolean;
+  solution: GiveUpResponse | null;
 };
 
 function StatusDot({
@@ -78,6 +83,7 @@ function StatusDot({
 
 export function ResultsPanel({
   result,
+  runResult,
   expectedPreview,
   explanation,
   explainLoading,
@@ -91,14 +97,18 @@ export function ResultsPanel({
   onApplySql,
   lastRunMs,
   orderedResults,
+  solution,
 }: Props) {
   const status = result?.status ?? "idle";
   const hasYours = result && status !== "error";
   const hasExpected = !!(result?.expected_output || expectedPreview);
-  const showCompareToggle = hasExpected; // toggle is on whenever expected exists
+  const hasSolution = !!solution;
+  const showCompareToggle = hasExpected || hasSolution; // toggle whenever there's something to compare
   const showHint = (status === "wrong" || status === "error") && !explanation;
 
-  const [view, setView] = React.useState<"yours" | "expected">("yours");
+  const [view, setView] = React.useState<"yours" | "expected" | "solution">(
+    "yours",
+  );
 
   // Default view after a submit:
   React.useEffect(() => {
@@ -109,6 +119,14 @@ export function ResultsPanel({
   React.useEffect(() => {
     if (!hasYours && hasExpected) setView("expected");
   }, [hasYours, hasExpected]);
+
+  // If solution disappears (new question / reset) and we're on it, fall back.
+  // We do NOT auto-switch TO solution when it arrives — the user must tap it.
+  React.useEffect(() => {
+    if (!hasSolution && view === "solution") {
+      setView(hasYours ? "yours" : hasExpected ? "expected" : "yours");
+    }
+  }, [hasSolution, hasYours, hasExpected, view]);
 
   const yoursTable = result?.user_output;
   const expectedTable = result?.expected_output ?? expectedPreview;
@@ -200,6 +218,19 @@ export function ResultsPanel({
               >
                 Expected
               </button>
+              {hasSolution && (
+                <button
+                  onClick={() => setView("solution")}
+                  className={cn(
+                    "rounded-full px-3 py-0.5 text-xs font-medium transition-colors",
+                    view === "solution"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Solution
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -325,6 +356,20 @@ export function ResultsPanel({
                     rows={yoursTable.rows}
                   />
                 </>
+              ) : runResult?.status === "error" ? (
+                <div>
+                  <div className="mb-1 text-xs font-medium text-muted-foreground">
+                    Raw Postgres error
+                  </div>
+                  <pre className="overflow-auto whitespace-pre-wrap rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 font-mono text-xs text-amber-700 dark:text-amber-400">
+                    {runResult.error_message}
+                  </pre>
+                </div>
+              ) : runResult?.output ? (
+                <DataTable
+                  columns={runResult.output.columns}
+                  rows={runResult.output.rows as unknown[][]}
+                />
               ) : (
                 <div className="flex h-full items-center justify-center py-12 text-sm text-muted-foreground">
                   Run your query to see your result.
@@ -341,6 +386,9 @@ export function ResultsPanel({
                   The expected output will appear once a question is loaded.
                 </div>
               ))}
+            {view === "solution" && solution && (
+              <SolutionView solution={solution} onApplyToEditor={onApplySql} />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>

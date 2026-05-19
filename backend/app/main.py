@@ -1,6 +1,7 @@
 """FastAPI entry: routes for health, data, questions, grading, explanations."""
 from __future__ import annotations
 
+import asyncio
 import random
 import re
 import uuid
@@ -15,6 +16,7 @@ from . import data_gen, llm
 from .db import engine
 from .grader import _json_safe, grade
 from .schemas import (
+    BreakdownItem,
     ErrorHelpResponse,
     ExplainRequest,
     ExplainResponse,
@@ -31,6 +33,8 @@ from .schemas import (
     QuestionSchemaJoin,
     QuestionSchemaTable,
     ResetDataRequest,
+    RunQueryRequest,
+    RunQueryResponse,
     SchemaInfo,
     SelectQuestionRequest,
     SolutionStep,
@@ -113,6 +117,29 @@ def _build_question_schema_context(
             )
 
     return QuestionSchemaContext(tables=table_context, joins=joins)
+
+
+async def _precompute_solution(
+    question_id: str,
+    question_text: str,
+    reference_sql: str,
+    schema: dict,
+) -> None:
+    """Background task: generate the give-up solution and attach it to the live
+    question, but only if that question is still current. Failures are swallowed —
+    the on-demand path in /api/give_up will retry."""
+    try:
+        data = await llm.explain_solution(question_text, reference_sql, schema)
+    except Exception:
+        return
+    q = session_state.current_question
+    if q is not None and q.id == question_id:
+        q.solution = data
+    # Also patch the history entry if the same question is still there.
+    for hist_q in session_state.question_history:
+        if hist_q.id == question_id and hist_q.solution is None:
+            hist_q.solution = data
+            break
 
 
 def _question_response_from_state(q: CurrentQuestion) -> QuestionResponse:
@@ -258,6 +285,12 @@ async def new_question(req: NewQuestionRequest) -> QuestionResponse:
     session_state.current_question = q
     _remember_question(q)
 
+    # Pre-generate the solution in the background so "Show answer" is instant
+    # when the user finally clicks it. Fire-and-forget; failures are silent.
+    asyncio.create_task(
+        _precompute_solution(q.id, q.question, q.reference_sql, schema),
+    )
+
     return _question_response_from_state(q)
 
 
@@ -283,6 +316,42 @@ async def select_question(req: SelectQuestionRequest) -> QuestionResponse:
             _remember_question(q)
             return _question_response_from_state(q)
     raise HTTPException(status_code=404, detail="Question not found in history.")
+
+
+@app.post("/api/run_query", response_model=RunQueryResponse)
+async def run_query(req: RunQueryRequest) -> RunQueryResponse:
+    """Execute the learner's SQL read-only and return the rows. No grading,
+    no comparison to the reference. Used for free-form iteration."""
+    normalized = req.sql.strip().rstrip(";")
+    if not READONLY_PATTERN.search(normalized) or WRITE_PATTERN.search(normalized):
+        return RunQueryResponse(
+            status="error",
+            error_message="Only SELECT or WITH queries can be run here.",
+        )
+
+    started = perf_counter()
+    try:
+        async with engine.connect() as conn:
+            trans = await conn.begin()
+            try:
+                await conn.execute(sql_text("SET LOCAL statement_timeout = '5s'"))
+                result = await conn.execute(sql_text(normalized))
+                cols = list(result.keys())
+                rows = [[_json_safe(v) for v in r] for r in result.fetchall()]
+            finally:
+                await trans.rollback()
+    except Exception as e:
+        return RunQueryResponse(
+            status="error",
+            error_message=str(e).split("\n")[0],
+            execution_time_ms=round((perf_counter() - started) * 1000, 2),
+        )
+
+    return RunQueryResponse(
+        status="ok",
+        output=TableResult(columns=cols, rows=rows),
+        execution_time_ms=round((perf_counter() - started) * 1000, 2),
+    )
 
 
 @app.post("/api/submit", response_model=GradeResult)
@@ -419,15 +488,28 @@ async def give_up() -> GiveUpResponse:
     if q is None:
         raise HTTPException(status_code=400, detail="No active question.")
 
-    schema = await data_gen.get_schema_info()
-    try:
-        data = await llm.explain_solution(q.question, q.reference_sql, schema)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e)) from e
+    # Use the pre-computed solution from new_question if the background task
+    # already finished; otherwise generate on demand and cache for next time.
+    data = q.solution
+    if data is None:
+        schema = await data_gen.get_schema_info()
+        try:
+            data = await llm.explain_solution(q.question, q.reference_sql, schema)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=str(e)) from e
+        q.solution = data
+
+    breakdown_raw = data.get("breakdown") or []
+    breakdown_items: list[BreakdownItem] = []
+    for item in breakdown_raw:
+        if isinstance(item, dict) and "phrase" in item and "means" in item:
+            breakdown_items.append(BreakdownItem(phrase=item["phrase"], means=item["means"]))
 
     return GiveUpResponse(
         reference_sql=q.reference_sql,
-        summary=data["summary"],
-        steps=[SolutionStep(**s) for s in data["steps"]],
-        final_thought=data["final_thought"],
+        summary=data.get("summary", ""),
+        breakdown=breakdown_items,
+        approach=data.get("approach", ""),
+        steps=[SolutionStep(**s) for s in data.get("steps", [])],
+        final_thought=data.get("final_thought", ""),
     )

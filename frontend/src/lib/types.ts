@@ -86,9 +86,23 @@ export type SolutionStep = {
   how_postgres_reads_it: string;
 };
 
+export type BreakdownItem = {
+  phrase: string;
+  means: string;
+};
+
+export type RunQueryResponse = {
+  status: "ok" | "error";
+  output: { columns: string[]; rows: unknown[][] } | null;
+  error_message: string | null;
+  execution_time_ms: number | null;
+};
+
 export type GiveUpResponse = {
   reference_sql: string;
   summary: string;
+  breakdown?: BreakdownItem[];
+  approach?: string;
   steps: SolutionStep[];
   final_thought: string;
 };

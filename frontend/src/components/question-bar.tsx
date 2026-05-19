@@ -14,7 +14,9 @@ import {
   Lightbulb,
   Link2,
   Loader2,
+  Search,
   Table2,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -415,8 +417,10 @@ function CategoryConceptSelect({
   const [open, setOpen] = React.useState(false);
   const [view, setView] = React.useState<"categories" | "concepts">("categories");
   const [activeCategoryId, setActiveCategoryId] = React.useState<string | null>(null);
+  const [query, setQuery] = React.useState("");
   const triggerRef = React.useRef<HTMLButtonElement | null>(null);
   const menuRef = React.useRef<HTMLDivElement | null>(null);
+  const searchInputRef = React.useRef<HTMLInputElement | null>(null);
   const [pos, setPos] = React.useState<{
     top: number;
     left: number;
@@ -428,11 +432,13 @@ function CategoryConceptSelect({
   const activeCategory = CONCEPT_CATEGORIES.find((c) => c.id === activeCategoryId);
 
   // When the menu opens, drill into the category of the currently selected concept
-  // so the user lands in context. Reset on close.
+  // so the user lands in context. Reset on close. Auto-focus the search box so
+  // typing immediately filters.
   React.useEffect(() => {
     if (!open) {
       setView("categories");
       setActiveCategoryId(null);
+      setQuery("");
       return;
     }
     const initial = findCategoryIdForConcept(value);
@@ -440,7 +446,32 @@ function CategoryConceptSelect({
       setActiveCategoryId(initial);
       setView("concepts");
     }
+    // Defer to next frame so the input exists in the portal.
+    const t = window.setTimeout(() => searchInputRef.current?.focus(), 40);
+    return () => window.clearTimeout(t);
   }, [open, value]);
+
+  // Flat search across every concept (label + value) plus category match.
+  const searchResults = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return null;
+    const out: Array<{
+      value: string;
+      label: string;
+      categoryLabel: string;
+    }> = [];
+    for (const cat of CONCEPT_CATEGORIES) {
+      const catMatch = cat.label.toLowerCase().includes(q);
+      for (const [v, label] of cat.concepts) {
+        const labelMatch =
+          label.toLowerCase().includes(q) || v.toLowerCase().includes(q);
+        if (labelMatch || catMatch) {
+          out.push({ value: v, label, categoryLabel: cat.label });
+        }
+      }
+    }
+    return out;
+  }, [query]);
 
   React.useLayoutEffect(() => {
     if (!open) return;
@@ -550,8 +581,78 @@ function CategoryConceptSelect({
                 }}
                 className="z-50 flex w-72 flex-col overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-xl shadow-background/40"
               >
+                {/* Sticky search header */}
+                <div className="shrink-0 p-1">
+                  <div className="flex h-8 items-center gap-2 rounded-lg border border-border bg-background px-2.5">
+                    <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <input
+                      ref={searchInputRef}
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search concepts..."
+                      className="h-full min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
+                    />
+                    {query && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuery("");
+                          searchInputRef.current?.focus();
+                        }}
+                        aria-label="Clear search"
+                        className="shrink-0 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
                 <AnimatePresence mode="wait" initial={false}>
-                  {view === "categories" ? (
+                  {searchResults ? (
+                    <motion.div
+                      key="search"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.12 }}
+                      className="flex min-h-0 flex-1 flex-col"
+                    >
+                      {searchResults.length === 0 ? (
+                        <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                          No matches for &ldquo;{query}&rdquo;
+                        </div>
+                      ) : (
+                        <div className="min-h-0 flex-1 overflow-y-auto">
+                          {searchResults.map((r) => {
+                            const active = r.value === value;
+                            return (
+                              <button
+                                key={r.value}
+                                type="button"
+                                onClick={() => pickConcept(r.value)}
+                                className={cn(
+                                  "flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left transition-colors",
+                                  active
+                                    ? "bg-muted text-foreground"
+                                    : "text-foreground hover:bg-muted/60",
+                                )}
+                              >
+                                <span className="min-w-0">
+                                  <span className="block truncate text-xs font-medium">
+                                    {r.label}
+                                  </span>
+                                  <span className="block truncate text-[10px] text-muted-foreground">
+                                    {r.categoryLabel}
+                                  </span>
+                                </span>
+                                {active && <Check className="h-3.5 w-3.5 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </motion.div>
+                  ) : view === "categories" ? (
                     <motion.div
                       key="categories"
                       initial={{ opacity: 0, x: -8 }}
