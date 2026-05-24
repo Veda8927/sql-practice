@@ -1191,3 +1191,143 @@ async def review_cleaning(payload: dict[str, Any]) -> dict[str, Any]:
     except (TypeError, ValueError):
         data["score"] = 0
     return data
+
+
+PY_QUESTION_SYSTEM_PROMPT = """You write beginner-to-intermediate Python practice exercises.
+Each exercise asks the learner to implement ONE function. You also write a reference
+solution and deterministic test cases that the reference passes.
+
+Return ONLY a JSON object:
+{
+  "prompt": "clear problem statement, 2-4 sentences, describe the function and its return value",
+  "entrypoint": "snake_case function name the learner must define",
+  "starter_code": "a function signature stub with a docstring and a pass body",
+  "reference_solution": "a correct, idiomatic Python implementation of the function",
+  "kind": "function",
+  "test_cases": [ {"args": [...], "kwargs": {...}, "expected": <json value>} ],
+  "concepts": ["..."],
+  "difficulty": "easy" | "medium" | "hard"
+}
+
+Rules:
+- Pure Python only. No I/O, no input(), no network, no file access, no randomness, no time,
+  no third-party packages. Tests must be fully deterministic.
+- expected values must be JSON-serializable (numbers, strings, booleans, null, lists, dicts).
+  Tuples are fine in the solution but write expected as a list.
+- Provide 4-7 test cases covering normal and edge cases.
+- The reference_solution must define exactly the entrypoint function and pass every test.
+- Match the requested concept and difficulty when given. Keep it self-contained and small."""
+
+
+async def generate_python_question(
+    concept: str | None,
+    difficulty: str | None,
+    recent_prompts: list[str] | None = None,
+) -> dict[str, Any]:
+    client = _get_client()
+    payload = {
+        "concept": concept,
+        "difficulty": difficulty,
+        "avoid_repeating": (recent_prompts or [])[:8],
+    }
+    completion = await client.chat.completions.create(
+        model=settings.openai_model,
+        messages=[
+            {"role": "system", "content": PY_QUESTION_SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(payload)},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.6,
+    )
+    raw = completion.choices[0].message.content or "{}"
+    data = json.loads(raw)
+    data.setdefault("kind", "function")
+    data.setdefault("test_cases", [])
+    data.setdefault("concepts", [concept] if concept else [])
+    data.setdefault("difficulty", difficulty or "easy")
+    data.setdefault("starter_code", "")
+    return data
+
+
+PY_HINT_SYSTEM_PROMPT = """You are a kind Python tutor. Given a problem and the learner's
+current code, give ONE concrete next hint without writing the full solution.
+Return ONLY JSON: {"hint": "one or two sentences", "suggested_code": "optional small snippet or null"}."""
+
+
+async def python_hint(
+    prompt: str, reference_solution: str, user_code: str | None
+) -> dict[str, Any]:
+    client = _get_client()
+    payload = {"problem": prompt, "reference_solution": reference_solution, "user_code": user_code}
+    completion = await client.chat.completions.create(
+        model=settings.openai_model,
+        messages=[
+            {"role": "system", "content": PY_HINT_SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(payload, default=str)},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.3,
+    )
+    data = json.loads(completion.choices[0].message.content or "{}")
+    data.setdefault("hint", "Try breaking the problem into smaller steps.")
+    data.setdefault("suggested_code", None)
+    return data
+
+
+PY_EXPLAIN_SYSTEM_PROMPT = """You are a Python tutor. The learner's solution failed some
+test cases. Explain in plain English what likely went wrong and how to think about fixing
+it, without dumping the full corrected solution. Return ONLY JSON: {"explanation": "..."}."""
+
+
+async def explain_python_mistake(
+    prompt: str, reference_solution: str, user_code: str, failing: list[dict[str, Any]]
+) -> dict[str, Any]:
+    client = _get_client()
+    payload = {
+        "problem": prompt,
+        "reference_solution": reference_solution,
+        "user_code": user_code,
+        "failing_tests": failing[:6],
+    }
+    completion = await client.chat.completions.create(
+        model=settings.openai_model,
+        messages=[
+            {"role": "system", "content": PY_EXPLAIN_SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(payload, default=str)},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.3,
+    )
+    data = json.loads(completion.choices[0].message.content or "{}")
+    data.setdefault("explanation", "I couldn't generate an explanation. Please try again.")
+    return data
+
+
+PY_SOLUTION_SYSTEM_PROMPT = """You are a Python tutor walking a beginner through a solution.
+Return ONLY JSON:
+{
+  "summary": "1-2 sentence plain-English overview",
+  "steps": [ {"title": "...", "what_it_does": "...", "code": "small snippet", "how_it_runs": "plain English"} ],
+  "final_thought": "one encouraging takeaway"
+}
+Use 3-5 steps. Keep language simple."""
+
+
+async def explain_python_solution(prompt: str, reference_solution: str) -> dict[str, Any]:
+    client = _get_client()
+    payload = {"problem": prompt, "reference_solution": reference_solution}
+    completion = await client.chat.completions.create(
+        model=settings.openai_model,
+        messages=[
+            {"role": "system", "content": PY_SOLUTION_SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(payload, default=str)},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.3,
+    )
+    data = json.loads(completion.choices[0].message.content or "{}")
+    data.setdefault("summary", "")
+    if not isinstance(data.get("steps"), list):
+        data["steps"] = []
+    data.setdefault("final_thought", "")
+    return data
