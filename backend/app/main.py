@@ -15,6 +15,7 @@ from sqlalchemy import text as sql_text
 
 from . import data_gen, llm
 from .db import engine
+from .deps import SessionDep
 from .grader import _json_safe, grade
 from .schemas import (
     BreakdownItem,
@@ -44,7 +45,6 @@ from .schemas import (
     TableResult,
     TypoCorrection,
 )
-from .deps import SessionDep
 from .state import CurrentQuestion, LastGrade, SessionState, get_session_state
 
 READONLY_PATTERN = re.compile(r"^\s*(WITH|SELECT)\b", re.IGNORECASE)
