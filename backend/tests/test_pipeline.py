@@ -63,3 +63,47 @@ async def test_pipeline_runs_rules(loaded):
     by_id = {r["id"]: r for r in out["validation"]}
     assert by_id["r0"]["status"] == "pass"
     assert by_id["r1"]["status"] == "fail"  # alice appears twice after cleaning
+
+
+@pytest.mark.asyncio
+async def test_tiered_profiling(loaded):
+    steps = [
+        {"title": "s1", "sql": "SELECT name, amount FROM prev"},
+        {"title": "s2", "sql": "SELECT name, amount FROM prev"},
+    ]
+    out = await pipeline.run_pipeline(TABLE, steps, rules=[])
+    raw, mid, final = out["stages"][0], out["stages"][1], out["stages"][2]
+    assert raw["distinct_row_count"] is not None
+    assert final["distinct_row_count"] is not None
+    assert mid["distinct_row_count"] is None
+    assert raw["columns"][0]["distinct"] is not None
+    assert mid["columns"][0]["distinct"] is None
+    assert all("nulls" in c for c in mid["columns"])
+
+
+@pytest.mark.asyncio
+async def test_validate_pipeline_pass_fail(loaded):
+    steps = [{"title": "clean",
+              "sql": "SELECT LOWER(TRIM(name)) AS name FROM prev WHERE name IS NOT NULL"}]
+    rules = [
+        {"id": "r0", "type": "not_null", "label": "nn",
+         "params": {"column": "name"}, "enabled": True},
+        {"id": "r1", "type": "no_duplicate_rows", "label": "dup",
+         "params": {}, "enabled": True},
+    ]
+    out = await pipeline.validate_pipeline(TABLE, steps, rules)
+    assert out["ok"] is True
+    assert "stages" not in out
+    by_id = {r["id"]: r for r in out["validation"]}
+    assert by_id["r0"]["status"] == "pass"
+    assert by_id["r1"]["status"] == "fail"
+
+
+@pytest.mark.asyncio
+async def test_validate_pipeline_bad_step(loaded):
+    out = await pipeline.validate_pipeline(
+        TABLE, [{"title": "boom", "sql": "SELECT nope FROM prev"}], rules=[])
+    assert out["ok"] is False
+    assert out["failed_step_index"] == 0
+    assert out["error_message"]
+    assert out["validation"] == []
