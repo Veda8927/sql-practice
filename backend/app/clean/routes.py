@@ -12,7 +12,7 @@ from ..deps import SessionDep
 from ..schemas import TableResult
 from ..state import SessionState
 from . import generate, ingest
-from .pipeline import run_pipeline
+from .pipeline import run_pipeline, validate_pipeline
 from .schemas import (
     DatasetSummary,
     GenerateRequest,
@@ -20,6 +20,8 @@ from .schemas import (
     ReviewResponse,
     RunRequest,
     RunResponse,
+    ValidateRequest,
+    ValidateResponse,
 )
 from .state import CleanSession
 
@@ -111,6 +113,18 @@ async def run(req: RunRequest, state: SessionDep) -> RunResponse:
         up_to_index=req.up_to_index,
     )
     return RunResponse(**out)
+
+
+@router.post("/validate", response_model=ValidateResponse)
+async def validate(req: ValidateRequest, state: SessionDep) -> ValidateResponse:
+    if state.clean is None:
+        raise HTTPException(status_code=400, detail="Upload or generate a dataset first.")
+    out = await validate_pipeline(
+        state.clean.table,
+        [s.model_dump() for s in req.steps],
+        [r.model_dump() for r in req.rules],
+    )
+    return ValidateResponse(**out)
 
 
 @router.post("/review", response_model=ReviewResponse)
