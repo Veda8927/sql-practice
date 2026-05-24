@@ -37,6 +37,9 @@ class SessionState:
     question_history: list[CurrentQuestion] = field(default_factory=list)
     schema_cache: dict[str, Any] = field(default_factory=dict)
     clean: CleanSession | None = None
+    # Python practice mode (Phase 1): active exercise + last grade, stored as plain dicts.
+    py_current: dict[str, Any] | None = None
+    py_last_grade: dict[str, Any] | None = None
 
 
 # Per-session-id state map. Two different browsers (different cookies) get
