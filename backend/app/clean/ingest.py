@@ -71,3 +71,25 @@ def guess_type(values: list[str]) -> str:
     if all(v.lower() in _BOOLS for v in vals):
         return "boolean"
     return "text"
+
+
+def parse_csv(raw: bytes) -> tuple[list[str], list[list[Any]]]:
+    """Parse CSV bytes -> (header, rows). Empty cells become None. Enforces caps."""
+    if len(raw) > MAX_BYTES:
+        raise ValueError(f"File too large (max {MAX_BYTES // (1024 * 1024)} MB).")
+    decoded = raw.decode("utf-8-sig", errors="replace")
+    reader = csv.reader(io.StringIO(decoded))
+    all_rows = [r for r in reader if any(c.strip() for c in r)]
+    if not all_rows:
+        raise ValueError("The file has no rows.")
+    header = [h.strip() for h in all_rows[0]]
+    if len(header) == 0:
+        raise ValueError("The file has no header row.")
+    if len(header) > MAX_COLS:
+        raise ValueError(f"Too many columns (max {MAX_COLS}).")
+    width = len(header)
+    data: list[list[Any]] = []
+    for raw_row in all_rows[1 : MAX_ROWS + 1]:
+        row = list(raw_row[:width]) + [""] * (width - len(raw_row))
+        data.append([(c if c.strip() != "" else None) for c in row])
+    return header, data
