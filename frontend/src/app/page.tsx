@@ -13,6 +13,7 @@ import {
   Sparkles,
   Sun,
   Table2,
+  Wand2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,6 +38,7 @@ import { SqlEditor, PLACEHOLDER } from "@/components/sql-editor";
 import { ResultsPanel } from "@/components/results-panel";
 import { ShortcutsModal } from "@/components/shortcuts-modal";
 import { SyllabusView } from "@/components/syllabus-view";
+import { CleanView } from "@/components/clean/clean-view";
 import {
   StreakBadge,
   recordStreak,
@@ -288,7 +290,7 @@ export default function Page() {
   const [curatedQuestion, setCuratedQuestion] =
     React.useState<CuratedQuestion | null>(null);
   const [curatedHintIndex, setCuratedHintIndex] = React.useState(0);
-  const [mode, setMode] = React.useState<"practice" | "learn">("practice");
+  const [mode, setMode] = React.useState<"practice" | "learn" | "clean">("practice");
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const [lastRunMs, setLastRunMs] = React.useState<number | null>(null);
   const [errorHelp, setErrorHelp] = React.useState<ErrorHelpResponse | null>(
@@ -723,6 +725,19 @@ export default function Page() {
               <PlayCircle className="h-3.5 w-3.5" />
               Practice
             </button>
+            <button
+              type="button"
+              onClick={() => setMode("clean")}
+              className={cn(
+                "flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
+                mode === "clean"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Wand2 className="h-3.5 w-3.5" />
+              Clean
+            </button>
           </div>
           {mode === "practice" && <StreakBadge />}
         </div>
@@ -819,7 +834,9 @@ export default function Page() {
 
       {/* Main column */}
       <main className="flex flex-1 flex-col overflow-hidden">
-        {mode === "learn" ? (
+        {mode === "clean" ? (
+          <CleanView />
+        ) : mode === "learn" ? (
           <SyllabusView
             onPracticeConcept={(concept, difficulty) => {
               setMode("practice");
