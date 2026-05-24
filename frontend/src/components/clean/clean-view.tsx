@@ -2,6 +2,11 @@
 
 import * as React from "react";
 import { Loader2, RotateCcw, Sparkles } from "lucide-react";
+import {
+  Group as PanelGroup,
+  Panel,
+  Separator as PanelResizeHandle,
+} from "react-resizable-panels";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,7 +25,20 @@ import type {
   Step,
 } from "@/lib/clean-types";
 
+function useWide() {
+  const [wide, setWide] = React.useState(true);
+  React.useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setWide(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return wide;
+}
+
 export function CleanView() {
+  const wide = useWide();
   const [dataset, setDataset] = React.useState<DatasetSummary | null>(null);
   const [steps, setSteps] = React.useState<Step[]>([]);
   const [rules, setRules] = React.useState<Rule[]>([]);
@@ -96,16 +114,27 @@ export function CleanView() {
     }
   }, []);
 
-  // Re-validate when rules change, but only once we already have a successful run.
+  // When rules change after a successful run, re-check them via the lightweight
+  // /validate path (no full pipeline re-run / re-profiling) and merge the results.
   const hasRun = run?.ok ?? false;
   React.useEffect(() => {
-    if (hasRun) void doRun();
+    if (!hasRun) return;
+    let cancelled = false;
+    cleanApi
+      .validate(stepsRef.current, rulesRef.current)
+      .then((v) => {
+        if (cancelled) return;
+        setRun((prev) => (prev ? { ...prev, validation: v.validation } : prev));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rules]);
 
   async function doReview() {
     setReviewing(true);
-    setTab("review");
     try {
       setReview(await cleanApi.review(stepsRef.current, rulesRef.current));
     } catch (e) {
@@ -141,34 +170,18 @@ export function CleanView() {
             · {dataset.row_count} rows · {dataset.columns.length} cols
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5"
-            onClick={doReview}
-            disabled={reviewing}
-          >
-            {reviewing ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="h-3.5 w-3.5" />
-            )}
-            AI review
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 gap-1.5 text-muted-foreground"
-            onClick={reset}
-          >
-            <RotateCcw className="h-3.5 w-3.5" /> New dataset
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 gap-1.5 text-muted-foreground"
+          onClick={reset}
+        >
+          <RotateCcw className="h-3.5 w-3.5" /> New dataset
+        </Button>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
-        <div className="min-h-0 border-b border-border lg:border-b-0 lg:border-r">
+      <PanelGroup orientation={wide ? "horizontal" : "vertical"} className="min-h-0 flex-1">
+        <Panel defaultSize="45%" minSize="25%" className="min-h-0">
           <PipelinePanel
             steps={steps}
             onChange={setSteps}
@@ -178,10 +191,16 @@ export function CleanView() {
             errorMessage={run?.error_message ?? null}
             stageRowCounts={stageRowCounts}
           />
-        </div>
-
-        <div className="flex min-h-0 flex-col">
-          <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
+        </Panel>
+        <PanelResizeHandle
+          className={
+            wide
+              ? "w-px bg-border transition-colors hover:bg-primary/40"
+              : "h-px bg-border transition-colors hover:bg-primary/40"
+          }
+        />
+        <Panel defaultSize="55%" minSize="30%" className="min-h-0">
+          <Tabs value={tab} onValueChange={setTab} className="flex h-full min-h-0 flex-col">
             <TabsList className="m-3 mb-0 self-start">
               <TabsTrigger value="data">Data</TabsTrigger>
               <TabsTrigger value="audit">Audit</TabsTrigger>
@@ -209,17 +228,30 @@ export function CleanView() {
                     <Loader2 className="h-4 w-4 animate-spin" /> Reviewing…
                   </div>
                 ) : review ? (
-                  <ReviewCard review={review} />
+                  <div className="flex flex-col gap-3">
+                    <ReviewCard review={review} />
+                    <button
+                      onClick={doReview}
+                      className="self-start text-xs text-primary hover:underline"
+                    >
+                      Re-run review
+                    </button>
+                  </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground">
-                    Click “AI review” to get feedback on your pipeline.
+                  <div className="flex flex-col items-center gap-3 py-10 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Get AI feedback on your cleaning pipeline.
+                    </p>
+                    <Button size="sm" className="gap-1.5" onClick={doReview}>
+                      <Sparkles className="h-3.5 w-3.5" /> Get AI review
+                    </Button>
                   </div>
                 )}
               </TabsContent>
             </div>
           </Tabs>
-        </div>
-      </div>
+        </Panel>
+      </PanelGroup>
     </div>
   );
 }
