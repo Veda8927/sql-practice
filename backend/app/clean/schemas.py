@@ -17,14 +17,14 @@ class ColumnProfile(BaseModel):
     ident: str
     non_null: int
     nulls: int
-    distinct: int
+    distinct: int | None = None
 
 
 class StageProfile(BaseModel):
     index: int
     label: str
     row_count: int
-    distinct_row_count: int
+    distinct_row_count: int | None = None
     columns: list[ColumnProfile]
 
 
@@ -71,6 +71,18 @@ class RunResponse(BaseModel):
     error_message: str | None = None
     final_preview: TableResult | None = None
     stages: list[StageProfile] = []
+    validation: list[RuleResult] = []
+
+
+class ValidateRequest(BaseModel):
+    steps: list[StepModel] = []
+    rules: list[RuleModel] = []
+
+
+class ValidateResponse(BaseModel):
+    ok: bool
+    failed_step_index: int | None = None
+    error_message: str | None = None
     validation: list[RuleResult] = []
 
 
