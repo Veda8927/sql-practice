@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/sqlpractice"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    # Python executor (Phase 1): interpreter for running user code (empty = sys.executable).
+    python_bin: str = ""
+    pyexec_timeout_s: float = 6.0
 
     model_config = SettingsConfigDict(
         env_file=[
