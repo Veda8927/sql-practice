@@ -39,7 +39,7 @@ export function UploadDropzone({ onFile, onGenerate, busy }: Props) {
       >
         <Upload className="h-7 w-7 text-muted-foreground" />
         <div className="text-sm font-medium">Drop a CSV here, or click to choose</div>
-        <div className="text-xs text-muted-foreground">Up to 2 MB · 5,000 rows · 60 columns</div>
+        <div className="text-xs text-muted-foreground">Up to 25 MB · 200,000 rows · 60 columns</div>
         <input
           ref={inputRef}
           type="file"

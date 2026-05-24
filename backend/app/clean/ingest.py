@@ -11,8 +11,8 @@ from sqlalchemy import text
 
 from ..db import engine
 
-MAX_BYTES = 2 * 1024 * 1024
-MAX_ROWS = 5000
+MAX_BYTES = 25 * 1024 * 1024
+MAX_ROWS = 200_000
 MAX_COLS = 60
 
 _NON_IDENT = re.compile(r"[^a-z0-9_]+")
