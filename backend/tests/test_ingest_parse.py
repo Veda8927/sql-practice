@@ -28,6 +28,8 @@ def test_parse_rejects_too_many_cols():
 
 
 def test_parse_caps_rows():
-    body = "A\n" + "\n".join(str(i) for i in range(6000)) + "\n"
+    from app.clean.ingest import MAX_ROWS
+
+    body = "A\n" + "\n".join(str(i) for i in range(MAX_ROWS + 100)) + "\n"
     _, rows = parse_csv(body.encode())
-    assert len(rows) == 5000
+    assert len(rows) == MAX_ROWS
