@@ -108,7 +108,9 @@ export type Topic = {
   /** New, richer content. If present, takes precedence over `body`. */
   richBody?: ContentBlock[];
   examples: Example[];
-  practiceConcept?: PracticeConcept;
+  /** Concept slug to pre-select in Practice mode. SQL uses PracticeConcept values;
+   * other languages (e.g. Python) use their own concept slugs, so this is a string. */
+  practiceConcept?: string;
 };
 
 export type Module = {

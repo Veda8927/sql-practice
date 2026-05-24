@@ -231,6 +231,8 @@ type Difficulty = "easy" | "medium" | "hard";
 
 type Props = {
   onPracticeConcept: (concept: string, difficulty?: Difficulty) => void;
+  /** Syllabus to render. Defaults to the SQL syllabus; pass another for e.g. Python. */
+  syllabus?: Module[];
 };
 
 function topicMatches(t: Topic, q: string): boolean {
@@ -263,12 +265,12 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
-export function SyllabusView({ onPracticeConcept }: Props) {
+export function SyllabusView({ onPracticeConcept, syllabus = SYLLABUS }: Props) {
   const [activeTopicId, setActiveTopicId] = React.useState<string>(
-    SYLLABUS[0]?.topics[0]?.id ?? "",
+    syllabus[0]?.topics[0]?.id ?? "",
   );
   const [openModules, setOpenModules] = React.useState<Record<string, boolean>>(
-    () => ({ [SYLLABUS[0]?.id ?? ""]: true }),
+    () => ({ [syllabus[0]?.id ?? ""]: true }),
   );
   const [search, setSearch] = React.useState("");
   const searchRef = React.useRef<HTMLInputElement | null>(null);
@@ -290,12 +292,12 @@ export function SyllabusView({ onPracticeConcept }: Props) {
   const q = search.trim().toLowerCase();
 
   const filtered: Module[] = React.useMemo(() => {
-    if (!q) return SYLLABUS;
-    return SYLLABUS.map((m) => ({
+    if (!q) return syllabus;
+    return syllabus.map((m) => ({
       ...m,
       topics: m.topics.filter((t) => topicMatches(t, q)),
     })).filter((m) => m.topics.length > 0);
-  }, [q]);
+  }, [q, syllabus]);
 
   // When searching, auto-expand every module that has matches.
   React.useEffect(() => {
@@ -312,13 +314,13 @@ export function SyllabusView({ onPracticeConcept }: Props) {
 
   const activeTopic: { module: Module; topic: Topic } | null = React.useMemo(
     () => {
-      for (const m of SYLLABUS) {
+      for (const m of syllabus) {
         const t = m.topics.find((t) => t.id === activeTopicId);
         if (t) return { module: m, topic: t };
       }
       return null;
     },
-    [activeTopicId],
+    [activeTopicId, syllabus],
   );
 
   return (
@@ -368,7 +370,7 @@ export function SyllabusView({ onPracticeConcept }: Props) {
               <div className="space-y-1">
                 {filtered.map((module) => {
                   const isOpen = !!openModules[module.id];
-                  const moduleIndex = SYLLABUS.findIndex(
+                  const moduleIndex = syllabus.findIndex(
                     (m) => m.id === module.id,
                   );
                   return (
@@ -511,6 +513,7 @@ export function SyllabusView({ onPracticeConcept }: Props) {
               )}
 
               <NavButtons
+                syllabus={syllabus}
                 topicId={activeTopic.topic.id}
                 onNavigate={setActiveTopicId}
                 onOpenModule={(id) =>
@@ -577,20 +580,22 @@ function PracticeCta({
 }
 
 function NavButtons({
+  syllabus,
   topicId,
   onNavigate,
   onOpenModule,
 }: {
+  syllabus: Module[];
   topicId: string;
   onNavigate: (id: string) => void;
   onOpenModule: (id: string) => void;
 }) {
   const flat = React.useMemo(
     () =>
-      SYLLABUS.flatMap((m) =>
+      syllabus.flatMap((m) =>
         m.topics.map((t) => ({ topicId: t.id, moduleId: m.id })),
       ),
-    [],
+    [syllabus],
   );
   const idx = flat.findIndex((x) => x.topicId === topicId);
   const prev = idx > 0 ? flat[idx - 1] : null;
