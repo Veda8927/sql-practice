@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text as sql_text
 
 from . import data_gen, llm
+from .clean.routes import router as clean_router
 from .db import engine
 from .deps import SessionDep
 from .grader import _json_safe, grade
@@ -207,6 +208,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(clean_router)
 
 
 @app.get("/api/health")
