@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from threading import Lock
 from typing import Any
 
+from .clean.state import CleanSession
+
 
 @dataclass
 class CurrentQuestion:
@@ -28,11 +30,13 @@ class LastGrade:
 
 @dataclass
 class SessionState:
+    sid: str = ""
     seed: int = 42
     current_question: CurrentQuestion | None = None
     last_grade: LastGrade | None = None
     question_history: list[CurrentQuestion] = field(default_factory=list)
     schema_cache: dict[str, Any] = field(default_factory=dict)
+    clean: CleanSession | None = None
 
 
 # Per-session-id state map. Two different browsers (different cookies) get
@@ -46,6 +50,6 @@ def get_session_state(session_id: str) -> SessionState:
     with _SESSIONS_LOCK:
         s = _SESSIONS.get(session_id)
         if s is None:
-            s = SessionState()
+            s = SessionState(sid=session_id)
             _SESSIONS[session_id] = s
         return s

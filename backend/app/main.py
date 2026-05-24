@@ -44,30 +44,8 @@ from .schemas import (
     TableResult,
     TypoCorrection,
 )
+from .deps import SessionDep
 from .state import CurrentQuestion, LastGrade, SessionState, get_session_state
-
-SESSION_COOKIE = "sql_session_id"
-
-
-def _session_dep(request: Request, response: Response) -> SessionState:
-    """FastAPI dependency: returns the SessionState for this browser. Reads
-    a UUID from the `sql_session_id` cookie, sets one if missing."""
-    sid = request.cookies.get(SESSION_COOKIE)
-    if not sid:
-        sid = str(uuid.uuid4())
-        response.set_cookie(
-            SESSION_COOKIE,
-            sid,
-            max_age=60 * 60 * 24 * 30,  # 30 days
-            samesite="lax",
-            httponly=False,  # frontend may need to read; not a security cookie
-            path="/",
-        )
-    return get_session_state(sid)
-
-
-# Alias used in every endpoint signature. Avoids B008 (Depends() in defaults).
-SessionDep = Annotated[SessionState, Depends(_session_dep)]
 
 READONLY_PATTERN = re.compile(r"^\s*(WITH|SELECT)\b", re.IGNORECASE)
 WRITE_PATTERN = re.compile(
