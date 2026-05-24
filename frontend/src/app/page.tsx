@@ -4,6 +4,7 @@ import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
+  Code2,
   History,
   Keyboard,
   Loader2,
@@ -39,6 +40,7 @@ import { ResultsPanel } from "@/components/results-panel";
 import { ShortcutsModal } from "@/components/shortcuts-modal";
 import { SyllabusView } from "@/components/syllabus-view";
 import { CleanView } from "@/components/clean/clean-view";
+import { PythonView } from "@/components/python/python-view";
 import {
   StreakBadge,
   recordStreak,
@@ -290,7 +292,7 @@ export default function Page() {
   const [curatedQuestion, setCuratedQuestion] =
     React.useState<CuratedQuestion | null>(null);
   const [curatedHintIndex, setCuratedHintIndex] = React.useState(0);
-  const [mode, setMode] = React.useState<"practice" | "learn" | "clean">("practice");
+  const [mode, setMode] = React.useState<"practice" | "learn" | "clean" | "python">("practice");
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const [lastRunMs, setLastRunMs] = React.useState<number | null>(null);
   const [errorHelp, setErrorHelp] = React.useState<ErrorHelpResponse | null>(
@@ -738,6 +740,19 @@ export default function Page() {
               <Wand2 className="h-3.5 w-3.5" />
               Clean
             </button>
+            <button
+              type="button"
+              onClick={() => setMode("python")}
+              className={cn(
+                "flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
+                mode === "python"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Code2 className="h-3.5 w-3.5" />
+              Python
+            </button>
           </div>
           {mode === "practice" && <StreakBadge />}
         </div>
@@ -834,7 +849,9 @@ export default function Page() {
 
       {/* Main column */}
       <main className="flex flex-1 flex-col overflow-hidden">
-        {mode === "clean" ? (
+        {mode === "python" ? (
+          <PythonView />
+        ) : mode === "clean" ? (
           <CleanView />
         ) : mode === "learn" ? (
           <SyllabusView
