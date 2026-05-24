@@ -4,6 +4,7 @@ import type {
   Rule,
   RunResponse,
   Step,
+  ValidateResponse,
 } from "./clean-types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -55,5 +56,7 @@ export const cleanApi = {
     }),
   review: (steps: Step[], rules: Rule[]) =>
     postJson<ReviewResponse>("/api/clean/review", { steps, rules }),
+  validate: (steps: Step[], rules: Rule[]) =>
+    postJson<ValidateResponse>("/api/clean/validate", { steps, rules }),
   reset: () => postJson<{ ok: boolean }>("/api/clean/reset", {}),
 };

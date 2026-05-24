@@ -1,12 +1,12 @@
 import type { TableResult } from "./types";
 
 export type ColumnMeta = { name: string; ident: string; guessed_type: string };
-export type ColumnProfile = { ident: string; non_null: number; nulls: number; distinct: number };
+export type ColumnProfile = { ident: string; non_null: number; nulls: number; distinct: number | null };
 export type StageProfile = {
   index: number;
   label: string;
   row_count: number;
-  distinct_row_count: number;
+  distinct_row_count: number | null;
   columns: ColumnProfile[];
 };
 export type RuleType =
@@ -50,4 +50,10 @@ export type ReviewResponse = {
   suggestions: string[];
   praise: string[];
   score: number;
+};
+export type ValidateResponse = {
+  ok: boolean;
+  failed_step_index: number | null;
+  error_message: string | null;
+  validation: RuleResult[];
 };

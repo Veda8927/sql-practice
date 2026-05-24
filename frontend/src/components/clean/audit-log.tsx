@@ -34,10 +34,14 @@ export function AuditLog({ stages }: { stages: StageProfile[] }) {
         const removed = [...prevCols].filter((c) => !curCols.has(c));
         const nullsBefore = prev ? prev.columns.reduce((a, c) => a + c.nulls, 0) : 0;
         const nullsNow = stage.columns.reduce((a, c) => a + c.nulls, 0);
-        const dupBefore = prev ? prev.row_count - prev.distinct_row_count : 0;
-        const dupNow = stage.row_count - stage.distinct_row_count;
+        const dupNow =
+          stage.distinct_row_count == null ? null : stage.row_count - stage.distinct_row_count;
+        const dupBefore =
+          prev && prev.distinct_row_count != null
+            ? prev.row_count - prev.distinct_row_count
+            : null;
         return (
-          <div key={stage.index} className="rounded-lg border border-border bg-card p-3">
+          <div key={stage.index} className="rounded-md border border-border/60 bg-card/50 p-3">
             <div className="mb-2 flex items-center gap-2 text-sm font-medium">
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[11px]">
                 {stage.index}
@@ -46,7 +50,13 @@ export function AuditLog({ stages }: { stages: StageProfile[] }) {
             </div>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
               <Stat label="Rows" value={stage.row_count} extra={prev ? delta(prev.row_count, stage.row_count) : null} />
-              <Stat label="Duplicates" value={dupNow} extra={prev ? delta(dupBefore, dupNow) : null} />
+              {dupNow != null && (
+                <Stat
+                  label="Duplicates"
+                  value={dupNow}
+                  extra={dupBefore != null ? delta(dupBefore, dupNow) : null}
+                />
+              )}
               <Stat label="Total nulls" value={nullsNow} extra={prev ? delta(nullsBefore, nullsNow) : null} />
               <Stat label="Columns" value={stage.columns.length} extra={null} />
             </dl>
