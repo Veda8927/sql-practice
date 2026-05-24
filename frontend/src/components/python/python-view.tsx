@@ -20,6 +20,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PyEditor } from "@/components/python/py-editor";
 import { PyPrompt } from "@/components/python/py-prompt";
 import { TestResults } from "@/components/python/test-results";
+import { SyllabusView } from "@/components/syllabus-view";
+import { PY_SYLLABUS } from "@/lib/python-syllabus";
 import { pythonApi } from "@/lib/python-api";
 import {
   curatedPyHintAt,
@@ -56,6 +58,7 @@ function useWide() {
 export function PythonView() {
   const wide = useWide();
   const concepts = React.useMemo(() => listPyConcepts(), []);
+  const [view, setView] = React.useState<"learn" | "practice">("practice");
   const [source, setSource] = React.useState<Source>("ai");
   const [concept, setConcept] = React.useState(concepts[0]?.concept ?? "basics");
   const [difficulty, setDifficulty] = React.useState<PyDifficulty>("easy");
@@ -78,6 +81,8 @@ export function PythonView() {
 
   const codeRef = React.useRef(code);
   codeRef.current = code;
+  const questionRef = React.useRef(question);
+  questionRef.current = question;
 
   function resetCoach() {
     setRunResult(null);
@@ -88,34 +93,49 @@ export function PythonView() {
     hintIndex.current = 0;
   }
 
-  const newExercise = React.useCallback(async () => {
-    setLoadingNew(true);
-    resetCoach();
-    try {
-      if (source === "curated") {
-        const bank = await loadPyConceptBank(concept);
-        const ex = pickPyExercise(bank, { difficulty, excludeId: question?.id ?? null });
-        if (!ex) {
-          toast.error(`No curated ${difficulty} exercises for "${concept}" yet. Try another.`);
-          return;
+  const runNew = React.useCallback(
+    async (src: Source, con: string, diff: PyDifficulty) => {
+      setLoadingNew(true);
+      resetCoach();
+      try {
+        if (src === "curated") {
+          const bank = await loadPyConceptBank(con);
+          const ex = pickPyExercise(bank, { difficulty: diff, excludeId: questionRef.current?.id ?? null });
+          if (!ex) {
+            toast.error(`No curated ${diff} exercises for "${con}" yet. Try AI mode or another concept.`);
+            return;
+          }
+          const q = await pythonApi.loadCurated(ex);
+          setQuestion(q);
+          setCurated(ex);
+          setCode(ex.starter_code || "");
+        } else {
+          const q = await pythonApi.newQuestion({ concept: con, difficulty: diff });
+          setQuestion(q);
+          setCurated(null);
+          setCode(q.starter_code || "");
         }
-        const q = await pythonApi.loadCurated(ex);
-        setQuestion(q);
-        setCurated(ex);
-        setCode(ex.starter_code || "");
-      } else {
-        const q = await pythonApi.newQuestion({ concept, difficulty });
-        setQuestion(q);
-        setCurated(null);
-        setCode(q.starter_code || "");
+        setTab("output");
+      } catch (e) {
+        toast.error(String((e as Error).message));
+      } finally {
+        setLoadingNew(false);
       }
-      setTab("output");
-    } catch (e) {
-      toast.error(String((e as Error).message));
-    } finally {
-      setLoadingNew(false);
-    }
-  }, [source, concept, difficulty, question?.id]);
+    },
+    [],
+  );
+
+  const newExercise = React.useCallback(
+    () => runNew(source, concept, difficulty),
+    [runNew, source, concept, difficulty],
+  );
+
+  function practiceConcept(con: string) {
+    setView("practice");
+    setSource("ai"); // AI mode handles any concept, including ones without a curated bank
+    setConcept(con);
+    void runNew("ai", con, difficulty);
+  }
 
   async function run() {
     if (!question) return;
@@ -194,6 +214,30 @@ export function PythonView() {
 
   return (
     <div className="flex h-full flex-col">
+      {/* Learn / Practice toggle */}
+      <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+        <div className="flex items-center gap-0.5 rounded-full border border-border bg-muted/40 p-0.5">
+          {(["learn", "practice"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={
+                "rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors " +
+                (view === v ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {view === "learn" ? (
+        <div className="min-h-0 flex-1">
+          <SyllabusView syllabus={PY_SYLLABUS} onPracticeConcept={practiceConcept} />
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col">
       {/* control bar */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2">
         <div className="flex items-center gap-0.5 rounded-full border border-border bg-muted/40 p-0.5">
@@ -389,6 +433,8 @@ export function PythonView() {
             </Tabs>
           </Panel>
         </PanelGroup>
+      )}
+        </div>
       )}
     </div>
   );
