@@ -64,7 +64,7 @@ export function ValidationPanel({ columns, rules, results, onChange }: Props) {
         return (
           <div
             key={rule.id}
-            className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2"
+            className="flex items-center gap-2 rounded-md border border-border/60 px-3 py-1.5"
           >
             <input
               type="checkbox"
