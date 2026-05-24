@@ -1,0 +1,210 @@
+[
+  {
+    "id": "py-sum-list",
+    "concept": "lists",
+    "difficulty": "easy",
+    "kind": "function",
+    "prompt": "Write `total(numbers)` that returns the sum of a list of numbers (0 for an empty list).",
+    "starter_code": "def total(numbers):\n    pass",
+    "entrypoint": "total",
+    "reference_solution": "def total(numbers):\n    return sum(numbers)",
+    "test_cases": [
+      {
+        "args": [
+          [
+            1,
+            2,
+            3
+          ]
+        ],
+        "expected": 6
+      },
+      {
+        "args": [
+          []
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          [
+            -5,
+            5
+          ]
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          [
+            10
+          ]
+        ],
+        "expected": 10
+      }
+    ],
+    "hints": [
+      {
+        "hint": "Python has a built-in for adding up a list.",
+        "suggested_code": "return sum(numbers)"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Use sum()",
+        "what_it_does": "Adds every element.",
+        "code": "return sum(numbers)",
+        "how_it_runs": "sum() iterates the list and accumulates a total."
+      }
+    ],
+    "solution_summary": "Call the built-in sum().",
+    "solution_final_thought": "Reach for built-ins before writing manual loops."
+  },
+  {
+    "id": "py-max-in-list",
+    "concept": "lists",
+    "difficulty": "easy",
+    "kind": "function",
+    "prompt": "Write `largest(numbers)` that returns the biggest number in a non-empty list, without using max().",
+    "starter_code": "def largest(numbers):\n    pass",
+    "entrypoint": "largest",
+    "reference_solution": "def largest(numbers):\n    best = numbers[0]\n    for n in numbers[1:]:\n        if n > best:\n            best = n\n    return best",
+    "test_cases": [
+      {
+        "args": [
+          [
+            1,
+            7,
+            3
+          ]
+        ],
+        "expected": 7
+      },
+      {
+        "args": [
+          [
+            -5,
+            -2,
+            -9
+          ]
+        ],
+        "expected": -2
+      },
+      {
+        "args": [
+          [
+            42
+          ]
+        ],
+        "expected": 42
+      },
+      {
+        "args": [
+          [
+            5,
+            5,
+            5
+          ]
+        ],
+        "expected": 5
+      }
+    ],
+    "hints": [
+      {
+        "hint": "Track a 'best so far' starting at the first element.",
+        "suggested_code": null
+      },
+      {
+        "hint": "Loop the rest and update when you find something bigger.",
+        "suggested_code": null
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Track the max",
+        "what_it_does": "Keeps the largest value seen.",
+        "code": "if n > best: best = n",
+        "how_it_runs": "Each element replaces best only when larger."
+      }
+    ],
+    "solution_summary": "Scan once, keeping a running maximum.",
+    "solution_final_thought": "This 'running best' pattern shows up everywhere."
+  },
+  {
+    "id": "py-unique-sorted",
+    "concept": "lists",
+    "difficulty": "medium",
+    "kind": "function",
+    "prompt": "Write `unique_sorted(items)` returning the distinct values, sorted ascending.",
+    "starter_code": "def unique_sorted(items):\n    pass",
+    "entrypoint": "unique_sorted",
+    "reference_solution": "def unique_sorted(items):\n    return sorted(set(items))",
+    "test_cases": [
+      {
+        "args": [
+          [
+            3,
+            1,
+            2,
+            1,
+            3
+          ]
+        ],
+        "expected": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "args": [
+          []
+        ],
+        "expected": []
+      },
+      {
+        "args": [
+          [
+            5,
+            5,
+            5
+          ]
+        ],
+        "expected": [
+          5
+        ]
+      },
+      {
+        "args": [
+          [
+            2,
+            -1,
+            0,
+            -1
+          ]
+        ],
+        "expected": [
+          -1,
+          0,
+          2
+        ]
+      }
+    ],
+    "hints": [
+      {
+        "hint": "A set removes duplicates; sorted() orders them.",
+        "suggested_code": null
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Dedupe then sort",
+        "what_it_does": "Removes repeats and orders the result.",
+        "code": "return sorted(set(items))",
+        "how_it_runs": "set() drops duplicates; sorted() returns a new ordered list."
+      }
+    ],
+    "solution_summary": "Combine set() and sorted().",
+    "solution_final_thought": "Composing built-ins solves a lot in one line."
+  }
+]

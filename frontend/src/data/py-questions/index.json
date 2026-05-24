@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-05-24",
+  "concepts": [
+    {
+      "concept": "basics",
+      "label": "Basics",
+      "count": 2,
+      "file": "basics.json"
+    },
+    {
+      "concept": "conditionals",
+      "label": "Conditionals",
+      "count": 1,
+      "file": "conditionals.json"
+    },
+    {
+      "concept": "strings",
+      "label": "Strings",
+      "count": 3,
+      "file": "strings.json"
+    },
+    {
+      "concept": "lists",
+      "label": "Lists",
+      "count": 3,
+      "file": "lists.json"
+    },
+    {
+      "concept": "loops",
+      "label": "Loops",
+      "count": 2,
+      "file": "loops.json"
+    },
+    {
+      "concept": "dicts",
+      "label": "Dictionaries",
+      "count": 2,
+      "file": "dicts.json"
+    }
+  ]
+}

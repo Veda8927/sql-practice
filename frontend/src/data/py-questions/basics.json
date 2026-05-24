@@ -1,0 +1,114 @@
+[
+  {
+    "id": "py-rectangle-area",
+    "concept": "basics",
+    "difficulty": "easy",
+    "kind": "function",
+    "prompt": "Write `rectangle_area(width, height)` that returns the area of a rectangle.",
+    "starter_code": "def rectangle_area(width, height):\n    pass",
+    "entrypoint": "rectangle_area",
+    "reference_solution": "def rectangle_area(width, height):\n    return width * height",
+    "test_cases": [
+      {
+        "args": [
+          3,
+          4
+        ],
+        "expected": 12
+      },
+      {
+        "args": [
+          5,
+          5
+        ],
+        "expected": 25
+      },
+      {
+        "args": [
+          0,
+          9
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          2.5,
+          4
+        ],
+        "expected": 10.0
+      }
+    ],
+    "hints": [
+      {
+        "hint": "Area of a rectangle is width times height.",
+        "suggested_code": null
+      },
+      {
+        "hint": "Use the * operator and return the result.",
+        "suggested_code": "return width * height"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Multiply",
+        "what_it_does": "Computes width times height.",
+        "code": "return width * height",
+        "how_it_runs": "Python multiplies the two numbers and hands the value back."
+      }
+    ],
+    "solution_summary": "Multiply the two sides and return the product.",
+    "solution_final_thought": "Most 'area' problems are just one multiplication."
+  },
+  {
+    "id": "py-celsius-to-f",
+    "concept": "basics",
+    "difficulty": "easy",
+    "kind": "function",
+    "prompt": "Write `to_fahrenheit(celsius)` that converts a Celsius temperature to Fahrenheit. Formula: F = C * 9/5 + 32.",
+    "starter_code": "def to_fahrenheit(celsius):\n    pass",
+    "entrypoint": "to_fahrenheit",
+    "reference_solution": "def to_fahrenheit(celsius):\n    return celsius * 9 / 5 + 32",
+    "test_cases": [
+      {
+        "args": [
+          0
+        ],
+        "expected": 32.0
+      },
+      {
+        "args": [
+          100
+        ],
+        "expected": 212.0
+      },
+      {
+        "args": [
+          37
+        ],
+        "expected": 98.6
+      },
+      {
+        "args": [
+          -40
+        ],
+        "expected": -40.0
+      }
+    ],
+    "hints": [
+      {
+        "hint": "Apply the formula F = C * 9/5 + 32.",
+        "suggested_code": null
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Apply the formula",
+        "what_it_does": "Scales by 9/5 and shifts by 32.",
+        "code": "return celsius * 9 / 5 + 32",
+        "how_it_runs": "Order of operations does the multiply/divide before the +32."
+      }
+    ],
+    "solution_summary": "Plug Celsius into F = C*9/5 + 32.",
+    "solution_final_thought": "Watch out for integer vs float division in other languages \u2014 Python's / always gives a float."
+  }
+]

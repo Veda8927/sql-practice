@@ -1,0 +1,142 @@
+[
+  {
+    "id": "py-factorial",
+    "concept": "loops",
+    "difficulty": "medium",
+    "kind": "function",
+    "prompt": "Write `factorial(n)` returning n! for n >= 0 (factorial(0) == 1).",
+    "starter_code": "def factorial(n):\n    pass",
+    "entrypoint": "factorial",
+    "reference_solution": "def factorial(n):\n    result = 1\n    for i in range(2, n + 1):\n        result *= i\n    return result",
+    "test_cases": [
+      {
+        "args": [
+          0
+        ],
+        "expected": 1
+      },
+      {
+        "args": [
+          1
+        ],
+        "expected": 1
+      },
+      {
+        "args": [
+          5
+        ],
+        "expected": 120
+      },
+      {
+        "args": [
+          6
+        ],
+        "expected": 720
+      }
+    ],
+    "hints": [
+      {
+        "hint": "Start a running product at 1.",
+        "suggested_code": null
+      },
+      {
+        "hint": "Multiply by each integer from 2 up to n.",
+        "suggested_code": null
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Multiply up",
+        "what_it_does": "Accumulates the product 1*2*...*n.",
+        "code": "for i in range(2, n + 1): result *= i",
+        "how_it_runs": "Each loop multiplies result by the next integer."
+      }
+    ],
+    "solution_summary": "Loop from 2 to n, multiplying into a running product.",
+    "solution_final_thought": "Starting at 1 makes the empty case (0! and 1!) fall out naturally."
+  },
+  {
+    "id": "py-fizzbuzz",
+    "concept": "loops",
+    "difficulty": "medium",
+    "kind": "function",
+    "prompt": "Write `fizzbuzz(n)` returning a list for 1..n where multiples of 3 are 'Fizz', of 5 are 'Buzz', of both are 'FizzBuzz', else the number.",
+    "starter_code": "def fizzbuzz(n):\n    pass",
+    "entrypoint": "fizzbuzz",
+    "reference_solution": "def fizzbuzz(n):\n    out = []\n    for i in range(1, n + 1):\n        if i % 15 == 0:\n            out.append('FizzBuzz')\n        elif i % 3 == 0:\n            out.append('Fizz')\n        elif i % 5 == 0:\n            out.append('Buzz')\n        else:\n            out.append(i)\n    return out",
+    "test_cases": [
+      {
+        "args": [
+          5
+        ],
+        "expected": [
+          1,
+          2,
+          "Fizz",
+          4,
+          "Buzz"
+        ]
+      },
+      {
+        "args": [
+          3
+        ],
+        "expected": [
+          1,
+          2,
+          "Fizz"
+        ]
+      },
+      {
+        "args": [
+          15
+        ],
+        "expected": [
+          1,
+          2,
+          "Fizz",
+          4,
+          "Buzz",
+          "Fizz",
+          7,
+          8,
+          "Fizz",
+          "Buzz",
+          11,
+          "Fizz",
+          13,
+          14,
+          "FizzBuzz"
+        ]
+      },
+      {
+        "args": [
+          1
+        ],
+        "expected": [
+          1
+        ]
+      }
+    ],
+    "hints": [
+      {
+        "hint": "Check divisibility by 15 first, then 3, then 5.",
+        "suggested_code": null
+      },
+      {
+        "hint": "Use the modulo operator i % 3 == 0 to test multiples.",
+        "suggested_code": null
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Check 15 first",
+        "what_it_does": "Catches multiples of both 3 and 5.",
+        "code": "if i % 15 == 0: out.append('FizzBuzz')",
+        "how_it_runs": "15 is the least common multiple, so test it before 3 and 5."
+      }
+    ],
+    "solution_summary": "Loop 1..n and branch on modulo 15/3/5.",
+    "solution_final_thought": "Order the conditions from most specific to least."
+  }
+]

@@ -1,0 +1,64 @@
+[
+  {
+    "id": "py-grade-letter",
+    "concept": "conditionals",
+    "difficulty": "easy",
+    "kind": "function",
+    "prompt": "Write `letter_grade(score)` returning 'A' for >=90, 'B' for >=80, 'C' for >=70, else 'F'.",
+    "starter_code": "def letter_grade(score):\n    pass",
+    "entrypoint": "letter_grade",
+    "reference_solution": "def letter_grade(score):\n    if score >= 90:\n        return 'A'\n    if score >= 80:\n        return 'B'\n    if score >= 70:\n        return 'C'\n    return 'F'",
+    "test_cases": [
+      {
+        "args": [
+          95
+        ],
+        "expected": "A"
+      },
+      {
+        "args": [
+          83
+        ],
+        "expected": "B"
+      },
+      {
+        "args": [
+          70
+        ],
+        "expected": "C"
+      },
+      {
+        "args": [
+          40
+        ],
+        "expected": "F"
+      },
+      {
+        "args": [
+          89
+        ],
+        "expected": "B"
+      }
+    ],
+    "hints": [
+      {
+        "hint": "Check the highest threshold first, then work down.",
+        "suggested_code": null
+      },
+      {
+        "hint": "Return as soon as a condition matches so later checks are skipped.",
+        "suggested_code": null
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Cascade the checks",
+        "what_it_does": "Tests thresholds from high to low.",
+        "code": "if score >= 90: return 'A'",
+        "how_it_runs": "The first matching branch returns and stops."
+      }
+    ],
+    "solution_summary": "Use a top-down chain of if/return checks.",
+    "solution_final_thought": "Ordering matters: check the strictest condition first."
+  }
+]

@@ -1,0 +1,148 @@
+[
+  {
+    "id": "py-word-count",
+    "concept": "dicts",
+    "difficulty": "medium",
+    "kind": "function",
+    "prompt": "Write `word_count(text)` returning a dict mapping each whitespace-separated word to how many times it appears.",
+    "starter_code": "def word_count(text):\n    pass",
+    "entrypoint": "word_count",
+    "reference_solution": "def word_count(text):\n    counts = {}\n    for w in text.split():\n        counts[w] = counts.get(w, 0) + 1\n    return counts",
+    "test_cases": [
+      {
+        "args": [
+          "a b a"
+        ],
+        "expected": {
+          "a": 2,
+          "b": 1
+        }
+      },
+      {
+        "args": [
+          ""
+        ],
+        "expected": {}
+      },
+      {
+        "args": [
+          "hi hi hi"
+        ],
+        "expected": {
+          "hi": 3
+        }
+      },
+      {
+        "args": [
+          "one two three"
+        ],
+        "expected": {
+          "one": 1,
+          "two": 1,
+          "three": 1
+        }
+      }
+    ],
+    "hints": [
+      {
+        "hint": "split() breaks the text into words.",
+        "suggested_code": null
+      },
+      {
+        "hint": "Use dict.get(word, 0) + 1 to tally.",
+        "suggested_code": null
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Tally with get()",
+        "what_it_does": "Increments each word's count.",
+        "code": "counts[w] = counts.get(w, 0) + 1",
+        "how_it_runs": "get returns 0 for new words, so the first increment makes it 1."
+      }
+    ],
+    "solution_summary": "Split into words and tally into a dict with get().",
+    "solution_final_thought": "collections.Counter does this too \u2014 worth exploring later."
+  },
+  {
+    "id": "py-merge-dicts",
+    "concept": "dicts",
+    "difficulty": "medium",
+    "kind": "function",
+    "prompt": "Write `merge(a, b)` returning a new dict with both dicts' items; on key conflicts, b wins. Inputs are not modified.",
+    "starter_code": "def merge(a, b):\n    pass",
+    "entrypoint": "merge",
+    "reference_solution": "def merge(a, b):\n    return {**a, **b}",
+    "test_cases": [
+      {
+        "args": [
+          {
+            "x": 1
+          },
+          {
+            "y": 2
+          }
+        ],
+        "expected": {
+          "x": 1,
+          "y": 2
+        }
+      },
+      {
+        "args": [
+          {
+            "x": 1
+          },
+          {
+            "x": 9
+          }
+        ],
+        "expected": {
+          "x": 9
+        }
+      },
+      {
+        "args": [
+          {},
+          {}
+        ],
+        "expected": {}
+      },
+      {
+        "args": [
+          {
+            "a": 1,
+            "b": 2
+          },
+          {
+            "b": 3
+          }
+        ],
+        "expected": {
+          "a": 1,
+          "b": 3
+        }
+      }
+    ],
+    "hints": [
+      {
+        "hint": "Dict unpacking {**a, **b} merges two dicts.",
+        "suggested_code": null
+      },
+      {
+        "hint": "Later keys override earlier ones, so put b second.",
+        "suggested_code": null
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Unpack both",
+        "what_it_does": "Builds a fresh dict from both.",
+        "code": "return {**a, **b}",
+        "how_it_runs": "b is unpacked last, so its values win on conflicts."
+      }
+    ],
+    "solution_summary": "Use dict unpacking with b last.",
+    "solution_final_thought": "{**a, **b} never mutates the inputs \u2014 it makes a new dict."
+  }
+]

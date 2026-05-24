@@ -1,0 +1,166 @@
+[
+  {
+    "id": "py-reverse-string",
+    "concept": "strings",
+    "difficulty": "easy",
+    "kind": "function",
+    "prompt": "Write `reverse_string(s)` that returns the string reversed.",
+    "starter_code": "def reverse_string(s):\n    pass",
+    "entrypoint": "reverse_string",
+    "reference_solution": "def reverse_string(s):\n    return s[::-1]",
+    "test_cases": [
+      {
+        "args": [
+          "hello"
+        ],
+        "expected": "olleh"
+      },
+      {
+        "args": [
+          ""
+        ],
+        "expected": ""
+      },
+      {
+        "args": [
+          "a"
+        ],
+        "expected": "a"
+      },
+      {
+        "args": [
+          "racecar"
+        ],
+        "expected": "racecar"
+      }
+    ],
+    "hints": [
+      {
+        "hint": "Python slicing can step backwards.",
+        "suggested_code": null
+      },
+      {
+        "hint": "Try the slice s[::-1].",
+        "suggested_code": "return s[::-1]"
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Reverse slice",
+        "what_it_does": "Walks the string from end to start.",
+        "code": "return s[::-1]",
+        "how_it_runs": "The -1 step reads characters in reverse order."
+      }
+    ],
+    "solution_summary": "Use the reverse slice s[::-1].",
+    "solution_final_thought": "Slicing is the idiomatic way to reverse sequences in Python."
+  },
+  {
+    "id": "py-count-vowels",
+    "concept": "strings",
+    "difficulty": "easy",
+    "kind": "function",
+    "prompt": "Write `count_vowels(s)` returning how many vowels (a, e, i, o, u, case-insensitive) are in the string.",
+    "starter_code": "def count_vowels(s):\n    pass",
+    "entrypoint": "count_vowels",
+    "reference_solution": "def count_vowels(s):\n    return sum(1 for c in s.lower() if c in 'aeiou')",
+    "test_cases": [
+      {
+        "args": [
+          "hello"
+        ],
+        "expected": 2
+      },
+      {
+        "args": [
+          "XYZ"
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          "AeIoU"
+        ],
+        "expected": 5
+      },
+      {
+        "args": [
+          ""
+        ],
+        "expected": 0
+      }
+    ],
+    "hints": [
+      {
+        "hint": "Lowercase the string so case doesn't matter.",
+        "suggested_code": null
+      },
+      {
+        "hint": "Loop over characters and count those in 'aeiou'.",
+        "suggested_code": null
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Count matches",
+        "what_it_does": "Counts characters that are vowels.",
+        "code": "sum(1 for c in s.lower() if c in 'aeiou')",
+        "how_it_runs": "A generator yields 1 per vowel; sum totals them."
+      }
+    ],
+    "solution_summary": "Lowercase, then count characters in 'aeiou'.",
+    "solution_final_thought": "Generator expressions make counting concise."
+  },
+  {
+    "id": "py-is-palindrome",
+    "concept": "strings",
+    "difficulty": "medium",
+    "kind": "function",
+    "prompt": "Write `is_palindrome(s)` returning True if the string reads the same forwards and backwards, else False.",
+    "starter_code": "def is_palindrome(s):\n    pass",
+    "entrypoint": "is_palindrome",
+    "reference_solution": "def is_palindrome(s):\n    return s == s[::-1]",
+    "test_cases": [
+      {
+        "args": [
+          "racecar"
+        ],
+        "expected": true
+      },
+      {
+        "args": [
+          "hello"
+        ],
+        "expected": false
+      },
+      {
+        "args": [
+          ""
+        ],
+        "expected": true
+      },
+      {
+        "args": [
+          "abba"
+        ],
+        "expected": true
+      }
+    ],
+    "hints": [
+      {
+        "hint": "A palindrome equals its own reverse.",
+        "suggested_code": null
+      }
+    ],
+    "solution_steps": [
+      {
+        "title": "Compare to reverse",
+        "what_it_does": "Checks equality with the reversed string.",
+        "code": "return s == s[::-1]",
+        "how_it_runs": "If reversing changes nothing, it's a palindrome."
+      }
+    ],
+    "solution_summary": "Compare the string to its reverse.",
+    "solution_final_thought": "Reuse the reverse-slice trick you already learned."
+  }
+]
