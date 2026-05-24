@@ -18,6 +18,7 @@ from .clean.routes import router as clean_router
 from .db import engine
 from .deps import SessionDep
 from .grader import _json_safe, grade
+from .pyroutes import router as py_router
 from .schemas import (
     BreakdownItem,
     ErrorHelpResponse,
@@ -210,6 +211,7 @@ app.add_middleware(
 )
 
 app.include_router(clean_router)
+app.include_router(py_router)
 
 
 @app.get("/api/health")
