@@ -217,23 +217,28 @@ export function CleanView() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="font-medium">
-            {dataset.source === "generated" ? "Sample dataset" : "Your dataset"}
-          </span>
-          <span className="text-muted-foreground">
-            · {dataset.row_count} rows · {dataset.columns.length} cols
-          </span>
+      {/* Prompt zone — centered content like SQL/Python practice */}
+      <div className="border-b border-border">
+        <div className="mx-auto flex w-full max-w-3xl items-start justify-between gap-3 px-6 py-4">
+          <div className="min-w-0">
+            <h2 className="text-[18px] font-medium leading-snug tracking-tight text-foreground">
+              Clean the {dataset.source === "generated" ? "sample" : "uploaded"} dataset
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {dataset.row_count} rows · {dataset.columns.length} cols · build a
+              pipeline of <code className="font-mono">SELECT</code> steps, then
+              validate.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 shrink-0 gap-1.5 rounded-lg"
+            onClick={reset}
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> New dataset
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 gap-1.5 text-muted-foreground"
-          onClick={reset}
-        >
-          <RotateCcw className="h-3.5 w-3.5" /> New dataset
-        </Button>
       </div>
 
       <PanelGroup orientation={wide ? "horizontal" : "vertical"} className="min-h-0 flex-1">
@@ -262,7 +267,7 @@ export function CleanView() {
               <TabsTrigger value="data">Data</TabsTrigger>
               <TabsTrigger value="audit">Audit</TabsTrigger>
               <TabsTrigger value="validation">Validation</TabsTrigger>
-              <TabsTrigger value="review">AI review</TabsTrigger>
+              <TabsTrigger value="review">Coach</TabsTrigger>
             </TabsList>
             <div className="min-h-0 flex-1 overflow-auto p-3">
               <TabsContent value="data" className="mt-0 h-full">
@@ -297,10 +302,10 @@ export function CleanView() {
                 ) : (
                   <div className="flex flex-col items-center gap-3 py-10 text-center">
                     <p className="text-sm text-muted-foreground">
-                      Get AI feedback on your cleaning pipeline.
+                      Get a coach review of your cleaning pipeline.
                     </p>
                     <Button size="sm" className="gap-1.5" onClick={doReview}>
-                      <Sparkles className="h-3.5 w-3.5" /> Get AI review
+                      <Sparkles className="h-3.5 w-3.5" /> Get review
                     </Button>
                   </div>
                 )}
