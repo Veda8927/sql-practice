@@ -17,8 +17,8 @@ import asyncio
 import json
 import sys
 import uuid
-from decimal import Decimal
 from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -26,9 +26,9 @@ from openai import AsyncOpenAI
 
 # Allow `python -m scripts.build_bank.generate` from backend/.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from app.config import settings  # noqa: E402
-
 import psycopg  # noqa: E402
+
+from app.config import settings  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DATA_DIR = REPO_ROOT / "frontend" / "src" / "data" / "questions"
@@ -318,7 +318,7 @@ async def generate_for_concept(
         for d in domains_to_use
     ]
     shard_results = await asyncio.gather(*tasks, return_exceptions=True)
-    for d, result in zip(domains_to_use, shard_results):
+    for d, result in zip(domains_to_use, shard_results, strict=False):
         if isinstance(result, Exception):
             print(f"  [{concept_slug}] shard '{d[:30]}...' FAILED: {result}")
             continue

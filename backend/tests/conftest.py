@@ -1,7 +1,6 @@
 """Shared test fixtures. DB-backed tests skip automatically if Postgres is down."""
 import pytest
 import pytest_asyncio
-from sqlalchemy import text
 
 from app.db import engine
 

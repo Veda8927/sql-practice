@@ -11,7 +11,7 @@ def test_parse_basic():
 
 
 def test_parse_strips_bom():
-    raw = "﻿A,B\n1,2\n".encode("utf-8")
+    raw = "﻿A,B\n1,2\n".encode()
     header, _ = parse_csv(raw)
     assert header == ["A", "B"]
 
