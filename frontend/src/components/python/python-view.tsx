@@ -48,10 +48,14 @@ function useWide() {
   return wide;
 }
 
-export function PythonView() {
+type PythonViewProps = {
+  view: "learn" | "practice";
+  onSwitchToPractice: () => void;
+};
+
+export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
   const wide = useWide();
   const concepts = React.useMemo(() => listPyConcepts(), []);
-  const [view, setView] = React.useState<"learn" | "practice">("practice");
   const [source, setSource] = React.useState<Source>("ai");
   const [concept, setConcept] = React.useState(concepts[0]?.concept ?? "basics");
   const [difficulty, setDifficulty] = React.useState<PyDifficulty>("easy");
@@ -126,7 +130,7 @@ export function PythonView() {
   );
 
   function practiceConcept(con: string) {
-    setView("practice");
+    onSwitchToPractice();
     setSource("ai"); // AI mode handles any concept, including ones without a curated bank
     setConcept(con);
     void runNew("ai", con, difficulty);
@@ -231,24 +235,6 @@ export function PythonView() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Learn / Practice toggle */}
-      <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-        <div className="flex items-center gap-0.5 rounded-full border border-border bg-muted/40 p-0.5">
-          {(["learn", "practice"] as const).map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={
-                "rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors " +
-                (view === v ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")
-              }
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {view === "learn" ? (
         <div className="min-h-0 flex-1">
           <SyllabusView syllabus={PY_SYLLABUS} onPracticeConcept={practiceConcept} />

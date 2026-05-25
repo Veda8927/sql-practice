@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
   Code2,
+  Database,
   History,
   Keyboard,
   Loader2,
@@ -14,6 +15,7 @@ import {
   Sparkles,
   Sun,
   Table2,
+  Terminal,
   Wand2,
   X,
 } from "lucide-react";
@@ -78,6 +80,20 @@ function loadSource(): QuestionSource {
     return v === "curated" ? "curated" : "ai";
   } catch {
     return "ai";
+  }
+}
+
+type Language = "sql" | "python";
+type Mode = "practice" | "learn" | "clean";
+const LANGUAGE_STORAGE_KEY = "sql-practice:language";
+
+function loadLanguage(): Language {
+  try {
+    return window.localStorage.getItem(LANGUAGE_STORAGE_KEY) === "python"
+      ? "python"
+      : "sql";
+  } catch {
+    return "sql";
   }
 }
 
@@ -292,7 +308,8 @@ export default function Page() {
   const [curatedQuestion, setCuratedQuestion] =
     React.useState<CuratedQuestion | null>(null);
   const [curatedHintIndex, setCuratedHintIndex] = React.useState(0);
-  const [mode, setMode] = React.useState<"practice" | "learn" | "clean" | "python">("practice");
+  const [language, setLanguageState] = React.useState<Language>("sql");
+  const [mode, setMode] = React.useState<Mode>("practice");
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const [lastRunMs, setLastRunMs] = React.useState<number | null>(null);
   const [errorHelp, setErrorHelp] = React.useState<ErrorHelpResponse | null>(
@@ -602,6 +619,25 @@ export default function Page() {
     setSourceState(loadSource());
   }, []);
 
+  // Restore the saved language on mount.
+  React.useEffect(() => {
+    setLanguageState(loadLanguage());
+  }, []);
+
+  const onLanguageChange = React.useCallback(
+    (next: Language) => {
+      setLanguageState(next);
+      try {
+        window.localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
+      } catch {
+        // Best effort.
+      }
+      // Python has no Clean mode — fall back to Practice when switching.
+      setMode((m) => (next === "python" && m === "clean" ? "practice" : m));
+    },
+    [],
+  );
+
   const onCuratedHint = React.useCallback(() => {
     if (!curatedQuestion) return;
     setHint(curatedHintAt(curatedQuestion, curatedHintIndex));
@@ -649,7 +685,7 @@ export default function Page() {
     const handler = (e: KeyboardEvent) => {
       // These shortcuts drive the SQL practice editor; let Clean/Python/Learn
       // handle their own keys instead of swallowing them here.
-      if (mode !== "practice") return;
+      if (language !== "sql" || mode !== "practice") return;
       const mod = e.metaKey || e.ctrlKey;
       if (!mod || e.shiftKey || e.altKey) return;
       const k = e.key.toLowerCase();
@@ -693,74 +729,80 @@ export default function Page() {
       window.removeEventListener("keydown", handler, true);
       cleanupHelp();
     };
-  }, [onRun, onSubmit, onNewQuestion, mode]);
+  }, [onRun, onSubmit, onNewQuestion, mode, language]);
+
+  // Activities are contextual to the language: Clean is SQL-only.
+  const modeTabs: { id: Mode; label: string; icon: React.ReactNode }[] =
+    language === "sql"
+      ? [
+          { id: "learn", label: "Learn", icon: <BookOpen className="h-3.5 w-3.5" /> },
+          { id: "practice", label: "Practice", icon: <PlayCircle className="h-3.5 w-3.5" /> },
+          { id: "clean", label: "Clean", icon: <Wand2 className="h-3.5 w-3.5" /> },
+        ]
+      : [
+          { id: "learn", label: "Learn", icon: <BookOpen className="h-3.5 w-3.5" /> },
+          { id: "practice", label: "Practice", icon: <PlayCircle className="h-3.5 w-3.5" /> },
+        ];
 
   return (
     <div className="flex h-screen w-screen flex-col bg-background text-foreground">
       {/* Minimal header */}
       <header className="flex h-12 shrink-0 items-center justify-between gap-2 px-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
-          <h1 className="truncate text-[13px] font-semibold tracking-tight">
-            SQL
-          </h1>
+          <Terminal
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
+          {/* Primary axis: which language you're practicing */}
           <div className="flex items-center gap-0.5 rounded-full border border-border bg-muted/40 p-0.5">
-            <button
-              type="button"
-              onClick={() => setMode("learn")}
-              className={cn(
-                "flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
-                mode === "learn"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <BookOpen className="h-3.5 w-3.5" />
-              Learn
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("practice")}
-              className={cn(
-                "flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
-                mode === "practice"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <PlayCircle className="h-3.5 w-3.5" />
-              Practice
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("clean")}
-              className={cn(
-                "flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
-                mode === "clean"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Wand2 className="h-3.5 w-3.5" />
-              Clean
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("python")}
-              className={cn(
-                "flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
-                mode === "python"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Code2 className="h-3.5 w-3.5" />
-              Python
-            </button>
+            {(
+              [
+                { id: "sql", label: "SQL", icon: <Database className="h-3.5 w-3.5" /> },
+                { id: "python", label: "Python", icon: <Code2 className="h-3.5 w-3.5" /> },
+              ] as const
+            ).map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => onLanguageChange(l.id)}
+                aria-pressed={language === l.id}
+                className={cn(
+                  "flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors",
+                  language === l.id
+                    ? "bg-foreground text-background shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {l.icon}
+                {l.label}
+              </button>
+            ))}
           </div>
-          {mode === "practice" && <StreakBadge />}
+          <div className="h-5 w-px bg-border" aria-hidden />
+          {/* Secondary axis: activity within the selected language */}
+          <div className="flex items-center gap-0.5">
+            {modeTabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setMode(t.id)}
+                aria-pressed={mode === t.id}
+                className={cn(
+                  "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors",
+                  mode === t.id
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {t.icon}
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {language === "sql" && mode === "practice" && <StreakBadge />}
         </div>
         <div className="flex items-center gap-1">
-          {mode === "practice" && (
+          {language === "sql" && mode === "practice" && (
             <>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -852,8 +894,11 @@ export default function Page() {
 
       {/* Main column */}
       <main className="flex flex-1 flex-col overflow-hidden">
-        {mode === "python" ? (
-          <PythonView />
+        {language === "python" ? (
+          <PythonView
+            view={mode === "learn" ? "learn" : "practice"}
+            onSwitchToPractice={() => setMode("practice")}
+          />
         ) : mode === "clean" ? (
           <CleanView />
         ) : mode === "learn" ? (
