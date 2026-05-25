@@ -26,6 +26,18 @@ import type {
   Step,
 } from "@/lib/clean-types";
 
+const STEPS_STORAGE_KEY = "sql-practice:clean-steps";
+
+function loadSteps(): Step[] {
+  try {
+    const v = window.localStorage.getItem(STEPS_STORAGE_KEY);
+    const parsed = v ? JSON.parse(v) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function useWide() {
   const [wide, setWide] = React.useState(true);
   React.useEffect(() => {
@@ -41,7 +53,9 @@ function useWide() {
 export function CleanView() {
   const wide = useWide();
   const [dataset, setDataset] = React.useState<DatasetSummary | null>(null);
-  const [steps, setSteps] = React.useState<Step[]>([]);
+  // Lazy-load persisted steps so a refresh keeps the pipeline (the dataset
+  // itself is restored from the server below). CleanView only mounts client-side.
+  const [steps, setSteps] = React.useState<Step[]>(loadSteps);
   const [rules, setRules] = React.useState<Rule[]>([]);
   const [run, setRun] = React.useState<RunResponse | null>(null);
   const [review, setReview] = React.useState<ReviewResponse | null>(null);
@@ -57,6 +71,16 @@ export function CleanView() {
   rulesRef.current = rules;
   const datasetRef = React.useRef(dataset);
   datasetRef.current = dataset;
+
+  // Persist steps so they survive a refresh. Loading a new dataset clears
+  // steps (below), which also clears storage here.
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(STEPS_STORAGE_KEY, JSON.stringify(steps));
+    } catch {
+      // Best effort.
+    }
+  }, [steps]);
 
   React.useEffect(() => {
     cleanApi
