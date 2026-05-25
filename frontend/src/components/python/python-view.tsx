@@ -10,14 +10,11 @@ import {
 import {
   ArrowRight,
   ArrowUp,
-  Braces,
   Filter,
   Gauge,
   Lightbulb,
   Loader2,
-  Repeat,
   RotateCcw,
-  Type,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -372,15 +369,22 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
     </div>
   );
 
-  // Empty state: OpenAI-style hero — greeting, a rounded prompt bar with the
-  // focus controls, and one-tap quick-start pills. Mirrors SQL practice.
+  // Empty state: OpenAI-style hero — source toggle, greeting, and a rounded
+  // prompt bar with the focus controls beside the start button. Mirrors SQL.
   const practiceHero = (
     <div className="mx-auto w-full max-w-2xl px-6 py-8">
+      <div className="mb-8 flex justify-center">
+        <div className="w-[220px]">
+          <SourceToggle value={source} onChange={setSource} disabled={loadingNew} />
+        </div>
+      </div>
+
       <h1 className="mb-8 text-center text-[32px] font-semibold tracking-tight text-foreground sm:text-[38px]">
         Ready when you are.
       </h1>
 
-      <div className="flex items-center gap-2 rounded-[26px] border border-border bg-card px-2.5 py-2 shadow-sm transition-shadow focus-within:shadow-md">
+      <div className="flex items-center gap-1.5 rounded-[28px] border border-border bg-card px-3 py-3 shadow-sm transition-shadow focus-within:shadow-md">
+        <div className="min-w-0 flex-1" />
         <CommandSelect
           label="Concept"
           value={concept}
@@ -388,6 +392,7 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
           icon={<Filter className="h-3.5 w-3.5" />}
           disabled={loadingNew}
           onChange={setConcept}
+          bare
         />
         <CommandSelect
           label="Difficulty"
@@ -396,14 +401,14 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
           icon={<Gauge className="h-3.5 w-3.5" />}
           disabled={loadingNew}
           onChange={setDifficulty}
+          bare
         />
-        <div className="min-w-0 flex-1" />
         <button
           type="button"
           onClick={() => newExercise()}
           disabled={loadingNew}
           aria-label="Start exercise"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {loadingNew ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -411,36 +416,6 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
             <ArrowUp className="h-4 w-4" />
           )}
         </button>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
-        {(
-          [
-            { concept: "basics", label: "Basics", icon: <Braces className="h-4 w-4" /> },
-            { concept: "strings", label: "Strings", icon: <Type className="h-4 w-4" /> },
-            { concept: "loops", label: "Loops", icon: <Repeat className="h-4 w-4" /> },
-          ] as const
-        ).map((q) => (
-          <button
-            key={q.concept}
-            type="button"
-            disabled={loadingNew}
-            onClick={() => {
-              setConcept(q.concept);
-              void runNew(source, q.concept, difficulty);
-            }}
-            className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/80 shadow-sm transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-50"
-          >
-            <span className="text-muted-foreground">{q.icon}</span>
-            {q.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-8 flex justify-center">
-        <div className="w-[220px]">
-          <SourceToggle value={source} onChange={setSource} disabled={loadingNew} />
-        </div>
       </div>
     </div>
   );

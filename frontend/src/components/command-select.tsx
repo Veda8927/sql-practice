@@ -22,6 +22,7 @@ export function CommandSelect<T extends string>({
   icon,
   disabled,
   onChange,
+  bare,
 }: {
   label: string;
   value: T;
@@ -29,6 +30,7 @@ export function CommandSelect<T extends string>({
   icon: React.ReactNode;
   disabled?: boolean;
   onChange: (value: T) => void;
+  bare?: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement | null>(null);
@@ -101,9 +103,11 @@ export function CommandSelect<T extends string>({
         onClick={() => !disabled && setOpen((v) => !v)}
         disabled={disabled}
         className={cn(
-          "group inline-flex h-8 min-w-[136px] items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-2.5 text-xs font-medium text-foreground shadow-[0_1px_0_rgba(255,255,255,0.03)_inset] transition-colors",
-          "hover:border-muted-foreground/35 hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
-          open && "border-muted-foreground/35 bg-background",
+          "group inline-flex h-8 items-center justify-between gap-2 rounded-lg px-2.5 text-xs font-medium text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
+          bare
+            ? "gap-1.5 px-2 hover:bg-muted/60"
+            : "min-w-[136px] border border-border bg-muted/20 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset] hover:border-muted-foreground/35 hover:bg-muted/35",
+          open && (bare ? "bg-muted/70" : "border-muted-foreground/35 bg-background"),
         )}
       >
         <span className="flex min-w-0 items-center gap-2">
