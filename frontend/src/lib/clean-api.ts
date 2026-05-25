@@ -6,6 +6,15 @@ import type {
   Step,
   ValidateResponse,
 } from "./clean-types";
+import type { TableResult } from "./types";
+
+export type PyCleanResult = {
+  ok: boolean;
+  failed_step_index: number | null;
+  error_message: string | null;
+  stages: { label: string; row_count: number }[];
+  final_preview: TableResult | null;
+};
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -54,6 +63,8 @@ export const cleanApi = {
       rules,
       up_to_index: upToIndex ?? null,
     }),
+  pyRun: (steps: Step[]) =>
+    postJson<PyCleanResult>("/api/clean/py_run", { steps, rules: [] }),
   exportCsv: async (steps: Step[], rules: Rule[]): Promise<Blob> => {
     const res = await fetch(`${BASE_URL}/api/clean/export`, {
       method: "POST",

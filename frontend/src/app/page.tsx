@@ -40,6 +40,7 @@ import { ResultsPanel } from "@/components/results-panel";
 import { ShortcutsModal } from "@/components/shortcuts-modal";
 import { SyllabusView } from "@/components/syllabus-view";
 import { CleanView } from "@/components/clean/clean-view";
+import { PyCleanView } from "@/components/clean/py-clean-view";
 import { PythonView } from "@/components/python/python-view";
 import {
   StreakBadge,
@@ -629,8 +630,6 @@ export default function Page() {
       } catch {
         // Best effort.
       }
-      // Python has no Clean mode — fall back to Practice when switching.
-      setMode((m) => (next === "python" && m === "clean" ? "practice" : m));
     },
     [],
   );
@@ -739,6 +738,7 @@ export default function Page() {
       : [
           { id: "learn", label: "Learn", icon: <BookOpen className="h-3.5 w-3.5" /> },
           { id: "practice", label: "Practice", icon: <PlayCircle className="h-3.5 w-3.5" /> },
+          { id: "clean", label: "Clean", icon: <Wand2 className="h-3.5 w-3.5" /> },
         ];
 
   // Rendered in two places: alone (centered) before a question exists, and in
@@ -913,10 +913,14 @@ export default function Page() {
       {/* Main column */}
       <main className="flex flex-1 flex-col overflow-hidden">
         {language === "python" ? (
-          <PythonView
-            view={mode === "learn" ? "learn" : "practice"}
-            onSwitchToPractice={() => setMode("practice")}
-          />
+          mode === "clean" ? (
+            <PyCleanView />
+          ) : (
+            <PythonView
+              view={mode === "learn" ? "learn" : "practice"}
+              onSwitchToPractice={() => setMode("practice")}
+            />
+          )
         ) : mode === "clean" ? (
           <CleanView />
         ) : mode === "learn" ? (

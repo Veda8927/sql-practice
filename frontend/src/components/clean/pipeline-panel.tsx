@@ -27,13 +27,25 @@ type Props = {
   failedIndex: number | null;
   errorMessage: string | null;
   stageRowCounts: number[]; // index-aligned with stages (0 = raw)
+  language?: "sql" | "python";
 };
 
 // Derive a short, human label from a step's SQL so collapsed steps read like
 // "Filter rows" / "Deduplicate" instead of "Step 3". Order matters: more
 // specific cleaning ops win over the generic SELECT.
-function deriveStepName(sql: string): string | null {
-  const s = sql.toLowerCase();
+function deriveStepName(code: string, language: "sql" | "python"): string | null {
+  const s = code.toLowerCase();
+  if (language === "python") {
+    if (/drop_duplicates/.test(s)) return "Deduplicate";
+    if (/(strip|lower|upper|title|\.str\.|regexp|\.replace)/.test(s)) return "Normalize text";
+    if (/fillna|dropna|isna|notna/.test(s)) return "Handle nulls";
+    if (/astype|to_datetime|to_numeric/.test(s)) return "Cast types";
+    if (/groupby|\.agg\b/.test(s)) return "Aggregate";
+    if (/query\(|\.loc\[|prev\[/.test(s)) return "Filter rows";
+    if (/sort_values/.test(s)) return "Sort";
+    if (/merge|\.join/.test(s)) return "Join";
+    return null;
+  }
   if (/\bdistinct\b/.test(s)) return "Deduplicate";
   if (/\bgroup\s+by\b/.test(s)) return "Aggregate";
   if (/\b(btrim|trim|lower|upper|initcap)\s*\(/.test(s)) return "Normalize text";
@@ -47,12 +59,12 @@ function deriveStepName(sql: string): string | null {
   return null;
 }
 
-// Prefer a name the user typed; otherwise fall back to the SQL-derived label.
-function displayName(step: Step, i: number): string {
+// Prefer a name the user typed; otherwise fall back to the derived label.
+function displayName(step: Step, i: number, language: "sql" | "python"): string {
   const custom = step.title?.trim();
   const isDefault = !custom || /^step\s+\d+$/i.test(custom);
   if (!isDefault) return custom!;
-  return deriveStepName(step.sql) ?? `Step ${i + 1}`;
+  return deriveStepName(step.sql, language) ?? `Step ${i + 1}`;
 }
 
 export function PipelinePanel({
@@ -64,6 +76,7 @@ export function PipelinePanel({
   failedIndex,
   errorMessage,
   stageRowCounts,
+  language = "sql",
 }: Props) {
   // Accordion: at most one step expanded. Default to the last step so a
   // restored pipeline opens on its most recent step.
@@ -92,7 +105,8 @@ export function PipelinePanel({
     setExpanded((cur) => (cur === i ? j : cur === j ? i : cur));
   }
   function add() {
-    onChange([...steps, { title: `Step ${steps.length + 1}`, sql: "SELECT * FROM prev" }]);
+    const sql = language === "python" ? "prev = prev" : "SELECT * FROM prev";
+    onChange([...steps, { title: `Step ${steps.length + 1}`, sql }]);
     setExpanded(steps.length); // expand the new step, collapsing the rest
   }
   function toggle(i: number) {
@@ -104,14 +118,16 @@ export function PipelinePanel({
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <div className="text-sm font-semibold">Cleaning pipeline</div>
         <div className="flex items-center gap-1.5">
-          <HoverExpandButton
-            label="Format"
-            shortcut="⌘F"
-            icon={<Wand2 className="h-3.5 w-3.5" />}
-            onClick={onFormat}
-            disabled={steps.length === 0}
-            tone="neutral"
-          />
+          {language === "sql" && (
+            <HoverExpandButton
+              label="Format"
+              shortcut="⌘F"
+              icon={<Wand2 className="h-3.5 w-3.5" />}
+              onClick={onFormat}
+              disabled={steps.length === 0}
+              tone="neutral"
+            />
+          )}
           <HoverExpandButton
             label="Run"
             shortcut="⌘↵"
@@ -134,11 +150,20 @@ export function PipelinePanel({
         {steps.length === 0 && (
           <div className="rounded-lg border border-dashed border-border/70 px-4 py-8 text-center">
             <p className="text-sm font-medium">Build a cleaning pipeline</p>
-            <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
-              Each step is a <code className="font-mono">SELECT</code> reading{" "}
-              <code className="font-mono">prev</code> (previous step) or{" "}
-              <code className="font-mono">raw</code> (original data).
-            </p>
+            {language === "python" ? (
+              <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                Each step is pandas code that assigns a DataFrame to{" "}
+                <code className="font-mono">prev</code> (e.g.{" "}
+                <code className="font-mono">prev = prev.drop_duplicates()</code>).{" "}
+                <code className="font-mono">raw</code> is the original.
+              </p>
+            ) : (
+              <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                Each step is a <code className="font-mono">SELECT</code> reading{" "}
+                <code className="font-mono">prev</code> (previous step) or{" "}
+                <code className="font-mono">raw</code> (original data).
+              </p>
+            )}
           </div>
         )}
         {steps.map((step, i) => {
@@ -183,11 +208,11 @@ export function PipelinePanel({
                       onChange={(e) => update(i, { title: e.target.value })}
                       onClick={(e) => e.stopPropagation()}
                       className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
-                      placeholder={deriveStepName(step.sql) ?? `Step ${i + 1}`}
+                      placeholder={deriveStepName(step.sql, language) ?? `Step ${i + 1}`}
                     />
                   ) : (
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                      {displayName(step, i)}
+                      {displayName(step, i, language)}
                     </span>
                   )}
                 </button>
@@ -221,7 +246,12 @@ export function PipelinePanel({
 
               {isOpen && (
                 <div className="px-2.5 pb-2.5">
-                  <StepEditor value={step.sql} onChange={(v) => update(i, { sql: v })} onRun={onRun} />
+                  <StepEditor
+                    value={step.sql}
+                    onChange={(v) => update(i, { sql: v })}
+                    onRun={onRun}
+                    language={language}
+                  />
                   {failed && errorMessage && (
                     <div className="mt-1.5 rounded bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
                       {errorMessage}

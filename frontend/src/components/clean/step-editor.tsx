@@ -11,12 +11,13 @@ type Props = {
   value: string;
   onChange: (v: string) => void;
   onRun: () => void;
+  language?: "sql" | "python";
 };
 
 const MIN_HEIGHT = 72;
 const MAX_HEIGHT = 360;
 
-export function StepEditor({ value, onChange, onRun }: Props) {
+export function StepEditor({ value, onChange, onRun, language = "sql" }: Props) {
   const { resolvedTheme } = useTheme();
   const onRunRef = React.useRef(onRun);
   onRunRef.current = onRun;
@@ -38,7 +39,7 @@ export function StepEditor({ value, onChange, onRun }: Props) {
       <button
         type="button"
         onClick={copy}
-        aria-label="Copy SQL"
+        aria-label="Copy code"
         className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-background/70 text-muted-foreground backdrop-blur transition-colors hover:bg-muted hover:text-foreground"
       >
         {copied ? (
@@ -49,7 +50,7 @@ export function StepEditor({ value, onChange, onRun }: Props) {
       </button>
       <Editor
         height={height}
-        language="sql"
+        language={language}
         theme={resolvedTheme === "dark" ? "vs-dark" : "light"}
         value={value}
         onChange={(v) => onChange(v ?? "")}
@@ -57,16 +58,18 @@ export function StepEditor({ value, onChange, onRun }: Props) {
           editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () =>
             onRunRef.current(),
           );
-          // ⌘F → format this step (overrides Monaco's built-in find).
-          editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () => {
-            const formatted = formatSqlText(editor.getValue());
-            const range = editor.getModel()?.getFullModelRange();
-            if (!range) return;
-            editor.executeEdits("format-sql", [
-              { range, text: formatted, forceMoveMarkers: true },
-            ]);
-            editor.pushUndoStop();
-          });
+          // ⌘F → format this step (SQL only; overrides Monaco's find).
+          if (language === "sql") {
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () => {
+              const formatted = formatSqlText(editor.getValue());
+              const range = editor.getModel()?.getFullModelRange();
+              if (!range) return;
+              editor.executeEdits("format-sql", [
+                { range, text: formatted, forceMoveMarkers: true },
+              ]);
+              editor.pushUndoStop();
+            });
+          }
           // Grow the editor to fit its content so nothing is hidden behind a
           // tiny fixed viewport.
           const fit = () => {
