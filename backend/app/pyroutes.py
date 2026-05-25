@@ -1,6 +1,7 @@
 """/api/py/* routes: Python practice — run, submit, generate, coach, curated."""
 from __future__ import annotations
 
+import ast
 import uuid
 from typing import Any
 
@@ -98,6 +99,15 @@ async def run(req: PyRunRequest) -> PyRunResponse:
         duration_ms=res.duration_ms,
         sandboxed=res.sandboxed,
     )
+
+
+@router.post("/format")
+async def format_code(req: PyRunRequest) -> dict:
+    """Format Python via the stdlib AST round-trip. Leaves unparseable code as-is."""
+    try:
+        return {"code": ast.unparse(ast.parse(req.code))}
+    except SyntaxError:
+        return {"code": req.code}
 
 
 @router.post("/submit", response_model=PyGradeResult)
