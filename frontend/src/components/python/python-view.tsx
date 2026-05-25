@@ -7,21 +7,13 @@ import {
   Separator as PanelResizeHandle,
   usePanelRef,
 } from "react-resizable-panels";
-import {
-  ArrowRight,
-  ChevronDown,
-  Filter,
-  Gauge,
-  Lightbulb,
-  Loader2,
-  RotateCcw,
-} from "lucide-react";
+import { ArrowRight, Filter, Gauge, Lightbulb, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SourceToggle } from "@/components/source-toggle";
+import { CommandSelect, type SelectOption } from "@/components/command-select";
 import { PyEditor } from "@/components/python/py-editor";
-import { PyPrompt } from "@/components/python/py-prompt";
 import { TestResults } from "@/components/python/test-results";
 import { SyllabusView } from "@/components/syllabus-view";
 import { PY_SYLLABUS } from "@/lib/python-syllabus";
@@ -270,8 +262,14 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const pillSelect =
-    "h-8 appearance-none rounded-lg border border-border bg-background pl-8 pr-7 text-xs font-medium capitalize text-foreground outline-none transition-colors hover:bg-muted/50 disabled:opacity-50";
+  const conceptOptions: SelectOption<string>[] = concepts.map((c) => ({
+    value: c.concept,
+    label: c.label,
+  }));
+  const diffOptions: SelectOption<PyDifficulty>[] = DIFFS.map((d) => ({
+    value: d,
+    label: d.charAt(0).toUpperCase() + d.slice(1),
+  }));
 
   // Shared prompt zone (SQL-practice style). Shown alone before an exercise
   // exists, then in the top panel once the editor/results split appears.
@@ -288,7 +286,19 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
             <Loader2 className="h-4 w-4 animate-spin" /> Writing your exercise…
           </div>
         ) : question ? (
-          <PyPrompt question={question} />
+          <div>
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-medium text-muted-foreground">
+              {question.entrypoint && (
+                <span className="font-mono text-foreground/70">
+                  def {question.entrypoint}(…)
+                </span>
+              )}
+              <span>· {question.test_count} tests</span>
+            </div>
+            <h2 className="whitespace-pre-wrap text-[20px] font-medium leading-snug tracking-tight text-foreground sm:text-[22px]">
+              {question.prompt}
+            </h2>
+          </div>
         ) : (
           <p className="max-w-2xl text-[22px] font-medium leading-snug tracking-tight text-muted-foreground">
             Choose a concept, then{" "}
@@ -298,38 +308,22 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
       </div>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div className="relative inline-flex items-center">
-            <Filter className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
-            <select
-              value={concept}
-              onChange={(e) => setConcept(e.target.value)}
-              disabled={loadingNew}
-              className={pillSelect}
-            >
-              {concepts.map((c) => (
-                <option key={c.concept} value={c.concept}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <div className="relative inline-flex items-center">
-            <Gauge className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
-            <select
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value as PyDifficulty)}
-              disabled={loadingNew}
-              className={pillSelect}
-            >
-              {DIFFS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
-          </div>
+          <CommandSelect
+            label="Concept"
+            value={concept}
+            options={conceptOptions}
+            icon={<Filter className="h-3.5 w-3.5" />}
+            disabled={loadingNew}
+            onChange={setConcept}
+          />
+          <CommandSelect
+            label="Difficulty"
+            value={difficulty}
+            options={diffOptions}
+            icon={<Gauge className="h-3.5 w-3.5" />}
+            disabled={loadingNew}
+            onChange={setDifficulty}
+          />
         </div>
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
           {question && (

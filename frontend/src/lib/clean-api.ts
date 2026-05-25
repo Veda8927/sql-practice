@@ -65,6 +65,16 @@ export const cleanApi = {
     }),
   pyRun: (steps: Step[]) =>
     postJson<PyCleanResult>("/api/clean/py_run", { steps, rules: [] }),
+  pyExportCsv: async (steps: Step[]): Promise<Blob> => {
+    const res = await fetch(`${BASE_URL}/api/clean/py_export`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ steps, rules: [] }),
+    });
+    if (!res.ok) throw new Error(await detailFrom(res));
+    return res.blob();
+  },
   exportCsv: async (steps: Step[], rules: Rule[]): Promise<Blob> => {
     const res = await fetch(`${BASE_URL}/api/clean/export`, {
       method: "POST",
