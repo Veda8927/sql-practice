@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Group as PanelGroup,
   Panel,
@@ -414,14 +415,29 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
         <div className="min-h-0 flex-1">
           <SyllabusView syllabus={PY_SYLLABUS} onPracticeConcept={practiceConcept} />
         </div>
-      ) : !question ? (
-        <div className="h-full overflow-auto">
-          <div className="flex min-h-full items-center justify-center">
-            <div className="w-full">{practiceHero}</div>
-          </div>
-        </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col">
+        <AnimatePresence mode="wait">
+          {!question ? (
+            <motion.div
+              key="py-empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="h-full overflow-auto"
+            >
+              <div className="flex min-h-full items-center justify-center pb-[14vh]">
+                <div className="w-full">{practiceHero}</div>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="py-working"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
+              className="flex min-h-0 flex-1 flex-col"
+            >
           <PanelGroup orientation="vertical" className="h-full w-full">
             <Panel
               defaultSize="40%"
@@ -573,7 +589,9 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
           </PanelGroup>
         </Panel>
       </PanelGroup>
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       )}
     </div>
   );
