@@ -16,6 +16,7 @@ from ..schemas import TableResult
 from ..state import SessionState
 from . import generate, ingest
 from .pipeline import export_pipeline, run_pipeline, validate_pipeline
+from .py_pipeline import run_py_pipeline
 from .schemas import (
     DatasetSummary,
     GenerateRequest,
@@ -116,6 +117,16 @@ async def run(req: RunRequest, state: SessionDep) -> RunResponse:
         up_to_index=req.up_to_index,
     )
     return RunResponse(**out)
+
+
+@router.post("/py_run")
+async def py_run(req: RunRequest, state: SessionDep) -> dict:
+    """Run a pandas cleaning pipeline (each step's `sql` field holds pandas code)."""
+    if state.clean is None:
+        raise HTTPException(status_code=400, detail="Upload or generate a dataset first.")
+    return await run_py_pipeline(
+        state.clean.table, [s.model_dump() for s in req.steps]
+    )
 
 
 @router.post("/export")
