@@ -6,10 +6,19 @@ import {
   Panel,
   Separator as PanelResizeHandle,
 } from "react-resizable-panels";
-import { Lightbulb, Loader2, RotateCcw, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  ChevronDown,
+  Filter,
+  Gauge,
+  Lightbulb,
+  Loader2,
+  RotateCcw,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SourceToggle } from "@/components/source-toggle";
 import { PyEditor } from "@/components/python/py-editor";
 import { PyPrompt } from "@/components/python/py-prompt";
 import { TestResults } from "@/components/python/test-results";
@@ -230,8 +239,8 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const selectCls =
-    "rounded-md border border-border bg-background px-2 py-1 text-xs capitalize";
+  const pillSelect =
+    "h-8 appearance-none rounded-lg border border-border bg-background pl-8 pr-7 text-xs font-medium capitalize text-foreground outline-none transition-colors hover:bg-muted/50 disabled:opacity-50";
 
   return (
     <div className="flex h-full flex-col">
@@ -241,59 +250,100 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
-      {/* control bar */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2">
-        <div className="flex items-center gap-0.5 rounded-full border border-border bg-muted/40 p-0.5">
-          {(["ai", "curated"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setSource(s)}
-              className={
-                "rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors " +
-                (source === s ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")
-              }
-            >
-              {s === "ai" ? "AI" : "Curated"}
-            </button>
-          ))}
-        </div>
-        <select value={concept} onChange={(e) => setConcept(e.target.value)} className={selectCls}>
-          {concepts.map((c) => (
-            <option key={c.concept} value={c.concept}>
-              {c.label}
-            </option>
-          ))}
-        </select>
-        <select
-          value={difficulty}
-          onChange={(e) => setDifficulty(e.target.value as PyDifficulty)}
-          className={selectCls}
-        >
-          {DIFFS.map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
-        </select>
-        <Button size="sm" className="h-8 gap-1.5" onClick={newExercise} disabled={loadingNew}>
-          {loadingNew ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-          New exercise
-        </Button>
-      </div>
-
-      {!question ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-          <p className="text-sm text-muted-foreground">
-            Practice Python with graded exercises — pick a concept and difficulty, then
-            <span className="font-medium text-foreground"> New exercise</span>.
-          </p>
-        </div>
-      ) : (
-        <PanelGroup orientation={wide ? "horizontal" : "vertical"} className="min-h-0 flex-1">
-          <Panel defaultSize="50%" minSize="30%" className="min-h-0">
-            <div className="flex h-full flex-col gap-2 p-3">
-              <PyPrompt question={question} />
-              <div className="min-h-0 flex-1">
+      <PanelGroup orientation="vertical" className="h-full w-full">
+        {/* Prompt zone — mirrors the SQL practice QuestionBar */}
+        <Panel defaultSize="40%" minSize="14%" className="min-h-0">
+          <div className="h-full overflow-auto">
+            <div className="mx-auto w-full max-w-3xl px-6 py-8">
+              <div className="mb-8 flex justify-center">
+                <div className="w-[220px]">
+                  <SourceToggle value={source} onChange={setSource} disabled={loadingNew} />
+                </div>
+              </div>
+              <div className="min-h-[64px]">
+                {loadingNew ? (
+                  <div className="flex items-center gap-3 text-base text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Writing your exercise…
+                  </div>
+                ) : question ? (
+                  <PyPrompt question={question} />
+                ) : (
+                  <p className="max-w-2xl text-[22px] font-medium leading-snug tracking-tight text-muted-foreground">
+                    Choose a concept, then{" "}
+                    <span className="text-foreground">start your first exercise</span>.
+                  </p>
+                )}
+              </div>
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <div className="relative inline-flex items-center">
+                    <Filter className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                    <select
+                      value={concept}
+                      onChange={(e) => setConcept(e.target.value)}
+                      disabled={loadingNew}
+                      className={pillSelect}
+                    >
+                      {concepts.map((c) => (
+                        <option key={c.concept} value={c.concept}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
+                  <div className="relative inline-flex items-center">
+                    <Gauge className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                    <select
+                      value={difficulty}
+                      onChange={(e) => setDifficulty(e.target.value as PyDifficulty)}
+                      disabled={loadingNew}
+                      className={pillSelect}
+                    >
+                      {DIFFS.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
+                </div>
+                <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                  {question && (
+                    <Button size="sm" variant="ghost" onClick={getHint} className="h-8 shrink-0 rounded-lg text-xs">
+                      <Lightbulb className="h-3.5 w-3.5" /> Hint
+                    </Button>
+                  )}
+                  {question && (
+                    <Button size="sm" variant="ghost" onClick={giveUp} className="h-8 shrink-0 rounded-lg text-xs">
+                      <RotateCcw className="h-3.5 w-3.5" /> Solution
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={newExercise} disabled={loadingNew} className="h-8 shrink-0 rounded-lg">
+                    {loadingNew ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    )}
+                    {question ? "New exercise" : "Start exercise"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Panel>
+        <PanelResizeHandle className="h-px bg-border transition-colors hover:bg-primary/40" />
+        {/* Work zone — editor | results */}
+        <Panel defaultSize="60%" minSize="30%" className="min-h-0">
+          {!question ? (
+            <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
+              Your editor and results appear here once you start an exercise.
+            </div>
+          ) : (
+          <PanelGroup orientation={wide ? "horizontal" : "vertical"} className="h-full w-full">
+            <Panel defaultSize="50%" minSize="25%" className="min-h-0">
+              <div className="h-full p-3">
                 <PyEditor
                   value={code}
                   onChange={setCode}
@@ -303,20 +353,11 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
                   submitting={submitting}
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-muted-foreground" onClick={getHint}>
-                  <Lightbulb className="h-3.5 w-3.5" /> Hint
-                </Button>
-                <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-muted-foreground" onClick={giveUp}>
-                  <RotateCcw className="h-3.5 w-3.5" /> Solution
-                </Button>
-              </div>
-            </div>
-          </Panel>
-          <PanelResizeHandle
-            className={wide ? "w-px bg-border hover:bg-primary/40" : "h-px bg-border hover:bg-primary/40"}
-          />
-          <Panel defaultSize="50%" minSize="25%" className="min-h-0">
+            </Panel>
+            <PanelResizeHandle
+              className={wide ? "w-px bg-border hover:bg-primary/40" : "h-px bg-border hover:bg-primary/40"}
+            />
+            <Panel defaultSize="50%" minSize="25%" className="min-h-0">
             <Tabs value={tab} onValueChange={setTab} className="flex h-full min-h-0 flex-col">
               <TabsList className="m-3 mb-0 self-start">
                 <TabsTrigger value="output">Output</TabsTrigger>
@@ -433,9 +474,11 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
                 </TabsContent>
               </div>
             </Tabs>
-          </Panel>
-        </PanelGroup>
-      )}
+            </Panel>
+          </PanelGroup>
+          )}
+        </Panel>
+      </PanelGroup>
         </div>
       )}
     </div>
