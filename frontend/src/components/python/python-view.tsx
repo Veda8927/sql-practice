@@ -198,6 +198,14 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
     }
   }
 
+  async function handleFormat() {
+    try {
+      setCode(await pythonApi.format(codeRef.current));
+    } catch (e) {
+      toast.error(String((e as Error).message));
+    }
+  }
+
   async function getHint() {
     if (!question) return;
     setTab("coach");
@@ -382,6 +390,7 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
                   onChange={setCode}
                   onRun={run}
                   onSubmit={submit}
+                  onFormat={handleFormat}
                   running={running}
                   submitting={submitting}
                 />

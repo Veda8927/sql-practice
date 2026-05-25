@@ -775,8 +775,16 @@ export default function Page() {
           <div className="flex items-center gap-0.5 rounded-full border border-border bg-muted/40 p-0.5">
             {(
               [
-                { id: "sql", label: "SQL", icon: <SqlLogo className="h-4 w-4" /> },
-                { id: "python", label: "Python", icon: <PythonLogo className="h-4 w-4" /> },
+                {
+                  id: "sql",
+                  label: "SQL",
+                  icon: <SqlLogo className="h-4 w-4" filled={language === "sql"} />,
+                },
+                {
+                  id: "python",
+                  label: "Python",
+                  icon: <PythonLogo className="h-4 w-4" filled={language === "python"} />,
+                },
               ] as const
             ).map((l) => (
               <button

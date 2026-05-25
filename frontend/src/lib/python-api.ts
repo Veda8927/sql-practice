@@ -38,6 +38,8 @@ export const pythonApi = {
   loadCurated: (exercise: PyExercise) =>
     post<PyQuestion>("/api/py/curated/load", { exercise }),
   run: (code: string) => post<PyRunResponse>("/api/py/run", { code }),
+  format: (code: string) =>
+    post<{ code: string }>("/api/py/format", { code }).then((r) => r.code),
   submit: (code: string) => post<PyGradeResult>("/api/py/submit", { code }),
   hint: (code?: string) => post<PyHintResponse>("/api/py/hint", { code: code ?? null }),
   explain: () => post<PyExplainResponse>("/api/py/explain", {}),

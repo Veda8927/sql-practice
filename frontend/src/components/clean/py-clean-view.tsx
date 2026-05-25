@@ -13,6 +13,7 @@ import { DataView } from "@/components/clean/data-view";
 import { PipelinePanel } from "@/components/clean/pipeline-panel";
 import { UploadDropzone } from "@/components/clean/upload-dropzone";
 import { cleanApi, type PyCleanResult } from "@/lib/clean-api";
+import { pythonApi } from "@/lib/python-api";
 import type { DatasetSummary, Step } from "@/lib/clean-types";
 
 const STEPS_KEY = "sql-practice:py-clean-steps";
@@ -110,17 +111,40 @@ export function PyCleanView() {
     }
   }, []);
 
+  const doFormat = React.useCallback(async () => {
+    const current = stepsRef.current;
+    if (current.length === 0) return;
+    try {
+      const formatted = await Promise.all(
+        current.map((s) => pythonApi.format(s.sql)),
+      );
+      setSteps(current.map((s, i) => ({ ...s, sql: formatted[i] })));
+    } catch (e) {
+      toast.error(String((e as Error).message));
+    }
+  }, []);
+
+  const doFormatRef = React.useRef(doFormat);
+  doFormatRef.current = doFormat;
+
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (!mod || e.key !== "Enter" || e.shiftKey || !datasetRef.current) return;
+      if (!mod || !datasetRef.current || e.altKey) return;
       const target = e.target as HTMLElement | null;
-      if (target?.closest(".monaco-editor")) return;
-      e.preventDefault();
-      void doRun();
+      if (e.key === "Enter" && !e.shiftKey) {
+        if (target?.closest(".monaco-editor")) return;
+        e.preventDefault();
+        void doRun();
+      } else if (e.key.toLowerCase() === "f" && !e.shiftKey) {
+        // Capture phase + stopPropagation so this beats Monaco's find widget.
+        e.preventDefault();
+        e.stopPropagation();
+        void doFormatRef.current();
+      }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
   }, [doRun]);
 
   async function reset() {
@@ -168,7 +192,7 @@ export function PyCleanView() {
             steps={steps}
             onChange={setSteps}
             onRun={doRun}
-            onFormat={() => {}}
+            onFormat={doFormat}
             running={running}
             failedIndex={run?.failed_step_index ?? null}
             errorMessage={run?.error_message ?? null}

@@ -3,7 +3,7 @@
 import * as React from "react";
 import Editor from "@monaco-editor/react";
 import { useTheme } from "next-themes";
-import { Loader2, Play, Send } from "lucide-react";
+import { Loader2, Play, Send, Wand2 } from "lucide-react";
 
 import { HoverExpandButton } from "@/components/hover-expand-button";
 
@@ -12,6 +12,7 @@ type Props = {
   onChange: (v: string) => void;
   onRun: () => void;
   onSubmit: () => void;
+  onFormat?: () => void;
   running?: boolean;
   submitting?: boolean;
 };
@@ -21,6 +22,7 @@ export function PyEditor({
   onChange,
   onRun,
   onSubmit,
+  onFormat,
   running = false,
   submitting = false,
 }: Props) {
@@ -29,6 +31,8 @@ export function PyEditor({
   onRunRef.current = onRun;
   const onSubmitRef = React.useRef(onSubmit);
   onSubmitRef.current = onSubmit;
+  const onFormatRef = React.useRef(onFormat);
+  onFormatRef.current = onFormat;
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-md border border-border">
@@ -39,6 +43,15 @@ export function PyEditor({
           Python editor
         </div>
         <div className="flex items-center gap-1.5">
+          {onFormat && (
+            <HoverExpandButton
+              label="Format"
+              shortcut="⌘F"
+              icon={<Wand2 className="h-3.5 w-3.5" />}
+              onClick={onFormat}
+              tone="neutral"
+            />
+          )}
           <HoverExpandButton
             label="Run"
             shortcut="⌘↵"
@@ -85,6 +98,9 @@ export function PyEditor({
             editor.addCommand(
               monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter,
               () => onSubmitRef.current(),
+            );
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () =>
+              onFormatRef.current?.(),
             );
           }}
           options={{

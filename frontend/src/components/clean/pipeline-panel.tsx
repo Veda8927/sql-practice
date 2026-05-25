@@ -118,16 +118,14 @@ export function PipelinePanel({
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <div className="text-sm font-semibold">Cleaning pipeline</div>
         <div className="flex items-center gap-1.5">
-          {language === "sql" && (
-            <HoverExpandButton
-              label="Format"
-              shortcut="⌘F"
-              icon={<Wand2 className="h-3.5 w-3.5" />}
-              onClick={onFormat}
-              disabled={steps.length === 0}
-              tone="neutral"
-            />
-          )}
+          <HoverExpandButton
+            label="Format"
+            shortcut="⌘F"
+            icon={<Wand2 className="h-3.5 w-3.5" />}
+            onClick={onFormat}
+            disabled={steps.length === 0}
+            tone="neutral"
+          />
           <HoverExpandButton
             label="Run"
             shortcut="⌘↵"
