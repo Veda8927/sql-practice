@@ -125,8 +125,35 @@ async def py_run(req: RunRequest, state: SessionDep) -> dict:
     if state.clean is None:
         raise HTTPException(status_code=400, detail="Upload or generate a dataset first.")
     return await run_py_pipeline(
-        state.clean.table, [s.model_dump() for s in req.steps]
+        state.clean.table,
+        [s.model_dump() for s in req.steps],
+        [r.model_dump() for r in req.rules],
     )
+
+
+@router.post("/py_review", response_model=ReviewResponse)
+async def py_review(req: ReviewRequest, state: SessionDep) -> ReviewResponse:
+    if state.clean is None:
+        raise HTTPException(status_code=400, detail="Upload or generate a dataset first.")
+    run_out = await run_py_pipeline(
+        state.clean.table,
+        [s.model_dump() for s in req.steps],
+        [r.model_dump() for r in req.rules],
+    )
+    payload = {
+        "raw_profile": run_out["stages"][0] if run_out["stages"] else None,
+        "final_profile": run_out["stages"][-1] if run_out["stages"] else None,
+        "steps": [s.model_dump() for s in req.steps],
+        "validation": run_out.get("validation", []),
+        "pipeline_ok": run_out["ok"],
+        "error_message": run_out["error_message"],
+        "rubric": state.clean.rubric,
+    }
+    try:
+        data = await llm.review_py_cleaning(payload)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=str(e)) from e
+    return ReviewResponse(**data)
 
 
 @router.post("/py_export")

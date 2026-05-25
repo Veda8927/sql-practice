@@ -28,6 +28,37 @@ import pandas as pd
 
 _ex = exec
 
+
+def _rule_violations(_df, _rule):
+    _t = _rule.get("type")
+    _p = _rule.get("params") or {}
+    _c = _p.get("column")
+    if _t == "no_duplicate_rows":
+        return int(_df.duplicated(keep="first").sum())
+    if _t == "unique_combo":
+        _cols = [x for x in (_p.get("columns") or []) if x in _df.columns]
+        return int(_df[_cols].duplicated(keep="first").sum()) if _cols else 0
+    if _c not in _df.columns:
+        return 0
+    _s = _df[_c]
+    if _t == "not_null":
+        return int(_s.isna().sum())
+    if _t == "unique":
+        return int(_s.dropna().duplicated(keep="first").sum())
+    if _t == "regex":
+        _m = _s.astype(str).str.contains(_p.get("pattern") or "", regex=True, na=False)
+        return int((_s.notna() & ~_m).sum())
+    if _t == "allowed_values":
+        _vals = [str(v) for v in (_p.get("values") or [])]
+        return int((_s.notna() & ~_s.astype(str).isin(_vals)).sum())
+    if _t == "range":
+        _mn = float(_p["min"])
+        _mx = float(_p["max"])
+        _n = pd.to_numeric(_s, errors="coerce")
+        return int((_s.notna() & ((_n < _mn) | (_n > _mx))).sum())
+    raise ValueError("Unknown rule type: " + str(_t))
+
+
 with open("data.json") as _f:
     _d = json.load(_f)
 
@@ -53,10 +84,28 @@ for _i, _st in enumerate(_d["steps"]):
         break
 
 _preview = None
+_validation = []
 if _failed is None:
     _head = prev.head(__PREVIEW__)
     _p = json.loads(_head.to_json(orient="split", date_format="iso"))
     _preview = {"columns": [str(_c) for _c in _p["columns"]], "rows": _p["data"]}
+    for _r in _d.get("rules", []):
+        if not _r.get("enabled", True):
+            continue
+        _rid = _r.get("id", "")
+        _lbl = _r.get("label", _r.get("type", "rule"))
+        try:
+            _v = _rule_violations(prev, _r)
+            _validation.append({
+                "id": _rid, "label": _lbl,
+                "status": "pass" if _v == 0 else "fail",
+                "violations": int(_v), "message": None,
+            })
+        except Exception as _e:
+            _validation.append({
+                "id": _rid, "label": _lbl, "status": "error",
+                "violations": 0, "message": type(_e).__name__ + ": " + str(_e),
+            })
 
 print(json.dumps({
     "ok": _failed is None,
@@ -64,6 +113,7 @@ print(json.dumps({
     "error_message": _error,
     "stages": _stages,
     "final_preview": _preview,
+    "validation": _validation,
 }))
 """
 
@@ -121,25 +171,21 @@ async def export_py_pipeline(
 
 
 async def run_py_pipeline(
-    table_fqn: str, steps: list[dict[str, Any]]
+    table_fqn: str,
+    steps: list[dict[str, Any]],
+    rules: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     if len(steps) > MAX_STEPS:
         return {
             "ok": False, "failed_step_index": MAX_STEPS,
             "error_message": f"Too many steps (max {MAX_STEPS}).",
-            "stages": [], "final_preview": None,
+            "stages": [], "final_preview": None, "validation": [],
         }
-    async with engine.connect() as conn:
-        res = await conn.execute(text(f"SELECT * FROM {table_fqn} LIMIT {SAMPLE_CAP}"))
-        keys = list(res.keys())
-        cols = [str(c) for c in keys]
-        rows = [[_json_safe(v) for v in r] for r in res.fetchall()]
-
-    payload = {
-        "cols": cols,
-        "rows": rows,
-        "steps": [{"title": s.get("title"), "code": s.get("sql") or ""} for s in steps],
-    }
+    payload = await _read_sample(table_fqn)
+    payload["steps"] = [
+        {"title": s.get("title"), "code": s.get("sql") or ""} for s in steps
+    ]
+    payload["rules"] = rules or []
     script = _SCRIPT.replace("__PREVIEW__", str(PREVIEW_CAP))
     result = await executor.run(
         script, extra_files={"data.json": json.dumps(payload)}, timeout_s=8.0
@@ -148,7 +194,7 @@ async def run_py_pipeline(
         return {
             "ok": False, "failed_step_index": None,
             "error_message": "Pipeline timed out (keep it under a few seconds).",
-            "stages": [], "final_preview": None,
+            "stages": [], "final_preview": None, "validation": [],
         }
     out = (result.stdout or "").strip()
     try:
@@ -158,5 +204,5 @@ async def run_py_pipeline(
         return {
             "ok": False, "failed_step_index": None,
             "error_message": (err[-1] if err else "Execution failed.")[:300],
-            "stages": [], "final_preview": None,
+            "stages": [], "final_preview": None, "validation": [],
         }

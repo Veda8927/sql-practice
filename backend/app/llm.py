@@ -1193,6 +1193,46 @@ async def review_cleaning(payload: dict[str, Any]) -> dict[str, Any]:
     return data
 
 
+CLEAN_PY_REVIEW_SYSTEM_PROMPT = """You review a data-cleaning pipeline written in pandas by a learner.
+You are given: the raw data profile, the ordered cleaning steps (each pandas code that reassigns `prev`, a DataFrame), the final-stage profile, the results of validation rules, and (sometimes) a rubric of the issues that were deliberately injected into the data.
+
+Judge how well the pipeline cleaned the data. Be concrete and reference columns by name. If a rubric is present, check whether each injected issue was addressed.
+
+Return ONLY a JSON object:
+{
+  "assessment": "2-4 sentence plain-English overall verdict",
+  "remaining_issues": ["specific problems still present in the final data"],
+  "suggestions": ["concrete next pandas moves, each one sentence"],
+  "praise": ["specific things done well"],
+  "score": 0-100
+}
+Keep each list to at most 5 items. score is an integer cleanliness rating of the FINAL data."""
+
+
+async def review_py_cleaning(payload: dict[str, Any]) -> dict[str, Any]:
+    client = _get_client()
+    completion = await client.chat.completions.create(
+        model=settings.openai_model,
+        messages=[
+            {"role": "system", "content": CLEAN_PY_REVIEW_SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(payload, default=str)},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.3,
+    )
+    raw = completion.choices[0].message.content or "{}"
+    data = json.loads(raw)
+    data.setdefault("assessment", "I couldn't generate a review. Please try again.")
+    for k in ("remaining_issues", "suggestions", "praise"):
+        if not isinstance(data.get(k), list):
+            data[k] = []
+    try:
+        data["score"] = max(0, min(100, int(data.get("score", 0))))
+    except (TypeError, ValueError):
+        data["score"] = 0
+    return data
+
+
 PY_QUESTION_SYSTEM_PROMPT = """You write beginner-to-intermediate Python practice exercises.
 Each exercise asks the learner to implement ONE function. You also write a reference
 solution and deterministic test cases that the reference passes.
