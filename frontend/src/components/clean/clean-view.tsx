@@ -17,6 +17,7 @@ import { ReviewCard } from "@/components/clean/review-card";
 import { UploadDropzone } from "@/components/clean/upload-dropzone";
 import { ValidationPanel } from "@/components/clean/validation-panel";
 import { cleanApi } from "@/lib/clean-api";
+import { formatSqlText } from "@/lib/sql-format";
 import type {
   DatasetSummary,
   ReviewResponse,
@@ -54,6 +55,8 @@ export function CleanView() {
   stepsRef.current = steps;
   const rulesRef = React.useRef(rules);
   rulesRef.current = rules;
+  const datasetRef = React.useRef(dataset);
+  datasetRef.current = dataset;
 
   React.useEffect(() => {
     cleanApi
@@ -106,6 +109,8 @@ export function CleanView() {
     try {
       const r = await cleanApi.run(stepsRef.current, rulesRef.current);
       setRun(r);
+      // Surface the result: jump to the Data tab so the cleaned output is visible.
+      setTab("data");
       if (!r.ok && r.error_message) toast.error(r.error_message);
     } catch (e) {
       toast.error(String((e as Error).message));
@@ -113,6 +118,33 @@ export function CleanView() {
       setRunning(false);
     }
   }, []);
+
+  // Format every step's SQL — the "format the whole pipeline" action behind the
+  // header button and the global ⌘F shortcut.
+  const doFormat = React.useCallback(() => {
+    setSteps((prev) => prev.map((s) => ({ ...s, sql: formatSqlText(s.sql) })));
+  }, []);
+
+  // Global ⌘↵ (run) and ⌘F (format), matching SQL practice. The step editors
+  // bind both themselves, so skip events from inside Monaco to avoid double-firing
+  // (and so ⌘F formats just the focused step while typing).
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod || e.shiftKey || !datasetRef.current) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest(".monaco-editor")) return;
+      if (e.key === "Enter") {
+        e.preventDefault();
+        void doRun();
+      } else if (e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        doFormat();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [doRun, doFormat]);
 
   // When rules change after a successful run, re-check them via the lightweight
   // /validate path (no full pipeline re-run / re-profiling) and merge the results.
@@ -186,6 +218,7 @@ export function CleanView() {
             steps={steps}
             onChange={setSteps}
             onRun={doRun}
+            onFormat={doFormat}
             running={running}
             failedIndex={run?.failed_step_index ?? null}
             errorMessage={run?.error_message ?? null}

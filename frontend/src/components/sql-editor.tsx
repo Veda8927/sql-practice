@@ -9,20 +9,11 @@ import type {
 } from "monaco-editor";
 import { CheckCircle2, Loader2, Play, Wand2 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { format as formatSql } from "sql-formatter";
 
 import { EditorOutline } from "@/components/editor-outline";
 import { HoverExpandButton } from "@/components/hover-expand-button";
 import { lintSql, type LintIssue } from "@/lib/sql-lint";
-
-// Wrap bare YYYY-MM-DD literals in single quotes so the formatter doesn't
-// mangle them into arithmetic (2024 - 01 - 01).
-function preFixDates(sql: string): string {
-  return sql.replace(
-    /(?<!['"0-9])(\d{4})-(\d{2})-(\d{2})(?!['"0-9])/g,
-    "'$1-$2-$3'",
-  );
-}
+import { formatSqlText } from "@/lib/sql-format";
 
 type SchemaTable = {
   name: string;
@@ -104,25 +95,13 @@ export function SqlEditor({
   const handleFormat = React.useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return;
-    const current = editor.getValue();
-    try {
-      const pre = preFixDates(current);
-      const formatted = formatSql(pre, {
-        language: "postgresql",
-        keywordCase: "upper",
-        tabWidth: 2,
-        linesBetweenQueries: 1,
-        expressionWidth: 120,
-      });
-      const fullRange = editor.getModel()?.getFullModelRange();
-      if (!fullRange) return;
-      editor.executeEdits("format-sql", [
-        { range: fullRange, text: formatted, forceMoveMarkers: true },
-      ]);
-      editor.pushUndoStop();
-    } catch {
-      // sql-formatter throws on unparseable input — silently ignore.
-    }
+    const formatted = formatSqlText(editor.getValue());
+    const fullRange = editor.getModel()?.getFullModelRange();
+    if (!fullRange) return;
+    editor.executeEdits("format-sql", [
+      { range: fullRange, text: formatted, forceMoveMarkers: true },
+    ]);
+    editor.pushUndoStop();
   }, []);
 
   const handleMount: OnMount = (editor, monaco) => {

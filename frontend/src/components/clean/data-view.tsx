@@ -11,6 +11,12 @@ type Props = {
 
 export function DataView({ raw, cleaned }: Props) {
   const [tab, setTab] = React.useState<"cleaned" | "raw">(cleaned ? "cleaned" : "raw");
+  // A fresh run produces a new `cleaned` preview — surface it instead of leaving
+  // the user staring at the raw data. (The useState initializer above only runs
+  // on first mount, when `cleaned` is still null.)
+  React.useEffect(() => {
+    if (cleaned) setTab("cleaned");
+  }, [cleaned]);
   const active = tab === "cleaned" && cleaned ? cleaned : raw;
   return (
     <div className="flex h-full flex-col gap-3">

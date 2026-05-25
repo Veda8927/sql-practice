@@ -647,6 +647,9 @@ export default function Page() {
   // defaults (⌘F find, ⌘R reload, ⌘S save) before they can fire.
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // These shortcuts drive the SQL practice editor; let Clean/Python/Learn
+      // handle their own keys instead of swallowing them here.
+      if (mode !== "practice") return;
       const mod = e.metaKey || e.ctrlKey;
       if (!mod || e.shiftKey || e.altKey) return;
       const k = e.key.toLowerCase();
@@ -690,7 +693,7 @@ export default function Page() {
       window.removeEventListener("keydown", handler, true);
       cleanupHelp();
     };
-  }, [onRun, onSubmit, onNewQuestion]);
+  }, [onRun, onSubmit, onNewQuestion, mode]);
 
   return (
     <div className="flex h-screen w-screen flex-col bg-background text-foreground">

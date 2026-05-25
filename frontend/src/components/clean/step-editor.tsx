@@ -4,6 +4,8 @@ import * as React from "react";
 import Editor from "@monaco-editor/react";
 import { useTheme } from "next-themes";
 
+import { formatSqlText } from "@/lib/sql-format";
+
 type Props = {
   value: string;
   onChange: (v: string) => void;
@@ -27,6 +29,16 @@ export function StepEditor({ value, onChange, onRun, height = 120 }: Props) {
           editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () =>
             onRunRef.current(),
           );
+          // ⌘F → format this step (overrides Monaco's built-in find).
+          editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () => {
+            const formatted = formatSqlText(editor.getValue());
+            const range = editor.getModel()?.getFullModelRange();
+            if (!range) return;
+            editor.executeEdits("format-sql", [
+              { range, text: formatted, forceMoveMarkers: true },
+            ]);
+            editor.pushUndoStop();
+          });
         }}
         options={{
           minimap: { enabled: false },

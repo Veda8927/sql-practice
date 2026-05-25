@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ArrowDown, ArrowUp, Loader2, Play, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Loader2, Play, Plus, Trash2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HoverExpandButton } from "@/components/hover-expand-button";
 import { StepEditor } from "@/components/clean/step-editor";
 import type { Step } from "@/lib/clean-types";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,7 @@ type Props = {
   steps: Step[];
   onChange: (steps: Step[]) => void;
   onRun: () => void;
+  onFormat: () => void;
   running: boolean;
   failedIndex: number | null;
   errorMessage: string | null;
@@ -21,6 +23,7 @@ export function PipelinePanel({
   steps,
   onChange,
   onRun,
+  onFormat,
   running,
   failedIndex,
   errorMessage,
@@ -47,10 +50,31 @@ export function PipelinePanel({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <div className="text-sm font-semibold">Cleaning pipeline</div>
-        <Button size="sm" onClick={onRun} disabled={running} className="h-8 gap-1.5">
-          {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-          Run
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <HoverExpandButton
+            label="Format"
+            shortcut="⌘F"
+            icon={<Wand2 className="h-3.5 w-3.5" />}
+            onClick={onFormat}
+            disabled={steps.length === 0}
+            tone="neutral"
+          />
+          <HoverExpandButton
+            label="Run"
+            shortcut="⌘↵"
+            icon={
+              running ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )
+            }
+            onClick={onRun}
+            disabled={running}
+            tone="success"
+            alwaysOpen
+          />
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-auto p-4">

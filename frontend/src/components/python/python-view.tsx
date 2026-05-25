@@ -6,14 +6,7 @@ import {
   Panel,
   Separator as PanelResizeHandle,
 } from "react-resizable-panels";
-import {
-  Lightbulb,
-  Loader2,
-  Play,
-  RotateCcw,
-  Send,
-  Sparkles,
-} from "lucide-react";
+import { Lightbulb, Loader2, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -83,6 +76,8 @@ export function PythonView() {
   codeRef.current = code;
   const questionRef = React.useRef(question);
   questionRef.current = question;
+  const viewRef = React.useRef(view);
+  viewRef.current = view;
 
   function resetCoach() {
     setRunResult(null);
@@ -209,6 +204,28 @@ export function PythonView() {
     }
   }
 
+  // Global ⌘↵ run / ⌘⇧↵ submit, matching SQL practice. Kept in refs so the
+  // listener stays attached once while always calling the latest handlers.
+  const runFnRef = React.useRef(run);
+  runFnRef.current = run;
+  const submitFnRef = React.useRef(submit);
+  submitFnRef.current = submit;
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod || e.key !== "Enter") return;
+      if (viewRef.current !== "practice" || !questionRef.current) return;
+      const target = e.target as HTMLElement | null;
+      // Monaco binds ⌘↵ / ⌘⇧↵ inside the editor — let it handle those itself.
+      if (target?.closest(".monaco-editor")) return;
+      e.preventDefault();
+      if (e.shiftKey) submitFnRef.current();
+      else runFnRef.current();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   const selectCls =
     "rounded-md border border-border bg-background px-2 py-1 text-xs capitalize";
 
@@ -291,17 +308,16 @@ export function PythonView() {
             <div className="flex h-full flex-col gap-2 p-3">
               <PyPrompt question={question} />
               <div className="min-h-0 flex-1">
-                <PyEditor value={code} onChange={setCode} onRun={run} onSubmit={submit} />
+                <PyEditor
+                  value={code}
+                  onChange={setCode}
+                  onRun={run}
+                  onSubmit={submit}
+                  running={running}
+                  submitting={submitting}
+                />
               </div>
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={run} disabled={running}>
-                  {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                  Run
-                </Button>
-                <Button size="sm" className="h-8 gap-1.5" onClick={submit} disabled={submitting}>
-                  {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                  Submit
-                </Button>
                 <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-muted-foreground" onClick={getHint}>
                   <Lightbulb className="h-3.5 w-3.5" /> Hint
                 </Button>
