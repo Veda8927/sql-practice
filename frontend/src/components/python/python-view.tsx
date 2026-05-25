@@ -246,20 +246,32 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
   runFnRef.current = run;
   const submitFnRef = React.useRef(submit);
   submitFnRef.current = submit;
+  const formatFnRef = React.useRef(handleFormat);
+  formatFnRef.current = handleFormat;
+  // ⌘R run / ⌘S submit / ⌘F format, matching SQL practice. Capture phase +
+  // stopPropagation so we beat the browser (reload/save) and Monaco.
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (!mod || e.key !== "Enter") return;
+      if (!mod || e.shiftKey || e.altKey) return;
       if (viewRef.current !== "practice" || !questionRef.current) return;
-      const target = e.target as HTMLElement | null;
-      // Monaco binds ⌘↵ / ⌘⇧↵ inside the editor — let it handle those itself.
-      if (target?.closest(".monaco-editor")) return;
-      e.preventDefault();
-      if (e.shiftKey) submitFnRef.current();
-      else runFnRef.current();
+      const k = e.key.toLowerCase();
+      if (k === "r") {
+        e.preventDefault();
+        e.stopPropagation();
+        runFnRef.current();
+      } else if (k === "s") {
+        e.preventDefault();
+        e.stopPropagation();
+        submitFnRef.current();
+      } else if (k === "f") {
+        e.preventDefault();
+        e.stopPropagation();
+        formatFnRef.current();
+      }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
   }, []);
 
   const conceptOptions: SelectOption<string>[] = concepts.map((c) => ({
@@ -423,7 +435,7 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
                     </div>
                   ) : (
                     <div className="text-sm text-muted-foreground">
-                      Press <span className="font-medium">Run</span> (⌘↵) to execute your code.
+                      Press <span className="font-medium">Run</span> (⌘R) to execute your code.
                     </div>
                   )}
                 </TabsContent>
@@ -432,7 +444,7 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
                     <TestResults grade={grade} />
                   ) : (
                     <div className="text-sm text-muted-foreground">
-                      Press <span className="font-medium">Submit</span> (⌘⇧↵) to run the tests.
+                      Press <span className="font-medium">Submit</span> (⌘S) to run the tests.
                     </div>
                   )}
                 </TabsContent>

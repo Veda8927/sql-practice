@@ -54,7 +54,7 @@ export function PyEditor({
           )}
           <HoverExpandButton
             label="Run"
-            shortcut="⌘↵"
+            shortcut="⌘R"
             icon={
               running ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -68,7 +68,7 @@ export function PyEditor({
           />
           <HoverExpandButton
             label="Submit"
-            shortcut="⌘⇧↵"
+            shortcut="⌘S"
             icon={
               submitting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -92,12 +92,11 @@ export function PyEditor({
           value={value}
           onChange={(v) => onChange(v ?? "")}
           onMount={(editor, monaco) => {
-            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () =>
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyR, () =>
               onRunRef.current(),
             );
-            editor.addCommand(
-              monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter,
-              () => onSubmitRef.current(),
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () =>
+              onSubmitRef.current(),
             );
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () =>
               onFormatRef.current?.(),
