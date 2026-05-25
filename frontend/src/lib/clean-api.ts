@@ -2,6 +2,7 @@ import type {
   DatasetSummary,
   ReviewResponse,
   Rule,
+  RuleResult,
   RunResponse,
   Step,
   ValidateResponse,
@@ -14,6 +15,7 @@ export type PyCleanResult = {
   error_message: string | null;
   stages: { label: string; row_count: number }[];
   final_preview: TableResult | null;
+  validation: RuleResult[];
 };
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -63,8 +65,10 @@ export const cleanApi = {
       rules,
       up_to_index: upToIndex ?? null,
     }),
-  pyRun: (steps: Step[]) =>
-    postJson<PyCleanResult>("/api/clean/py_run", { steps, rules: [] }),
+  pyRun: (steps: Step[], rules: Rule[]) =>
+    postJson<PyCleanResult>("/api/clean/py_run", { steps, rules }),
+  pyReview: (steps: Step[], rules: Rule[]) =>
+    postJson<ReviewResponse>("/api/clean/py_review", { steps, rules }),
   pyExportCsv: async (steps: Step[]): Promise<Blob> => {
     const res = await fetch(`${BASE_URL}/api/clean/py_export`, {
       method: "POST",

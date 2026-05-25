@@ -8,6 +8,7 @@ import {
   Loader2,
   RotateCcw,
   Save,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import {
@@ -20,10 +21,17 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataView } from "@/components/clean/data-view";
 import { PipelinePanel } from "@/components/clean/pipeline-panel";
+import { ReviewCard } from "@/components/clean/review-card";
 import { UploadDropzone } from "@/components/clean/upload-dropzone";
+import { ValidationPanel } from "@/components/clean/validation-panel";
 import { cleanApi, type PyCleanResult } from "@/lib/clean-api";
 import { pythonApi } from "@/lib/python-api";
-import type { DatasetSummary, Step } from "@/lib/clean-types";
+import type {
+  DatasetSummary,
+  ReviewResponse,
+  Rule,
+  Step,
+} from "@/lib/clean-types";
 
 const STEPS_KEY = "sql-practice:py-clean-steps";
 const SAVED_KEY = "sql-practice:py-clean-saved";
@@ -66,9 +74,12 @@ export function PyCleanView() {
   const wide = useWide();
   const [dataset, setDataset] = React.useState<DatasetSummary | null>(null);
   const [steps, setSteps] = React.useState<Step[]>(loadSteps);
+  const [rules, setRules] = React.useState<Rule[]>([]);
   const [run, setRun] = React.useState<PyCleanResult | null>(null);
+  const [review, setReview] = React.useState<ReviewResponse | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [running, setRunning] = React.useState(false);
+  const [reviewing, setReviewing] = React.useState(false);
   const [tab, setTab] = React.useState("data");
   const [saved, setSaved] = React.useState<SavedPipeline[]>([]);
   const [savedOpen, setSavedOpen] = React.useState(false);
@@ -76,6 +87,8 @@ export function PyCleanView() {
 
   const stepsRef = React.useRef(steps);
   stepsRef.current = steps;
+  const rulesRef = React.useRef(rules);
+  rulesRef.current = rules;
   const datasetRef = React.useRef(dataset);
   datasetRef.current = dataset;
 
@@ -92,7 +105,12 @@ export function PyCleanView() {
   React.useEffect(() => {
     cleanApi
       .getDataset()
-      .then((d) => d && setDataset(d))
+      .then((d) => {
+        if (d) {
+          setDataset(d);
+          setRules(d.suggested_rules);
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -101,8 +119,10 @@ export function PyCleanView() {
     try {
       const d = await cleanApi.upload(file);
       setDataset(d);
+      setRules(d.suggested_rules);
       setSteps([]);
       setRun(null);
+      setReview(null);
       toast.success(`Loaded ${d.row_count} rows`);
     } catch (e) {
       toast.error(String((e as Error).message));
@@ -116,8 +136,10 @@ export function PyCleanView() {
     try {
       const d = await cleanApi.generate();
       setDataset(d);
+      setRules(d.suggested_rules);
       setSteps([]);
       setRun(null);
+      setReview(null);
       toast.success("Generated a messy dataset");
     } catch (e) {
       toast.error(String((e as Error).message));
@@ -126,10 +148,21 @@ export function PyCleanView() {
     }
   }
 
+  async function doReview() {
+    setReviewing(true);
+    try {
+      setReview(await cleanApi.pyReview(stepsRef.current, rulesRef.current));
+    } catch (e) {
+      toast.error(String((e as Error).message));
+    } finally {
+      setReviewing(false);
+    }
+  }
+
   const doRun = React.useCallback(async () => {
     setRunning(true);
     try {
-      const r = await cleanApi.pyRun(stepsRef.current);
+      const r = await cleanApi.pyRun(stepsRef.current, rulesRef.current);
       setRun(r);
       setTab("data");
       if (!r.ok && r.error_message) toast.error(r.error_message);
@@ -179,7 +212,9 @@ export function PyCleanView() {
     await cleanApi.reset().catch(() => {});
     setDataset(null);
     setSteps([]);
+    setRules([]);
     setRun(null);
+    setReview(null);
   }
 
   function persistSaved(next: SavedPipeline[]) {
@@ -379,6 +414,8 @@ export function PyCleanView() {
             <TabsList className="m-3 mb-0 self-start">
               <TabsTrigger value="data">Data</TabsTrigger>
               <TabsTrigger value="audit">Audit</TabsTrigger>
+              <TabsTrigger value="validation">Validation</TabsTrigger>
+              <TabsTrigger value="review">Coach</TabsTrigger>
             </TabsList>
             <div className="min-h-0 flex-1 overflow-auto p-3">
               <TabsContent value="data" className="mt-0 h-full">
@@ -406,6 +443,40 @@ export function PyCleanView() {
                 ) : (
                   <div className="text-sm text-muted-foreground">
                     Run the pipeline to see per-step row counts.
+                  </div>
+                )}
+              </TabsContent>
+              <TabsContent value="validation" className="mt-0">
+                <ValidationPanel
+                  columns={dataset.columns}
+                  rules={rules}
+                  results={run?.validation ?? []}
+                  onChange={setRules}
+                />
+              </TabsContent>
+              <TabsContent value="review" className="mt-0">
+                {reviewing ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Reviewing…
+                  </div>
+                ) : review ? (
+                  <div className="flex flex-col gap-3">
+                    <ReviewCard review={review} />
+                    <button
+                      onClick={doReview}
+                      className="self-start text-xs text-primary hover:underline"
+                    >
+                      Re-run review
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-3 py-10 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Get a coach review of your cleaning pipeline.
+                    </p>
+                    <Button size="sm" className="gap-1.5" onClick={doReview}>
+                      <Sparkles className="h-3.5 w-3.5" /> Get review
+                    </Button>
                   </div>
                 )}
               </TabsContent>
