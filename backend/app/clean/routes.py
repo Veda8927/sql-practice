@@ -16,7 +16,7 @@ from ..schemas import TableResult
 from ..state import SessionState
 from . import generate, ingest
 from .pipeline import export_pipeline, run_pipeline, validate_pipeline
-from .py_pipeline import run_py_pipeline
+from .py_pipeline import export_py_pipeline, run_py_pipeline
 from .schemas import (
     DatasetSummary,
     GenerateRequest,
@@ -126,6 +126,23 @@ async def py_run(req: RunRequest, state: SessionDep) -> dict:
         raise HTTPException(status_code=400, detail="Upload or generate a dataset first.")
     return await run_py_pipeline(
         state.clean.table, [s.model_dump() for s in req.steps]
+    )
+
+
+@router.post("/py_export")
+async def py_export(req: RunRequest, state: SessionDep) -> Response:
+    """Run the pandas pipeline and stream the cleaned data as a CSV download."""
+    if state.clean is None:
+        raise HTTPException(status_code=400, detail="Upload or generate a dataset first.")
+    csv_text, error = await export_py_pipeline(
+        state.clean.table, [s.model_dump() for s in req.steps]
+    )
+    if error or csv_text is None:
+        raise HTTPException(status_code=400, detail=error or "Export failed.")
+    return Response(
+        content=csv_text,
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="cleaned.csv"'},
     )
 
 

@@ -68,6 +68,58 @@ print(json.dumps({
 """
 
 
+# Runs inside the sandbox: applies steps then writes the full result as CSV.
+_EXPORT_SCRIPT = """
+import json
+import sys
+import pandas as pd
+
+_ex = exec
+
+with open("data.json") as _f:
+    _d = json.load(_f)
+
+raw = pd.DataFrame(_d["rows"], columns=_d["cols"])
+prev = raw.copy()
+for _st in _d["steps"]:
+    _ns = {"pd": pd, "raw": raw, "prev": prev}
+    _ex(_st.get("code") or "", _ns)
+    prev = _ns.get("prev")
+    if not isinstance(prev, pd.DataFrame):
+        raise TypeError("Each step must assign a DataFrame to `prev`.")
+
+sys.stdout.write(prev.to_csv(index=False))
+"""
+
+
+async def _read_sample(table_fqn: str) -> dict[str, Any]:
+    async with engine.connect() as conn:
+        res = await conn.execute(text(f"SELECT * FROM {table_fqn} LIMIT {SAMPLE_CAP}"))
+        keys = list(res.keys())
+        cols = [str(c) for c in keys]
+        rows = [[_json_safe(v) for v in r] for r in res.fetchall()]
+    return {"cols": cols, "rows": rows}
+
+
+async def export_py_pipeline(
+    table_fqn: str, steps: list[dict[str, Any]]
+) -> tuple[str | None, str | None]:
+    """Run the pandas pipeline and return the full result as CSV text."""
+    if len(steps) > MAX_STEPS:
+        return None, f"Too many steps (max {MAX_STEPS})."
+    data = await _read_sample(table_fqn)
+    data["steps"] = [{"title": s.get("title"), "code": s.get("sql") or ""} for s in steps]
+    result = await executor.run(
+        _EXPORT_SCRIPT, extra_files={"data.json": json.dumps(data)}, timeout_s=12.0
+    )
+    if result.timed_out:
+        return None, "Export timed out."
+    if result.exit_code != 0:
+        err = (result.stderr or "").strip().splitlines()
+        return None, (err[-1] if err else "Export failed.")[:300]
+    return result.stdout, None
+
+
 async def run_py_pipeline(
     table_fqn: str, steps: list[dict[str, Any]]
 ) -> dict[str, Any]:
