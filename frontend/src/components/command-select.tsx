@@ -149,7 +149,7 @@ export function CommandSelect<T extends string>({
                   minWidth: Math.max(pos.width, 240),
                   maxHeight: pos.maxHeight,
                 }}
-                className="z-50 flex w-64 flex-col overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-xl shadow-background/40"
+                className="z-50 flex w-64 flex-col overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-lg"
               >
                 <div className="shrink-0 px-2 py-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   {label}
@@ -166,40 +166,24 @@ export function CommandSelect<T extends string>({
                             {option.group}
                           </div>
                         )}
-                        <motion.button
+                        <button
                           type="button"
-                          initial={{ opacity: 0, x: -4 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.14, delay: Math.min(index, 8) * 0.012 }}
                           onClick={() => {
                             onChange(option.value);
                             setOpen(false);
                           }}
                           className={cn(
-                            "flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left transition-colors",
+                            "flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left transition-colors",
                             active
                               ? "bg-muted text-foreground"
                               : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                           )}
                         >
-                          <span className="min-w-0">
-                            <span className="block truncate text-xs font-medium">
-                              {option.label}
-                            </span>
+                          <span className="block truncate text-xs font-medium">
+                            {option.label}
                           </span>
-                          <AnimatePresence>
-                            {active && (
-                              <motion.span
-                                initial={{ opacity: 0, scale: 0.75 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.75 }}
-                                transition={{ type: "spring", stiffness: 420, damping: 28 }}
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                              </motion.span>
-                            )}
-                          </AnimatePresence>
-                        </motion.button>
+                          {active && <Check className="h-3.5 w-3.5 shrink-0" />}
+                        </button>
                       </React.Fragment>
                     );
                   })}

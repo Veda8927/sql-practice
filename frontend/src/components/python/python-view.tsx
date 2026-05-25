@@ -9,7 +9,6 @@ import {
 } from "react-resizable-panels";
 import {
   ArrowRight,
-  ArrowUp,
   Filter,
   Gauge,
   Lightbulb,
@@ -21,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SourceToggle } from "@/components/source-toggle";
 import { CommandSelect, type SelectOption } from "@/components/command-select";
+import { StartButton } from "@/components/start-button";
 import { PyEditor } from "@/components/python/py-editor";
 import { TestResults } from "@/components/python/test-results";
 import { SyllabusView } from "@/components/syllabus-view";
@@ -383,7 +383,7 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
         Ready when you are.
       </h1>
 
-      <div className="flex items-center gap-1.5 rounded-[28px] border border-border bg-card px-3 py-3 shadow-sm transition-shadow focus-within:shadow-md">
+      <div className="flex items-center gap-1 rounded-full border border-border bg-card py-1.5 pl-4 pr-1.5 shadow-sm transition-shadow focus-within:shadow-md">
         <div className="min-w-0 flex-1" />
         <CommandSelect
           label="Concept"
@@ -403,19 +403,7 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
           onChange={setDifficulty}
           bare
         />
-        <button
-          type="button"
-          onClick={() => newExercise()}
-          disabled={loadingNew}
-          aria-label="Start exercise"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-opacity hover:opacity-90 disabled:opacity-50"
-        >
-          {loadingNew ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <ArrowUp className="h-4 w-4" />
-          )}
-        </button>
+        <StartButton onClick={() => newExercise()} loading={loadingNew} label="Start exercise" />
       </div>
     </div>
   );

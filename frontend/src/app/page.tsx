@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   BookOpen,
   History,
-  Keyboard,
   Loader2,
   Moon,
   PlayCircle,
@@ -897,22 +897,6 @@ export default function Page() {
               Generate a brand-new AI-designed schema (10–30s)
             </TooltipContent>
           </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShortcutsOpen(true)}
-                aria-label="Keyboard shortcuts"
-                className="rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <Keyboard className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Keyboard shortcuts — <kbd className="font-mono">?</kbd>
-            </TooltipContent>
-          </Tooltip>
             </>
           )}
           {/* Activity views (Clean) portal their toolbar in here. */}
@@ -941,13 +925,29 @@ export default function Page() {
               newQuestionMutation.mutate({ concept, difficulty });
             }}
           />
-        ) : !question ? (
-          <div className="h-full overflow-auto">
-            <div className="flex min-h-full items-center justify-center">
-              <div className="w-full">{questionBar}</div>
-            </div>
-          </div>
         ) : (
+          <AnimatePresence mode="wait">
+            {!question ? (
+              <motion.div
+                key="practice-empty"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="h-full overflow-auto"
+              >
+                <div className="flex min-h-full items-center justify-center pb-[14vh]">
+                  <div className="w-full">{questionBar}</div>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="practice-working"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
+                className="h-full w-full"
+              >
         <PanelGroup
           orientation="vertical"
           id="sql-practice-vsplit"
@@ -1052,6 +1052,9 @@ export default function Page() {
           </PanelGroup>
           </Panel>
         </PanelGroup>
+              </motion.div>
+            )}
+          </AnimatePresence>
         )}
       </main>
 
