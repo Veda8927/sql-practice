@@ -54,6 +54,16 @@ export const cleanApi = {
       rules,
       up_to_index: upToIndex ?? null,
     }),
+  exportCsv: async (steps: Step[], rules: Rule[]): Promise<Blob> => {
+    const res = await fetch(`${BASE_URL}/api/clean/export`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ steps, rules }),
+    });
+    if (!res.ok) throw new Error(await detailFrom(res));
+    return res.blob();
+  },
   review: (steps: Step[], rules: Rule[]) =>
     postJson<ReviewResponse>("/api/clean/review", { steps, rules }),
   validate: (steps: Step[], rules: Rule[]) =>

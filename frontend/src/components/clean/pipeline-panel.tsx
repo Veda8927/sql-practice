@@ -131,11 +131,16 @@ export function PipelinePanel({
       </div>
 
       <div className="min-h-0 flex-1 space-y-2 overflow-auto p-4">
-        <p className="text-xs text-muted-foreground">
-          Each step is a <code className="font-mono">SELECT</code> that reads{" "}
-          <code className="font-mono">prev</code> (the previous step) or{" "}
-          <code className="font-mono">raw</code> (the original data).
-        </p>
+        {steps.length === 0 && (
+          <div className="rounded-lg border border-dashed border-border/70 px-4 py-8 text-center">
+            <p className="text-sm font-medium">Build a cleaning pipeline</p>
+            <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+              Each step is a <code className="font-mono">SELECT</code> reading{" "}
+              <code className="font-mono">prev</code> (previous step) or{" "}
+              <code className="font-mono">raw</code> (original data).
+            </p>
+          </div>
+        )}
         {steps.map((step, i) => {
           const rowsAfter = stageRowCounts[i + 1];
           const rowsBefore = stageRowCounts[i];
@@ -152,8 +157,8 @@ export function PipelinePanel({
             <div
               key={i}
               className={cn(
-                "rounded-lg border bg-card",
-                failed ? "border-destructive" : "border-border",
+                "group rounded-lg border bg-card transition-colors",
+                failed ? "border-destructive" : "border-border hover:border-border/80",
               )}
             >
               {/* Header row — click to expand/collapse */}
@@ -187,29 +192,31 @@ export function PipelinePanel({
                   )}
                 </button>
                 {rowCounts}
-                <button
-                  onClick={() => move(i, -1)}
-                  disabled={i === 0}
-                  className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                  aria-label="Move step up"
-                >
-                  <ArrowUp className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => move(i, 1)}
-                  disabled={i === steps.length - 1}
-                  className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                  aria-label="Move step down"
-                >
-                  <ArrowDown className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => remove(i)}
-                  className="text-muted-foreground hover:text-destructive"
-                  aria-label="Remove step"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                  <button
+                    onClick={() => move(i, -1)}
+                    disabled={i === 0}
+                    className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+                    aria-label="Move step up"
+                  >
+                    <ArrowUp className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => move(i, 1)}
+                    disabled={i === steps.length - 1}
+                    className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+                    aria-label="Move step down"
+                  >
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => remove(i)}
+                    className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                    aria-label="Remove step"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
 
               {isOpen && (

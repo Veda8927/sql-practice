@@ -18,6 +18,7 @@ _WRITE = re.compile(
 )
 
 PREVIEW_CAP = 100
+EXPORT_CAP = 200_000
 MAX_STEPS = 20
 
 
@@ -200,6 +201,27 @@ async def run_pipeline(
         "stages": stages,
         "validation": validation,
     }
+
+
+async def export_pipeline(
+    table_fqn: str, steps: list[dict[str, Any]]
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Run the full pipeline and return the complete final-stage data (no preview
+    cap) as {columns, rows} for CSV export. Returns (data, error)."""
+    if len(steps) > MAX_STEPS:
+        return None, f"Too many steps (max {MAX_STEPS})."
+    async with engine.connect() as conn:
+        trans = await conn.begin()
+        try:
+            failed, error = await _execute_stages(conn, table_fqn, steps, len(steps))
+            if failed is not None:
+                return None, error
+            res = await conn.execute(text(f"SELECT * FROM prev LIMIT {EXPORT_CAP}"))
+            cols = list(res.keys())
+            rows = [[_json_safe(v) for v in r] for r in res.fetchall()]
+            return {"columns": cols, "rows": rows}, None
+        finally:
+            await trans.rollback()
 
 
 async def validate_pipeline(

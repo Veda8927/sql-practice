@@ -1,10 +1,13 @@
-"""/api/clean/* routes: upload, generate, dataset, run, review, reset."""
+"""/api/clean/* routes: upload, generate, dataset, run, review, export, reset."""
 from __future__ import annotations
 
+import csv
+import io
 import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import Response
 
 from .. import llm
 from ..db import engine
@@ -12,7 +15,7 @@ from ..deps import SessionDep
 from ..schemas import TableResult
 from ..state import SessionState
 from . import generate, ingest
-from .pipeline import run_pipeline, validate_pipeline
+from .pipeline import export_pipeline, run_pipeline, validate_pipeline
 from .schemas import (
     DatasetSummary,
     GenerateRequest,
@@ -113,6 +116,28 @@ async def run(req: RunRequest, state: SessionDep) -> RunResponse:
         up_to_index=req.up_to_index,
     )
     return RunResponse(**out)
+
+
+@router.post("/export")
+async def export(req: RunRequest, state: SessionDep) -> Response:
+    """Run the full pipeline and stream the cleaned data back as a CSV download."""
+    if state.clean is None:
+        raise HTTPException(status_code=400, detail="Upload or generate a dataset first.")
+    data, error = await export_pipeline(
+        state.clean.table, [s.model_dump() for s in req.steps]
+    )
+    if error or data is None:
+        raise HTTPException(status_code=400, detail=error or "Export failed.")
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(data["columns"])
+    for row in data["rows"]:
+        writer.writerow(["" if v is None else v for v in row])
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="cleaned.csv"'},
+    )
 
 
 @router.post("/validate", response_model=ValidateResponse)
