@@ -4,8 +4,6 @@ import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
-  Code2,
-  Database,
   History,
   Keyboard,
   Loader2,
@@ -34,6 +32,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { PythonLogo, SqlLogo } from "@/components/brand-logos";
 import { SchemaModal } from "@/components/schema-modal";
 import { QuestionBar, type QuestionSource } from "@/components/question-bar";
 import { SqlEditor, PLACEHOLDER } from "@/components/sql-editor";
@@ -213,28 +212,6 @@ export default function Page() {
   const questionPanelRef = usePanelRef();
   const questionContentRef = React.useRef<HTMLDivElement>(null);
 
-  // Observe the QuestionBar's natural height and resize the top panel to match,
-  // so long questions never get clipped on small viewports. The user can still
-  // drag the divider afterwards — we only fire when the content height changes,
-  // not on every render.
-  React.useEffect(() => {
-    const el = questionContentRef.current;
-    if (!el) return;
-    let frame = 0;
-    const obs = new ResizeObserver(() => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const h = el.scrollHeight;
-        if (h > 0) questionPanelRef.current?.resize(`${h + 16}px`);
-      });
-    });
-    obs.observe(el);
-    return () => {
-      cancelAnimationFrame(frame);
-      obs.disconnect();
-    };
-  }, [questionPanelRef]);
-
   React.useEffect(() => {
     try {
       const stored = window.localStorage.getItem(VSPLIT_LAYOUT_STORAGE_KEY);
@@ -290,6 +267,27 @@ export default function Page() {
   );
 
   const [question, setQuestion] = React.useState<Question | null>(null);
+
+  // Resize the prompt panel to fit the question so the editor/results take the
+  // rest of the space. Depends on `question` so it (re)binds when the content
+  // div mounts in the question branch.
+  React.useEffect(() => {
+    const el = questionContentRef.current;
+    if (!el) return;
+    let frame = 0;
+    const obs = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const h = el.scrollHeight;
+        if (h > 0) questionPanelRef.current?.resize(`${h + 16}px`);
+      });
+    });
+    obs.observe(el);
+    return () => {
+      cancelAnimationFrame(frame);
+      obs.disconnect();
+    };
+  }, [questionPanelRef, question]);
   const [sql, setSql] = React.useState<string>(PLACEHOLDER);
   const [result, setResult] = React.useState<GradeResult | null>(null);
   const [runResult, setRunResult] = React.useState<RunQueryResponse | null>(
@@ -777,8 +775,8 @@ export default function Page() {
           <div className="flex items-center gap-0.5 rounded-full border border-border bg-muted/40 p-0.5">
             {(
               [
-                { id: "sql", label: "SQL", icon: <Database className="h-3.5 w-3.5" /> },
-                { id: "python", label: "Python", icon: <Code2 className="h-3.5 w-3.5" /> },
+                { id: "sql", label: "SQL", icon: <SqlLogo className="h-4 w-4" /> },
+                { id: "python", label: "Python", icon: <PythonLogo className="h-4 w-4" /> },
               ] as const
             ).map((l) => (
               <button

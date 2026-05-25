@@ -5,6 +5,7 @@ import {
   Group as PanelGroup,
   Panel,
   Separator as PanelResizeHandle,
+  usePanelRef,
 } from "react-resizable-panels";
 import {
   ArrowRight,
@@ -91,6 +92,28 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
   questionRef.current = question;
   const viewRef = React.useRef(view);
   viewRef.current = view;
+
+  // Auto-size the prompt panel to the exercise so the editor/results take the
+  // rest of the space (mirrors SQL practice).
+  const promptPanelRef = usePanelRef();
+  const promptContentRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const el = promptContentRef.current;
+    if (!el) return;
+    let frame = 0;
+    const obs = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const h = el.scrollHeight;
+        if (h > 0) promptPanelRef.current?.resize(`${h + 16}px`);
+      });
+    });
+    obs.observe(el);
+    return () => {
+      cancelAnimationFrame(frame);
+      obs.disconnect();
+    };
+  }, [promptPanelRef, question]);
 
   function resetCoach() {
     setRunResult(null);
@@ -339,8 +362,15 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
           <PanelGroup orientation="vertical" className="h-full w-full">
-            <Panel defaultSize="40%" minSize="14%" className="min-h-0">
-              <div className="h-full overflow-auto">{promptZone}</div>
+            <Panel
+              defaultSize="40%"
+              minSize="12%"
+              panelRef={promptPanelRef}
+              className="min-h-0"
+            >
+              <div className="h-full overflow-auto">
+                <div ref={promptContentRef}>{promptZone}</div>
+              </div>
             </Panel>
             <PanelResizeHandle className="h-px bg-border transition-colors hover:bg-primary/40" />
             <Panel defaultSize="60%" minSize="30%" className="min-h-0">
