@@ -242,106 +242,109 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
   const pillSelect =
     "h-8 appearance-none rounded-lg border border-border bg-background pl-8 pr-7 text-xs font-medium capitalize text-foreground outline-none transition-colors hover:bg-muted/50 disabled:opacity-50";
 
+  // Shared prompt zone (SQL-practice style). Shown alone before an exercise
+  // exists, then in the top panel once the editor/results split appears.
+  const promptZone = (
+    <div className="mx-auto w-full max-w-3xl px-6 py-8">
+      <div className="mb-8 flex justify-center">
+        <div className="w-[220px]">
+          <SourceToggle value={source} onChange={setSource} disabled={loadingNew} />
+        </div>
+      </div>
+      <div className="min-h-[64px]">
+        {loadingNew ? (
+          <div className="flex items-center gap-3 text-base text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Writing your exercise…
+          </div>
+        ) : question ? (
+          <PyPrompt question={question} />
+        ) : (
+          <p className="max-w-2xl text-[22px] font-medium leading-snug tracking-tight text-muted-foreground">
+            Choose a concept, then{" "}
+            <span className="text-foreground">start your first exercise</span>.
+          </p>
+        )}
+      </div>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="relative inline-flex items-center">
+            <Filter className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <select
+              value={concept}
+              onChange={(e) => setConcept(e.target.value)}
+              disabled={loadingNew}
+              className={pillSelect}
+            >
+              {concepts.map((c) => (
+                <option key={c.concept} value={c.concept}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+          <div className="relative inline-flex items-center">
+            <Gauge className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <select
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value as PyDifficulty)}
+              disabled={loadingNew}
+              className={pillSelect}
+            >
+              {DIFFS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+        </div>
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+          {question && (
+            <Button size="sm" variant="ghost" onClick={getHint} className="h-8 shrink-0 rounded-lg text-xs">
+              <Lightbulb className="h-3.5 w-3.5" /> Hint
+            </Button>
+          )}
+          {question && (
+            <Button size="sm" variant="ghost" onClick={giveUp} className="h-8 shrink-0 rounded-lg text-xs">
+              <RotateCcw className="h-3.5 w-3.5" /> Solution
+            </Button>
+          )}
+          <Button size="sm" onClick={newExercise} disabled={loadingNew} className="h-8 shrink-0 rounded-lg">
+            {loadingNew ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <ArrowRight className="h-3.5 w-3.5" />
+            )}
+            {question ? "New exercise" : "Start exercise"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex h-full flex-col">
       {view === "learn" ? (
         <div className="min-h-0 flex-1">
           <SyllabusView syllabus={PY_SYLLABUS} onPracticeConcept={practiceConcept} />
         </div>
+      ) : !question ? (
+        <div className="h-full overflow-auto">
+          <div className="flex min-h-full items-center justify-center">
+            <div className="w-full">{promptZone}</div>
+          </div>
+        </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
-      <PanelGroup orientation="vertical" className="h-full w-full">
-        {/* Prompt zone — mirrors the SQL practice QuestionBar */}
-        <Panel defaultSize="40%" minSize="14%" className="min-h-0">
-          <div className="h-full overflow-auto">
-            <div className="mx-auto w-full max-w-3xl px-6 py-8">
-              <div className="mb-8 flex justify-center">
-                <div className="w-[220px]">
-                  <SourceToggle value={source} onChange={setSource} disabled={loadingNew} />
-                </div>
-              </div>
-              <div className="min-h-[64px]">
-                {loadingNew ? (
-                  <div className="flex items-center gap-3 text-base text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Writing your exercise…
-                  </div>
-                ) : question ? (
-                  <PyPrompt question={question} />
-                ) : (
-                  <p className="max-w-2xl text-[22px] font-medium leading-snug tracking-tight text-muted-foreground">
-                    Choose a concept, then{" "}
-                    <span className="text-foreground">start your first exercise</span>.
-                  </p>
-                )}
-              </div>
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <div className="relative inline-flex items-center">
-                    <Filter className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                    <select
-                      value={concept}
-                      onChange={(e) => setConcept(e.target.value)}
-                      disabled={loadingNew}
-                      className={pillSelect}
-                    >
-                      {concepts.map((c) => (
-                        <option key={c.concept} value={c.concept}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                  <div className="relative inline-flex items-center">
-                    <Gauge className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                    <select
-                      value={difficulty}
-                      onChange={(e) => setDifficulty(e.target.value as PyDifficulty)}
-                      disabled={loadingNew}
-                      className={pillSelect}
-                    >
-                      {DIFFS.map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                </div>
-                <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-                  {question && (
-                    <Button size="sm" variant="ghost" onClick={getHint} className="h-8 shrink-0 rounded-lg text-xs">
-                      <Lightbulb className="h-3.5 w-3.5" /> Hint
-                    </Button>
-                  )}
-                  {question && (
-                    <Button size="sm" variant="ghost" onClick={giveUp} className="h-8 shrink-0 rounded-lg text-xs">
-                      <RotateCcw className="h-3.5 w-3.5" /> Solution
-                    </Button>
-                  )}
-                  <Button size="sm" onClick={newExercise} disabled={loadingNew} className="h-8 shrink-0 rounded-lg">
-                    {loadingNew ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    )}
-                    {question ? "New exercise" : "Start exercise"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Panel>
-        <PanelResizeHandle className="h-px bg-border transition-colors hover:bg-primary/40" />
-        {/* Work zone — editor | results */}
-        <Panel defaultSize="60%" minSize="30%" className="min-h-0">
-          {!question ? (
-            <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
-              Your editor and results appear here once you start an exercise.
-            </div>
-          ) : (
-          <PanelGroup orientation={wide ? "horizontal" : "vertical"} className="h-full w-full">
+          <PanelGroup orientation="vertical" className="h-full w-full">
+            <Panel defaultSize="40%" minSize="14%" className="min-h-0">
+              <div className="h-full overflow-auto">{promptZone}</div>
+            </Panel>
+            <PanelResizeHandle className="h-px bg-border transition-colors hover:bg-primary/40" />
+            <Panel defaultSize="60%" minSize="30%" className="min-h-0">
+              <PanelGroup orientation={wide ? "horizontal" : "vertical"} className="h-full w-full">
             <Panel defaultSize="50%" minSize="25%" className="min-h-0">
               <div className="h-full p-3">
                 <PyEditor
@@ -476,7 +479,6 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
             </Tabs>
             </Panel>
           </PanelGroup>
-          )}
         </Panel>
       </PanelGroup>
         </div>

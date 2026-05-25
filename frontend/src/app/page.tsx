@@ -15,7 +15,6 @@ import {
   Sparkles,
   Sun,
   Table2,
-  Terminal,
   Wand2,
   X,
 } from "lucide-react";
@@ -744,15 +743,36 @@ export default function Page() {
           { id: "practice", label: "Practice", icon: <PlayCircle className="h-3.5 w-3.5" /> },
         ];
 
+  // Rendered in two places: alone (centered) before a question exists, and in
+  // the top panel once the editor/results split appears.
+  const questionBar = (
+    <QuestionBar
+      question={question}
+      loading={
+        source === "curated"
+          ? curatedLoadMutation.isPending
+          : newQuestionMutation.isPending
+      }
+      onNewQuestion={onNewQuestion}
+      onHint={source === "curated" ? onCuratedHint : () => hintMutation.mutate()}
+      hint={hint}
+      hintLoading={source === "curated" ? false : hintMutation.isPending}
+      onDismissHint={() => setHint(null)}
+      onApplyHintSql={(suggested) => {
+        setSql(suggested);
+        setHint(null);
+      }}
+      difficultySuggestion={difficultySuggestion}
+      source={source}
+      onSourceChange={onSourceChange}
+    />
+  );
+
   return (
     <div className="flex h-screen w-screen flex-col bg-background text-foreground">
       {/* Minimal header */}
       <header className="flex h-12 shrink-0 items-center justify-between gap-2 px-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
-          <Terminal
-            className="h-4 w-4 shrink-0 text-muted-foreground"
-            aria-hidden
-          />
           {/* Primary axis: which language you're practicing */}
           <div className="flex items-center gap-0.5 rounded-full border border-border bg-muted/40 p-0.5">
             {(
@@ -908,8 +928,13 @@ export default function Page() {
               newQuestionMutation.mutate({ concept, difficulty });
             }}
           />
+        ) : !question ? (
+          <div className="h-full overflow-auto">
+            <div className="flex min-h-full items-center justify-center">
+              <div className="w-full">{questionBar}</div>
+            </div>
+          </div>
         ) : (
-          <>
         <PanelGroup
           orientation="vertical"
           id="sql-practice-vsplit"
@@ -931,30 +956,7 @@ export default function Page() {
             <div className="h-full overflow-auto">
               <div className="flex min-h-full items-center justify-center">
                 <div ref={questionContentRef} className="w-full">
-          <QuestionBar
-            question={question}
-            loading={
-              source === "curated"
-                ? curatedLoadMutation.isPending
-                : newQuestionMutation.isPending
-            }
-            onNewQuestion={onNewQuestion}
-            onHint={
-              source === "curated"
-                ? onCuratedHint
-                : () => hintMutation.mutate()
-            }
-            hint={hint}
-            hintLoading={source === "curated" ? false : hintMutation.isPending}
-            onDismissHint={() => setHint(null)}
-            onApplyHintSql={(suggested) => {
-              setSql(suggested);
-              setHint(null);
-            }}
-            difficultySuggestion={difficultySuggestion}
-            source={source}
-            onSourceChange={onSourceChange}
-          />
+                  {questionBar}
                 </div>
               </div>
             </div>
@@ -1037,7 +1039,6 @@ export default function Page() {
           </PanelGroup>
           </Panel>
         </PanelGroup>
-          </>
         )}
       </main>
 
