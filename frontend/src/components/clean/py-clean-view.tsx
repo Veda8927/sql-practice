@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DataView } from "@/components/clean/data-view";
+import { DataToolbar, DataView, type DataTab } from "@/components/clean/data-view";
 import { PipelinePanel } from "@/components/clean/pipeline-panel";
 import { ReviewCard } from "@/components/clean/review-card";
 import { UploadDropzone } from "@/components/clean/upload-dropzone";
@@ -82,6 +82,7 @@ export function PyCleanView() {
   const [running, setRunning] = React.useState(false);
   const [reviewing, setReviewing] = React.useState(false);
   const [tab, setTab] = React.useState("data");
+  const [dataTab, setDataTab] = React.useState<DataTab>("raw");
   const [saved, setSaved] = React.useState<SavedPipeline[]>([]);
   const [savedOpen, setSavedOpen] = React.useState(false);
   const [exporting, setExporting] = React.useState(false);
@@ -94,6 +95,12 @@ export function PyCleanView() {
   datasetRef.current = dataset;
 
   React.useEffect(() => setSaved(loadSaved()), []);
+
+  // A fresh run produces cleaned output — surface it. Fall back to raw when
+  // there's no cleaned preview (new dataset, reset).
+  React.useEffect(() => {
+    setDataTab(run?.final_preview ? "cleaned" : "raw");
+  }, [run?.final_preview]);
 
   React.useEffect(() => {
     try {
@@ -283,6 +290,8 @@ export function PyCleanView() {
   }
 
   const stageRowCounts = run?.stages.map((s) => s.row_count) ?? [dataset.row_count];
+  const cleaned = run?.final_preview ?? null;
+  const activeTable = dataTab === "cleaned" && cleaned ? cleaned : dataset.raw_preview;
 
   return (
     <div className="flex h-full flex-col">
@@ -418,15 +427,25 @@ export function PyCleanView() {
         />
         <Panel defaultSize="55%" minSize="30%" className="min-h-0">
           <Tabs value={tab} onValueChange={setTab} className="flex h-full min-h-0 flex-col">
-            <TabsList className="m-3 mb-0 self-start">
-              <TabsTrigger value="data">Data</TabsTrigger>
-              <TabsTrigger value="audit">Audit</TabsTrigger>
-              <TabsTrigger value="validation">Validation</TabsTrigger>
-              <TabsTrigger value="review">Coach</TabsTrigger>
-            </TabsList>
+            <div className="m-3 mb-0 flex items-center justify-between gap-2">
+              <TabsList>
+                <TabsTrigger value="data">Data</TabsTrigger>
+                <TabsTrigger value="audit">Audit</TabsTrigger>
+                <TabsTrigger value="validation">Validation</TabsTrigger>
+                <TabsTrigger value="review">Coach</TabsTrigger>
+              </TabsList>
+              {tab === "data" && (
+                <DataToolbar
+                  view={dataTab}
+                  onViewChange={setDataTab}
+                  hasCleaned={!!cleaned}
+                  table={activeTable}
+                />
+              )}
+            </div>
             <div className="min-h-0 flex-1 overflow-auto p-3">
               <TabsContent value="data" className="mt-0 h-full">
-                <DataView raw={dataset.raw_preview} cleaned={run?.final_preview ?? null} />
+                <DataView table={activeTable} />
               </TabsContent>
               <TabsContent value="audit" className="mt-0">
                 {run?.stages.length ? (
