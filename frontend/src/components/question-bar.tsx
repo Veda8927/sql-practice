@@ -6,6 +6,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowUp,
+  BarChart3,
   BookOpen,
   Check,
   ChevronDown,
@@ -16,6 +18,7 @@ import {
   Link2,
   Loader2,
   Search,
+  Sigma,
   Sparkles,
   Table2,
   X,
@@ -992,6 +995,96 @@ export function QuestionBar({
     if (difficultySuggestion) setDifficulty(difficultySuggestion);
   }, [difficultySuggestion]);
 
+  const start = React.useCallback(
+    (over?: { concept?: ConceptChoice; difficulty?: DifficultyChoice }) => {
+      const c = over?.concept ?? concept;
+      const d = over?.difficulty ?? difficulty;
+      onNewQuestion({
+        concept: c || undefined,
+        difficulty: d === "any" ? undefined : d,
+      });
+    },
+    [concept, difficulty, onNewQuestion],
+  );
+
+  // Empty state: a calm, OpenAI-style hero — greeting, a rounded prompt bar
+  // holding the focus controls, and one-tap quick-start pills.
+  if (!question) {
+    const quickStarts: { concept: ConceptChoice; label: string; icon: React.ReactNode }[] = [
+      { concept: "joins", label: "Joins", icon: <Link2 className="h-4 w-4" /> },
+      { concept: "aggregations", label: "Aggregations", icon: <Sigma className="h-4 w-4" /> },
+      { concept: "window_functions", label: "Window functions", icon: <BarChart3 className="h-4 w-4" /> },
+    ];
+    return (
+      <div className="mx-auto w-full max-w-2xl px-6 py-8">
+        <h1 className="mb-8 text-center text-[32px] font-semibold tracking-tight text-foreground sm:text-[38px]">
+          Ready when you are.
+        </h1>
+
+        {/* Prompt bar: focus controls on the left, start on the right. */}
+        <div className="flex items-center gap-2 rounded-[26px] border border-border bg-card px-2.5 py-2 shadow-sm transition-shadow focus-within:shadow-md">
+          <CategoryConceptSelect
+            value={concept}
+            onChange={setConcept}
+            disabled={loading}
+          />
+          <CommandSelect
+            label="Difficulty"
+            value={difficulty}
+            options={DIFFICULTY_OPTIONS}
+            icon={<Gauge className="h-3.5 w-3.5" />}
+            disabled={loading}
+            onChange={setDifficulty}
+          />
+          <div className="min-w-0 flex-1" />
+          <button
+            type="button"
+            onClick={() => start()}
+            disabled={loading}
+            aria-label="Start question"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ArrowUp className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+
+        {/* Quick-start pills. */}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
+          {quickStarts.map((q) => (
+            <button
+              key={q.concept}
+              type="button"
+              disabled={loading}
+              onClick={() => {
+                setConcept(q.concept);
+                start({ concept: q.concept });
+              }}
+              className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/80 shadow-sm transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-50"
+            >
+              <span className="text-muted-foreground">{q.icon}</span>
+              {q.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Source: AI-generated vs curated bank. */}
+        <div className="mt-8 flex justify-center">
+          <div className="w-[220px]">
+            <SourceToggle
+              value={source}
+              onChange={onSourceChange}
+              disabled={loading}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-8">
       <div className="mb-10 flex justify-center">
@@ -1016,7 +1109,7 @@ export function QuestionBar({
               <ThinkingDots />
               <span>Writing your question…</span>
             </motion.div>
-          ) : question ? (
+          ) : (
             <motion.h2
               key={question.question}
               initial={{ opacity: 0 }}
@@ -1025,16 +1118,6 @@ export function QuestionBar({
             >
               <WordReveal text={question.question} />
             </motion.h2>
-          ) : (
-            <motion.p
-              key="empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="max-w-2xl text-[22px] font-medium leading-snug tracking-tight text-muted-foreground"
-            >
-              Choose a focus, then{" "}
-              <span className="text-foreground">start your first question</span>.
-            </motion.p>
           )}
         </AnimatePresence>
       </div>
