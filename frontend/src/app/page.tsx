@@ -33,6 +33,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { PythonLogo, SqlLogo } from "@/components/brand-logos";
+import { HEADER_ACTIONS_SLOT_ID } from "@/components/header-portal";
 import { SchemaModal } from "@/components/schema-modal";
 import { QuestionBar, type QuestionSource } from "@/components/question-bar";
 import { SqlEditor, PLACEHOLDER } from "@/components/sql-editor";
@@ -914,6 +915,8 @@ export default function Page() {
           </Tooltip>
             </>
           )}
+          {/* Activity views (Clean) portal their toolbar in here. */}
+          <div id={HEADER_ACTIONS_SLOT_ID} className="flex items-center gap-1.5" />
           <ThemeToggleInline />
         </div>
       </header>

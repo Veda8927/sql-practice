@@ -20,7 +20,7 @@ export function DataView({ raw, cleaned }: Props) {
   const active = tab === "cleaned" && cleaned ? cleaned : raw;
   return (
     <div className="flex h-full flex-col gap-3">
-      <div className="flex items-center gap-1 self-start rounded-full border border-border bg-muted/40 p-0.5">
+      <div className="flex items-center gap-1 self-end rounded-full border border-border bg-muted/40 p-0.5">
         {(["cleaned", "raw"] as const).map((t) => (
           <button
             key={t}

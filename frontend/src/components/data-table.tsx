@@ -3,7 +3,6 @@
 import * as React from "react";
 
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -78,7 +77,7 @@ export function DataTable({
 
   return (
     <div className={cn("w-full overflow-auto rounded-lg border border-border bg-card", className)}>
-      <Table className="font-mono text-xs">
+      <table className="w-full caption-bottom font-mono text-xs">
         <TableHeader className="sticky top-0 z-10 bg-card">
           <TableRow className="border-border">
             {columns.map((c, i) => (
@@ -125,7 +124,7 @@ export function DataTable({
             </TableRow>
           ))}
         </TableBody>
-      </Table>
+      </table>
       {truncated && (
         <div className="border-t border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
           Showing {maxRows} of {rows.length} rows

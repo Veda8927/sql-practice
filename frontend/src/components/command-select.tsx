@@ -51,13 +51,18 @@ export function CommandSelect<T extends string>({
     );
     const spaceBelow = window.innerHeight - rect.bottom - 16;
     const spaceAbove = rect.top - 16;
-    const flip = spaceBelow < desired && spaceAbove > spaceBelow;
+    // Prefer opening downward — the trigger sits below the prompt, so flipping
+    // up would cover the question. Only flip when room below is genuinely too
+    // small to be usable AND there's clearly more room above. Cap the height to
+    // the available side so the menu scrolls internally instead of overflowing.
+    const flip = spaceBelow < Math.min(desired, 220) && spaceAbove > spaceBelow;
     const available = flip ? spaceAbove : spaceBelow;
+    const maxHeight = Math.min(desired, available);
     setPos({
-      top: flip ? rect.top - Math.min(desired, available) : rect.bottom,
+      top: flip ? rect.top - maxHeight : rect.bottom,
       left: rect.left,
       width: rect.width,
-      maxHeight: Math.max(available, 200),
+      maxHeight,
     });
   }, [open, options.length]);
 

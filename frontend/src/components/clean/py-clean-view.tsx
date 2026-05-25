@@ -24,6 +24,7 @@ import { PipelinePanel } from "@/components/clean/pipeline-panel";
 import { ReviewCard } from "@/components/clean/review-card";
 import { UploadDropzone } from "@/components/clean/upload-dropzone";
 import { ValidationPanel } from "@/components/clean/validation-panel";
+import { HeaderPortal } from "@/components/header-portal";
 import { cleanApi, type PyCleanResult } from "@/lib/clean-api";
 import { pythonApi } from "@/lib/python-api";
 import type {
@@ -257,17 +258,19 @@ export function PyCleanView() {
 
   async function downloadCsv() {
     setExporting(true);
+    // No steps yet = the dataset is still raw, so export it as-is.
+    const filename = stepsRef.current.length === 0 ? "dataset.csv" : "cleaned.csv";
     try {
       const blob = await cleanApi.pyExportCsv(stepsRef.current);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "cleaned.csv";
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast.success("Downloaded cleaned.csv");
+      toast.success(`Downloaded ${filename}`);
     } catch (e) {
       toast.error(String((e as Error).message));
     } finally {
@@ -295,7 +298,12 @@ export function PyCleanView() {
               <code className="font-mono">prev</code>.
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
+        </div>
+      </div>
+
+      {/* Toolbar lives in the global top-right header (like Practice). */}
+      <HeaderPortal>
+        <div className="flex shrink-0 items-center gap-1.5">
             <Button
               variant="ghost"
               size="sm"
@@ -384,9 +392,8 @@ export function PyCleanView() {
             >
               <RotateCcw className="h-3.5 w-3.5" /> New dataset
             </Button>
-          </div>
         </div>
-      </div>
+      </HeaderPortal>
 
       <PanelGroup orientation={wide ? "horizontal" : "vertical"} className="min-h-0 flex-1">
         <Panel defaultSize="45%" minSize="25%" className="min-h-0">
