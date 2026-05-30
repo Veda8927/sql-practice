@@ -2,15 +2,18 @@
 from __future__ import annotations
 
 import ast
+import asyncio
+import contextlib
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
 from . import llm
 from .deps import SessionDep
 from .pyexec.executor import executor
 from .pyexec.grader import grade
+from .pyexec.terminal import SessionLimitError, TerminalSession
 from .pyschemas import (
     LoadPyCuratedRequest,
     PyExplainResponse,
@@ -99,6 +102,62 @@ async def run(req: PyRunRequest) -> PyRunResponse:
         duration_ms=res.duration_ms,
         sandboxed=res.sandboxed,
     )
+
+
+@router.websocket("/terminal")
+async def terminal(ws: WebSocket) -> None:
+    """Live interactive shell (Phase 1: local PTY). Bridges bytes both ways.
+
+    Client -> server: JSON {type:"input"|"resize"|"run", ...}.
+    Server -> client: binary frames are raw terminal output; a JSON {type:"exit",code}
+    frame signals the shell ended.
+    """
+    await ws.accept()
+    session = TerminalSession()
+    try:
+        await session.start()
+    except SessionLimitError as e:
+        with contextlib.suppress(Exception):
+            await ws.send_bytes(f"\r\n{e}\r\n".encode())
+            await ws.close()
+        return
+    except Exception as e:  # noqa: BLE001 - surface startup failure to the terminal
+        with contextlib.suppress(Exception):
+            await ws.send_bytes(f"\r\nfailed to start terminal: {e}\r\n".encode())
+            await ws.close()
+        return
+
+    async def pump_output() -> None:
+        while True:
+            chunk = await session.output.get()
+            if chunk is None:  # process exited
+                with contextlib.suppress(Exception):
+                    await ws.send_json({"type": "exit", "code": session.exit_code or 0})
+                return
+            with contextlib.suppress(Exception):
+                await ws.send_bytes(chunk)
+
+    out_task = asyncio.create_task(pump_output())
+    try:
+        while True:
+            msg = await ws.receive_json()
+            kind = msg.get("type")
+            if kind == "input":
+                session.write(str(msg.get("data", "")).encode("utf-8"))
+            elif kind == "resize":
+                session.resize(int(msg.get("cols", 80)), int(msg.get("rows", 24)))
+            elif kind == "run":
+                session.write_main(str(msg.get("code", "")))
+                session.write(b"python main.py\n")
+    except WebSocketDisconnect:
+        pass
+    except Exception:  # noqa: BLE001 - any receive error ends the session cleanly
+        pass
+    finally:
+        await session.close()
+        out_task.cancel()
+        with contextlib.suppress(Exception):
+            await out_task
 
 
 @router.post("/format")

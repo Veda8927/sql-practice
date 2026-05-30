@@ -24,6 +24,10 @@ import { CommandSelect, type SelectOption } from "@/components/command-select";
 import { StartButton } from "@/components/start-button";
 import { PyEditor } from "@/components/python/py-editor";
 import { TestResults } from "@/components/python/test-results";
+import {
+  PythonTerminal,
+  type PythonTerminalHandle,
+} from "@/components/python/python-terminal";
 import { SyllabusView } from "@/components/syllabus-view";
 import { PY_SYLLABUS } from "@/lib/python-syllabus";
 import { pythonApi } from "@/lib/python-api";
@@ -41,7 +45,6 @@ import type {
   PyGradeResult,
   PyHintResponse,
   PyQuestion,
-  PyRunResponse,
 } from "@/lib/python-types";
 
 type Source = "ai" | "curated";
@@ -74,7 +77,6 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
   const [question, setQuestion] = React.useState<PyQuestion | null>(null);
   const [curated, setCurated] = React.useState<PyExercise | null>(null);
   const [code, setCode] = React.useState("");
-  const [runResult, setRunResult] = React.useState<PyRunResponse | null>(null);
   const [grade, setGrade] = React.useState<PyGradeResult | null>(null);
   const [hint, setHint] = React.useState<PyHintResponse | null>(null);
   const hintIndex = React.useRef(0);
@@ -82,10 +84,10 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
   const [solution, setSolution] = React.useState<PyGiveUpResponse | null>(null);
 
   const [loadingNew, setLoadingNew] = React.useState(false);
-  const [running, setRunning] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [coachBusy, setCoachBusy] = React.useState(false);
-  const [tab, setTab] = React.useState("output");
+  const [tab, setTab] = React.useState("terminal");
+  const terminalRef = React.useRef<PythonTerminalHandle>(null);
 
   const codeRef = React.useRef(code);
   codeRef.current = code;
@@ -117,7 +119,6 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
   }, [promptPanelRef, question]);
 
   function resetCoach() {
-    setRunResult(null);
     setGrade(null);
     setHint(null);
     setExplanation(null);
@@ -147,7 +148,7 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
           setCurated(null);
           setCode(q.starter_code || "");
         }
-        setTab("output");
+        setTab("terminal");
       } catch (e) {
         toast.error(String((e as Error).message));
       } finally {
@@ -169,19 +170,10 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
     void runNew("ai", con, difficulty);
   }
 
-  async function run() {
+  function run() {
     if (!question) return;
-    setRunning(true);
-    try {
-      const r = await pythonApi.run(codeRef.current);
-      setRunResult(r);
-      setTab("output");
-      if (r.timed_out) toast.error("Your code ran too long and was stopped.");
-    } catch (e) {
-      toast.error(String((e as Error).message));
-    } finally {
-      setRunning(false);
-    }
+    setTab("terminal");
+    terminalRef.current?.runCode(codeRef.current);
   }
 
   async function submit() {
@@ -457,7 +449,7 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
                   onRun={run}
                   onSubmit={submit}
                   onFormat={handleFormat}
-                  running={running}
+                  running={false}
                   submitting={submitting}
                 />
               </div>
@@ -468,38 +460,21 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
             <Panel defaultSize="50%" minSize="25%" className="min-h-0">
             <Tabs value={tab} onValueChange={setTab} className="flex h-full min-h-0 flex-col">
               <TabsList className="m-3 mb-0 self-start">
-                <TabsTrigger value="output">Output</TabsTrigger>
+                <TabsTrigger value="terminal">Terminal</TabsTrigger>
                 <TabsTrigger value="tests">Tests</TabsTrigger>
                 <TabsTrigger value="coach">Coach</TabsTrigger>
               </TabsList>
-              <div className="min-h-0 flex-1 overflow-auto p-3">
-                <TabsContent value="output" className="mt-0">
-                  {runResult ? (
-                    <div className="flex flex-col gap-2">
-                      {runResult.stdout && (
-                        <pre className="whitespace-pre-wrap rounded-md border border-border/60 bg-card/50 p-3 font-mono text-xs">
-                          {runResult.stdout}
-                        </pre>
-                      )}
-                      {runResult.stderr && (
-                        <pre className="whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/5 p-3 font-mono text-xs text-destructive">
-                          {runResult.stderr}
-                        </pre>
-                      )}
-                      {!runResult.stdout && !runResult.stderr && (
-                        <div className="text-sm text-muted-foreground">No output.</div>
-                      )}
-                      <div className="text-[11px] text-muted-foreground">
-                        {runResult.duration_ms} ms{runResult.sandboxed ? " · sandboxed" : " · UNSANDBOXED"}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">
-                      Press <span className="font-medium">Run</span> (⌘R) to execute your code.
-                    </div>
-                  )}
+              <div className="min-h-0 flex-1 overflow-hidden">
+                {/* Terminal stays mounted (forceMount) so the live shell session
+                    survives tab switches; hidden via CSS when another tab is active. */}
+                <TabsContent
+                  value="terminal"
+                  forceMount
+                  className="mt-0 h-full data-[state=inactive]:hidden"
+                >
+                  <PythonTerminal ref={terminalRef} className="h-full w-full px-3 pb-3" />
                 </TabsContent>
-                <TabsContent value="tests" className="mt-0">
+                <TabsContent value="tests" className="mt-0 h-full overflow-auto p-3">
                   {grade ? (
                     <TestResults grade={grade} />
                   ) : (
@@ -508,7 +483,7 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
                     </div>
                   )}
                 </TabsContent>
-                <TabsContent value="coach" className="mt-0">
+                <TabsContent value="coach" className="mt-0 h-full overflow-auto p-3">
                   <div className="flex flex-col gap-3">
                     {coachBusy && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">

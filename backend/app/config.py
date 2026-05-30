@@ -11,6 +11,13 @@ class Settings(BaseSettings):
     python_bin: str = ""
     pyexec_timeout_s: float = 6.0
 
+    # Interactive terminal (Phase 1 = local shell). PHASE 2: set to "docker" for a
+    # containerized per-session backend before any public/multi-user deployment.
+    terminal_backend: str = "local"  # "local" | "docker"
+    terminal_idle_timeout_s: float = 300.0  # kill after this long with no input
+    terminal_max_session_s: float = 1800.0  # hard wall-clock cap per session
+    terminal_max_sessions: int = 8  # concurrent session cap
+
     model_config = SettingsConfigDict(
         env_file=[
             Path(__file__).resolve().parent.parent.parent / ".env",
