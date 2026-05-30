@@ -384,8 +384,7 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
         Ready when you are.
       </h1>
 
-      <div className="flex items-center gap-1 rounded-full border border-border bg-card py-1.5 pl-4 pr-1.5 shadow-sm transition-shadow focus-within:shadow-md">
-        <div className="min-w-0 flex-1" />
+      <div className="flex flex-wrap items-center justify-center gap-2">
         <CommandSelect
           label="Concept"
           value={concept}
@@ -393,7 +392,6 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
           icon={<Filter className="h-3.5 w-3.5" />}
           disabled={loadingNew}
           onChange={setConcept}
-          bare
         />
         <CommandSelect
           label="Difficulty"
@@ -402,7 +400,6 @@ export function PythonView({ view, onSwitchToPractice }: PythonViewProps) {
           icon={<Gauge className="h-3.5 w-3.5" />}
           disabled={loadingNew}
           onChange={setDifficulty}
-          bare
         />
         <StartButton onClick={() => newExercise()} loading={loadingNew} label="Start exercise" />
       </div>

@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { ArrowUp, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 
 // The circular "send" button in the practice hero. On hover the arrow shoots
-// up and a fresh one rises from below — a small send micro-interaction — with a
-// springy press. Calm at rest, so the page stays minimal.
+// right and a fresh one slides in from the left — a small send micro-interaction
+// — with a springy press. Calm at rest, so the page stays minimal.
 export function StartButton({
   onClick,
   loading = false,
@@ -31,8 +31,8 @@ export function StartButton({
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
         <span className="relative block h-4 w-4 overflow-hidden">
-          <ArrowUp className="absolute inset-0 h-4 w-4 transition-transform duration-300 ease-out group-hover:-translate-y-5" />
-          <ArrowUp className="absolute inset-0 h-4 w-4 translate-y-5 transition-transform duration-300 ease-out group-hover:translate-y-0" />
+          <ArrowRight className="absolute inset-0 h-4 w-4 transition-transform duration-300 ease-out group-hover:translate-x-5" />
+          <ArrowRight className="absolute inset-0 h-4 w-4 -translate-x-5 transition-transform duration-300 ease-out group-hover:translate-x-0" />
         </span>
       )}
     </motion.button>
