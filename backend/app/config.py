@@ -14,8 +14,10 @@ class Settings(BaseSettings):
     # Interactive terminal (Phase 1 = local shell). PHASE 2: set to "docker" for a
     # containerized per-session backend before any public/multi-user deployment.
     terminal_backend: str = "local"  # "local" | "docker"
-    terminal_idle_timeout_s: float = 300.0  # kill after this long with no input
-    terminal_max_session_s: float = 1800.0  # hard wall-clock cap per session
+    # 0 disables the timer — the local practice terminal just stays open while
+    # you work. (Set generous values for a containerized/public deploy.)
+    terminal_idle_timeout_s: float = 0.0  # 0 = never auto-close on idle
+    terminal_max_session_s: float = 0.0  # 0 = no wall-clock cap
     terminal_max_sessions: int = 8  # concurrent session cap
 
     model_config = SettingsConfigDict(

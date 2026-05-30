@@ -148,9 +148,10 @@ class TerminalSession:
         os.set_blocking(self._master_fd, False)
         self._loop.add_reader(self._master_fd, self._on_readable)
         self._reset_idle()
-        self._max_handle = self._loop.call_later(
-            settings.terminal_max_session_s, self._on_timeout, "session time limit"
-        )
+        if settings.terminal_max_session_s > 0:
+            self._max_handle = self._loop.call_later(
+                settings.terminal_max_session_s, self._on_timeout, "session time limit"
+            )
 
     # --- inbound (WebSocket -> PTY) -------------------------------------------------
     def write(self, data: bytes) -> None:
@@ -189,6 +190,8 @@ class TerminalSession:
 
     # --- lifecycle ------------------------------------------------------------------
     def _reset_idle(self) -> None:
+        if settings.terminal_idle_timeout_s <= 0:
+            return  # idle auto-close disabled
         if self._idle_handle is not None:
             self._idle_handle.cancel()
         self._idle_handle = self._loop.call_later(
