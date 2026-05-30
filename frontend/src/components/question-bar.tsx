@@ -1013,14 +1013,12 @@ export function QuestionBar({
           Ready when you are.
         </h1>
 
-        {/* Prompt bar: borderless focus controls right-aligned before start. */}
-        <div className="flex items-center gap-1 rounded-full border border-border bg-card py-1.5 pl-4 pr-1.5 shadow-sm transition-shadow focus-within:shadow-md">
-          <div className="min-w-0 flex-1" />
+        {/* Focus controls + start, centered — no surrounding bar. */}
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <CategoryConceptSelect
             value={concept}
             onChange={setConcept}
             disabled={loading}
-            bare
           />
           <CommandSelect
             label="Difficulty"
@@ -1029,7 +1027,6 @@ export function QuestionBar({
             icon={<Gauge className="h-3.5 w-3.5" />}
             disabled={loading}
             onChange={setDifficulty}
-            bare
           />
           <StartButton onClick={() => start()} loading={loading} label="Start question" />
         </div>

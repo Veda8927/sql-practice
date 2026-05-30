@@ -4,16 +4,13 @@ import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  BookOpen,
   History,
   Loader2,
   Moon,
-  PlayCircle,
   RotateCcw,
   Sparkles,
   Sun,
   Table2,
-  Wand2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -32,7 +29,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { PythonLogo, SqlLogo } from "@/components/brand-logos";
+import { LanguageModeNav } from "@/components/language-mode-nav";
 import { HEADER_ACTIONS_SLOT_ID } from "@/components/header-portal";
 import { SchemaModal } from "@/components/schema-modal";
 import { QuestionBar, type QuestionSource } from "@/components/question-bar";
@@ -56,7 +53,6 @@ import {
   pickCuratedQuestion,
 } from "@/lib/curated";
 import { collectSchemaIdentifiers } from "@/lib/sql-lint";
-import { cn } from "@/lib/utils";
 import type {
   CuratedQuestion,
   Difficulty,
@@ -728,20 +724,6 @@ export default function Page() {
     };
   }, [onRun, onSubmit, onNewQuestion, mode, language]);
 
-  // Activities are contextual to the language: Clean is SQL-only.
-  const modeTabs: { id: Mode; label: string; icon: React.ReactNode }[] =
-    language === "sql"
-      ? [
-          { id: "learn", label: "Learn", icon: <BookOpen className="h-3.5 w-3.5" /> },
-          { id: "practice", label: "Practice", icon: <PlayCircle className="h-3.5 w-3.5" /> },
-          { id: "clean", label: "Clean", icon: <Wand2 className="h-3.5 w-3.5" /> },
-        ]
-      : [
-          { id: "learn", label: "Learn", icon: <BookOpen className="h-3.5 w-3.5" /> },
-          { id: "practice", label: "Practice", icon: <PlayCircle className="h-3.5 w-3.5" /> },
-          { id: "clean", label: "Clean", icon: <Wand2 className="h-3.5 w-3.5" /> },
-        ];
-
   // Rendered in two places: alone (centered) before a question exists, and in
   // the top panel once the editor/results split appears.
   const questionBar = (
@@ -772,60 +754,13 @@ export default function Page() {
       {/* Minimal header */}
       <header className="flex h-12 shrink-0 items-center justify-between gap-2 px-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
-          {/* Primary axis: which language you're practicing */}
-          <div className="flex items-center gap-0.5 rounded-full border border-border bg-muted/40 p-0.5">
-            {(
-              [
-                {
-                  id: "sql",
-                  label: "SQL",
-                  icon: <SqlLogo className="h-4 w-4" filled={language === "sql"} />,
-                },
-                {
-                  id: "python",
-                  label: "Python",
-                  icon: <PythonLogo className="h-4 w-4" filled={language === "python"} />,
-                },
-              ] as const
-            ).map((l) => (
-              <button
-                key={l.id}
-                type="button"
-                onClick={() => onLanguageChange(l.id)}
-                aria-pressed={language === l.id}
-                className={cn(
-                  "flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors",
-                  language === l.id
-                    ? "bg-foreground text-background shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {l.icon}
-                {l.label}
-              </button>
-            ))}
-          </div>
-          <div className="h-5 w-px bg-border" aria-hidden />
-          {/* Secondary axis: activity within the selected language */}
-          <div className="flex items-center gap-0.5">
-            {modeTabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setMode(t.id)}
-                aria-pressed={mode === t.id}
-                className={cn(
-                  "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors",
-                  mode === t.id
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t.icon}
-                {t.label}
-              </button>
-            ))}
-          </div>
+          {/* Primary nav: language + activity in one hover-dropdown pill */}
+          <LanguageModeNav
+            language={language}
+            mode={mode}
+            onLanguageChange={onLanguageChange}
+            onModeChange={setMode}
+          />
           {language === "sql" && mode === "practice" && <StreakBadge />}
         </div>
         <div className="flex items-center gap-1">
